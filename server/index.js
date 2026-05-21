@@ -260,6 +260,21 @@ async function initDb() {
   }
 
   await dbRun(`
+    CREATE TABLE IF NOT EXISTS bloqueos_recurrentes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      club_id INTEGER NOT NULL,
+      cancha TEXT NOT NULL,
+      dia_semana INTEGER NOT NULL,
+      horario_desde TEXT,
+      horario_hasta TEXT,
+      dia_completo INTEGER NOT NULL DEFAULT 0,
+      motivo TEXT NOT NULL DEFAULT '',
+      activo INTEGER NOT NULL DEFAULT 1,
+      creado_en TEXT NOT NULL
+    )
+  `);
+
+  await dbRun(`
     CREATE TABLE IF NOT EXISTS solicitudes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       nombre TEXT NOT NULL,
@@ -631,6 +646,21 @@ function mapBloqueoRow(row) {
   };
 }
 
+function mapBloqueoRecurrenteRow(row) {
+  return {
+    id: row.id,
+    clubId: row.club_id,
+    cancha: String(row.cancha),
+    diaSemana: row.dia_semana,
+    horarioDesde: row.horario_desde,
+    horarioHasta: row.horario_hasta,
+    diaCompleto: Boolean(row.dia_completo),
+    motivo: row.motivo,
+    activo: Boolean(row.activo),
+    creadoEn: row.creado_en,
+  };
+}
+
 // ============================================================
 // FUNCIONES DE DATOS
 // ============================================================
@@ -678,7 +708,28 @@ async function purgeExpiredReservas(clubId) {
   return ids.length;
 }
 
+async function readBloqueosRecurrentes({ clubId, cancha = null } = {}) {
+  if (USE_SUPABASE) {
+    let query = supabase.from("bloqueos_recurrentes").select("*").eq("activo", true).order("dia_semana", { ascending: true });
+    if (clubId != null) query = query.eq("club_id", clubId);
+    if (cancha) query = query.eq("cancha", String(cancha));
+    const { data, error } = await query;
+    if (error) throw new Error(error.message);
+    return data.map(mapBloqueoRecurrenteRow);
+  }
+  const where = ["activo = 1"];
+  const params = [];
+  if (clubId != null) { where.push("club_id = ?"); params.push(clubId); }
+  if (cancha) { where.push("cancha = ?"); params.push(String(cancha)); }
+  const rows = await dbAll(
+    `SELECT * FROM bloqueos_recurrentes WHERE ${where.join(" AND ")} ORDER BY dia_semana ASC, id ASC`,
+    params
+  );
+  return rows.map(mapBloqueoRecurrenteRow);
+}
+
 async function readBloqueos({ clubId, fecha = "", cancha = null } = {}) {
+  let bloqueos;
   if (USE_SUPABASE) {
     let query = supabase.from("bloqueos").select("*").order("fecha", { ascending: true });
     if (clubId != null) query = query.eq("club_id", clubId);
@@ -686,19 +737,41 @@ async function readBloqueos({ clubId, fecha = "", cancha = null } = {}) {
     if (cancha) query = query.eq("cancha", String(cancha));
     const { data, error } = await query;
     if (error) throw new Error(error.message);
-    return data.map(mapBloqueoRow);
+    bloqueos = data.map(mapBloqueoRow);
+  } else {
+    const where = [];
+    const params = [];
+    if (clubId != null) { where.push("club_id = ?"); params.push(clubId); }
+    if (fecha) { where.push("fecha = ?"); params.push(fecha); }
+    if (cancha) { where.push("cancha = ?"); params.push(String(cancha)); }
+    const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+    const rows = await dbAll(
+      `SELECT * FROM bloqueos ${whereSql} ORDER BY fecha ASC, id DESC`,
+      params
+    );
+    bloqueos = rows.map(mapBloqueoRow);
   }
-  const where = [];
-  const params = [];
-  if (clubId != null) { where.push("club_id = ?"); params.push(clubId); }
-  if (fecha) { where.push("fecha = ?"); params.push(fecha); }
-  if (cancha) { where.push("cancha = ?"); params.push(String(cancha)); }
-  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
-  const rows = await dbAll(
-    `SELECT * FROM bloqueos ${whereSql} ORDER BY fecha ASC, id DESC`,
-    params
-  );
-  return rows.map(mapBloqueoRow);
+  if (fecha) {
+    const [y, m, d] = fecha.split("-").map(Number);
+    const diaSemana = new Date(y, m - 1, d).getDay();
+    const recurrentes = await readBloqueosRecurrentes({ clubId, cancha });
+    const paraHoy = recurrentes
+      .filter((r) => r.diaSemana === diaSemana)
+      .map((r) => ({
+        id: `rec-${r.id}`,
+        clubId: r.clubId,
+        cancha: r.cancha,
+        fecha,
+        horario: null,
+        horarioDesde: r.horarioDesde,
+        horarioHasta: r.horarioHasta,
+        diaCompleto: r.diaCompleto,
+        motivo: r.motivo || "Bloqueo recurrente",
+        creadoEn: r.creadoEn,
+      }));
+    return [...bloqueos, ...paraHoy];
+  }
+  return bloqueos;
 }
 
 // ============================================================
@@ -1001,6 +1074,66 @@ app.get("/api/:slug/admin/bloqueos", resolveClub, requireAdmin, async (req, res,
   try {
     const bloqueos = await readBloqueos({ clubId: req.club.id });
     res.json(bloqueos);
+  } catch (error) { next(error); }
+});
+
+app.get("/api/:slug/admin/bloqueos-recurrentes", resolveClub, requireAdmin, async (req, res, next) => {
+  try {
+    const bloqueos = await readBloqueosRecurrentes({ clubId: req.club.id });
+    res.json(bloqueos);
+  } catch (error) { next(error); }
+});
+
+app.post("/api/:slug/admin/bloqueos-recurrentes", resolveClub, requireAdmin, async (req, res, next) => {
+  try {
+    const cancha = String(req.body.cancha || "").trim();
+    const diaSemana = parseInt(req.body.diaSemana, 10);
+    const horarioDesde = (req.body.horarioDesde || "").trim();
+    const horarioHasta = (req.body.horarioHasta || "").trim();
+    const diaCompleto = Boolean(req.body.diaCompleto);
+    const motivo = (req.body.motivo || "").trim().slice(0, 200);
+    const club = req.club;
+
+    if (!club.canchas.some((c) => c.nombre === cancha)) {
+      return res.status(400).json({ error: "Cancha inválida." });
+    }
+    if (![0, 1, 2, 3, 4, 5, 6].includes(diaSemana)) {
+      return res.status(400).json({ error: "Día de semana inválido." });
+    }
+    if (!diaCompleto && (!horarioDesde || !horarioHasta)) {
+      return res.status(400).json({ error: "Indicá horario desde y hasta." });
+    }
+
+    const creadoEn = new Date().toISOString();
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase.from("bloqueos_recurrentes").insert({
+        club_id: req.club.id, cancha, dia_semana: diaSemana,
+        horario_desde: diaCompleto ? null : horarioDesde,
+        horario_hasta: diaCompleto ? null : horarioHasta,
+        dia_completo: diaCompleto, motivo, activo: true, creado_en: creadoEn,
+      }).select().single();
+      if (error) throw new Error(error.message);
+      return res.status(201).json(mapBloqueoRecurrenteRow(data));
+    }
+    const result = await dbRun(
+      `INSERT INTO bloqueos_recurrentes (club_id, cancha, dia_semana, horario_desde, horario_hasta, dia_completo, motivo, activo, creado_en) VALUES (?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      [req.club.id, cancha, diaSemana, diaCompleto ? null : horarioDesde, diaCompleto ? null : horarioHasta, diaCompleto ? 1 : 0, motivo, creadoEn]
+    );
+    res.status(201).json({ id: result.lastID, clubId: req.club.id, cancha, diaSemana, horarioDesde, horarioHasta, diaCompleto, motivo, activo: true, creadoEn });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/:slug/admin/bloqueos-recurrentes/:id", resolveClub, requireAdmin, async (req, res, next) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from("bloqueos_recurrentes").delete().eq("id", id).eq("club_id", req.club.id);
+      if (error) throw new Error(error.message);
+    } else {
+      await dbRun("DELETE FROM bloqueos_recurrentes WHERE id = ? AND club_id = ?", [id, req.club.id]);
+    }
+    res.json({ ok: true });
   } catch (error) { next(error); }
 });
 

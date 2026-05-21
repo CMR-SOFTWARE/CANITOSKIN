@@ -100,6 +100,21 @@ async function loadConfig() {
       .map((c) => `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.etiqueta)}</option>`)
       .join("");
   }
+
+  // Poblar selectores de bloqueos recurrentes
+  const recCanchaEl = document.getElementById("recCancha");
+  if (recCanchaEl) {
+    recCanchaEl.innerHTML = config.canchas
+      .map((c) => `<option value="${escapeHtml(c.nombre)}">${escapeHtml(c.etiqueta)}</option>`)
+      .join("");
+  }
+  const recHorarioDesdeEl = document.getElementById("recHorarioDesde");
+  const recHorarioHastaEl = document.getElementById("recHorarioHasta");
+  if (recHorarioDesdeEl && recHorarioHastaEl) {
+    const horarioOpts = config.horarios.map((h) => `<option value="${h}">${h}</option>`).join("");
+    recHorarioDesdeEl.innerHTML = horarioOpts;
+    recHorarioHastaEl.innerHTML = horarioOpts;
+  }
 }
 
 function getCanchaEtiqueta(nombreCancha) {
@@ -199,11 +214,13 @@ async function loadReservasAdmin(fecha = "") {
 }
 
 async function refreshAdminData() {
-  const [, bloqueos] = await Promise.all([
+  const [, bloqueos, bloqueosRec] = await Promise.all([
     loadReservasAdmin(filtroFecha.value),
     api(`/api/${CLUB_SLUG}/admin/bloqueos`),
+    api(`/api/${CLUB_SLUG}/admin/bloqueos-recurrentes`),
   ]);
   renderBloqueos(bloqueos);
+  renderBloqueosRecurrentes(bloqueosRec);
 }
 
 btnFiltrarReservas.addEventListener("click", () => loadReservasAdmin(filtroFecha.value));
@@ -481,6 +498,83 @@ btnCambiarPass.addEventListener("click", async () => {
     cfgPassNuevo.value = "";
     setMessage(cfgPassMsg, "Contrasena cambiada correctamente.", false);
   } catch (error) { setMessage(cfgPassMsg, error.message || "No se pudo cambiar la contrasena."); }
+});
+
+// ── Bloqueos recurrentes ──────────────────────────────────────
+
+const DAY_LABELS_FULL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+function renderBloqueosRecurrentes(bloqueos) {
+  const container = document.getElementById("bloqueosRecurrentesList");
+  if (!container) return;
+  if (!bloqueos.length) {
+    container.innerHTML = "<p class='text-sm text-slate-500'>No hay bloqueos recurrentes.</p>";
+    return;
+  }
+  container.innerHTML = bloqueos.map((b) => {
+    const canchaLabel = getCanchaEtiqueta(b.cancha);
+    const diaLabel = DAY_LABELS_FULL[b.diaSemana] ?? `Día ${b.diaSemana}`;
+    const horarioLabel = b.diaCompleto ? "Día completo" : `${b.horarioDesde} — ${b.horarioHasta}`;
+    return `<article class="flex items-start justify-between gap-3 rounded-lg border border-violet-100 bg-violet-50 p-3">
+      <div>
+        <p class="font-semibold text-slate-800">${escapeHtml(canchaLabel)} — todos los ${escapeHtml(diaLabel)}</p>
+        <p class="text-sm text-slate-600">${escapeHtml(horarioLabel)}${b.motivo ? ` · ${escapeHtml(b.motivo)}` : ""}</p>
+      </div>
+      <button class="shrink-0 rounded-lg bg-red-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-800"
+        data-action="quitar-bloqueo-rec" data-id="${b.id}" type="button">Quitar</button>
+    </article>`;
+  }).join("");
+}
+
+document.getElementById("btnToggleBloqRec")?.addEventListener("click", () => {
+  document.getElementById("formBloqRecContainer")?.classList.toggle("hidden");
+});
+
+document.getElementById("btnCancelarBloqRec")?.addEventListener("click", () => {
+  document.getElementById("formBloqRecContainer")?.classList.add("hidden");
+});
+
+document.getElementById("recDiaCompleto")?.addEventListener("change", (e) => {
+  const dis = e.target.checked;
+  document.getElementById("recHorarioDesde").disabled = dis;
+  document.getElementById("recHorarioHasta").disabled = dis;
+});
+
+document.getElementById("btnGuardarBloqRec")?.addEventListener("click", async () => {
+  const recMsg = document.getElementById("recMsg");
+  try {
+    const cancha = document.getElementById("recCancha").value;
+    const diaSemana = parseInt(document.getElementById("recDiaSemana").value, 10);
+    const diaCompleto = document.getElementById("recDiaCompleto").checked;
+    const horarioDesde = document.getElementById("recHorarioDesde").value;
+    const horarioHasta = document.getElementById("recHorarioHasta").value;
+    const motivo = document.getElementById("recMotivo").value.trim();
+    await api(`/api/${CLUB_SLUG}/admin/bloqueos-recurrentes`, {
+      method: "POST",
+      body: JSON.stringify({ cancha, diaSemana, diaCompleto, horarioDesde, horarioHasta, motivo }),
+    });
+    setMessage(recMsg, "Bloqueo recurrente guardado.", false);
+    document.getElementById("recMotivo").value = "";
+    document.getElementById("recDiaCompleto").checked = false;
+    document.getElementById("recHorarioDesde").disabled = false;
+    document.getElementById("recHorarioHasta").disabled = false;
+    document.getElementById("formBloqRecContainer").classList.add("hidden");
+    const bloqueosRec = await api(`/api/${CLUB_SLUG}/admin/bloqueos-recurrentes`);
+    renderBloqueosRecurrentes(bloqueosRec);
+  } catch (e) { setMessage(recMsg, e.message || "No se pudo guardar."); }
+});
+
+document.getElementById("bloqueosRecurrentesList")?.addEventListener("click", async (event) => {
+  const target = event.target;
+  if (!(target instanceof HTMLElement) || target.dataset.action !== "quitar-bloqueo-rec") return;
+  const id = target.dataset.id;
+  if (!id || !window.confirm("¿Quitar este bloqueo recurrente?")) return;
+  try {
+    await api(`/api/${CLUB_SLUG}/admin/bloqueos-recurrentes/${id}`, { method: "DELETE" });
+    setMessage(adminMessage, "Bloqueo recurrente eliminado.", false);
+    const bloqueosRec = await api(`/api/${CLUB_SLUG}/admin/bloqueos-recurrentes`);
+    renderBloqueosRecurrentes(bloqueosRec);
+  } catch (e) { setMessage(adminMessage, e.message || "No se pudo eliminar."); }
 });
 
 // ── Vista calendario ──────────────────────────────────────────
