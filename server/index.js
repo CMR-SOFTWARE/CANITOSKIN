@@ -837,6 +837,14 @@ app.use((_req, res, next) => {
   next();
 });
 
+app.use((req, res, next) => {
+  const host = (req.headers.host || "").replace(/^www\./, "").split(":")[0];
+  if (host === "automovilclubsn.com") {
+    return res.redirect(301, "https://cmrcanchas.com/mi-club");
+  }
+  next();
+});
+
 app.use(express.json());
 app.use("/uploads", express.static(UPLOADS_DIR));
 app.use(express.static(path.join(ROOT_DIR, "public"), { index: false }));
