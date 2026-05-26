@@ -3,263 +3,337 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CMR Canchas</title>
+  <title>CMR Match — Reservá tu cancha en segundos</title>
+  <meta name="description" content="CMR Match: reservá canchas de fútbol, pádel y más. Encontrá clubs, elegí horario y confirmá tu turno al instante." />
   <link rel="icon" type="image/png" href="/favicon.png" />
-  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/home-arena.css" />
 </head>
-<body class="min-h-screen bg-slate-100 flex flex-col">
+<body class="arena-page">
 
   <!-- Navbar -->
-  <nav class="bg-green-950 px-6 py-4">
-    <div class="mx-auto max-w-5xl flex items-center gap-3">
-      <img src="/favicon.png" alt="CMR Canchas" class="h-9 w-9 rounded-lg object-contain" />
-      <span class="text-white font-bold text-lg tracking-tight">CMR Canchas</span>
+  <nav class="arena-nav" id="mainNav" aria-label="Navegación principal">
+    <div class="arena-nav__inner">
+      <a href="#" class="arena-nav__brand">
+        <img src="/images/logo-cmr-nav.png" alt="CMR Match" class="arena-nav__logo arena-nav__logo--nav" width="124" height="54" />
+        <span class="arena-nav__name">CMR <span>MATCH</span></span>
+      </a>
+
+      <ul class="arena-nav__menu" id="navMenu">
+        <li><a href="#clubs" class="arena-nav__link">Clubs</a></li>
+        <li><a href="#beneficios" class="arena-nav__link">Beneficios</a></li>
+        <li><a href="#planes" class="arena-nav__link">Planes</a></li>
+        <li><a href="#como-funciona" class="arena-nav__link">Cómo funciona</a></li>
+        <li><a href="#clubs" class="arena-nav__item arena-nav__item--outline cut-corners cut-corners--xs">Reservar</a></li>
+        <li><a href="/registro" class="arena-nav__item arena-nav__item--tag cut-corners cut-corners--xs">Registrar</a></li>
+      </ul>
+
+      <button class="arena-nav__toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+      </button>
     </div>
   </nav>
 
   <!-- Hero -->
-  <section class="relative bg-green-950 text-white px-6 pt-14 pb-16 text-center overflow-hidden">
+  <section class="hero-arena" id="hero">
+    <div class="hero-arena__bg">
+      <img
+        src="/images/hero-arena.png"
+        alt="Complejo deportivo nocturno con canchas de fútbol y pádel iluminadas"
+        class="hero-arena__image"
+        id="heroImage"
+        fetchpriority="high"
+      />
+      <div class="hero-arena__overlay"></div>
+      <div class="hero-arena__particles" id="heroParticles" aria-hidden="true"></div>
+      <div class="hero-arena__sparks" id="heroSparks" aria-hidden="true"></div>
+    </div>
 
-    <!-- Patrón hexagonal inline (sin archivo externo) -->
-    <svg class="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
-      <defs>
-        <pattern id="hexGrid" x="0" y="0" width="28" height="49" patternUnits="userSpaceOnUse" patternTransform="scale(3)">
-          <g fill-rule="evenodd" fill="#4ade80" fill-opacity="0.10">
-            <path d="M13.99 9.25l13 7.5v15l-13 7.5L1 31.75v-15l12.99-7.5zM3 17.9v12.7l10.99 6.34 11-6.35V17.9l-11-6.34L3 17.9zM0 15l12.98-7.5V0h-2v6.35L0 12.69v2.3zm0 18.5L12.98 41v8h-2v-6.85L0 35.81v-2.3zM15 0v7.5L27.99 15H28v-2.31h-.01L17 6.35V0h-2zm0 49v-8l12.99-7.5H28v2.3h-.01L17 42.15V49h-2z"/>
-          </g>
-        </pattern>
-      </defs>
-      <rect width="100%" height="100%" fill="url(#hexGrid)"/>
-    </svg>
-
-    <!-- Gradiente de profundidad encima del patrón -->
-    <div class="absolute inset-0 bg-gradient-to-br from-green-950/70 via-green-950/30 to-transparent"></div>
-
-    <!-- Contenido -->
-    <div class="relative z-10">
-      <p class="text-green-400 text-sm font-semibold uppercase tracking-widest mb-3">Directorio de clubs deportivos</p>
-      <h1 class="text-4xl sm:text-5xl font-extrabold mb-4 leading-tight">Encontrá tu cancha.<br/>Reservá en segundos.</h1>
-      <p class="text-green-200 text-base sm:text-lg mb-10 max-w-md mx-auto">
-        Buscá el club más cercano, elegí horario y confirmá tu turno sin llamar a nadie.
+    <div class="hero-arena__content">
+      <p class="hero-arena__tag cut-corners cut-corners--sm">Reservas deportivas</p>
+      <h1 class="hero-arena__title">
+        Tu cancha.<br/>
+        <span class="highlight">Un click.</span>
+      </h1>
+      <p class="hero-arena__desc">
+        Encontrá club, elegí horario y confirmá tu turno online.
       </p>
-
-      <!-- Buscador -->
-      <div class="mx-auto max-w-md relative">
-        <svg class="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <div class="hero-arena__actions">
+        <a href="#clubs" class="btn-arena btn-arena--primary cut-corners">Reservar</a>
+        <a href="/registro" class="btn-arena btn-arena--ghost cut-corners">Registrar club</a>
+      </div>
+      <div class="hero-arena__search">
+        <svg class="hero-arena__search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
         </svg>
-        <input id="searchInput" type="search" placeholder="Buscar club..."
-               class="w-full rounded-xl bg-white text-slate-800 pl-11 pr-4 py-3.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-400 shadow-lg" />
+        <input id="searchInput" class="cut-corners" type="search" placeholder="Buscar club por nombre..." autocomplete="off" />
+      </div>
+
+      <div class="hero-arena__stats">
+        <div>
+          <div class="hero-stat__value"><span id="statClubs">+</span><span id="statClubsNum">50</span></div>
+          <div class="hero-stat__label">Clubs</div>
+        </div>
+        <div>
+          <div class="hero-stat__value">24/7</div>
+          <div class="hero-stat__label">Online</div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Clubs -->
-  <main class="mx-auto max-w-5xl px-4 py-10 space-y-6 flex-1 w-full">
-
-    <!-- Filtros por deporte -->
-    <div id="sportFilters" class="hidden flex gap-2 flex-wrap"></div>
-
-    <div id="loading" class="text-center text-slate-400 py-20">
-      <div class="inline-block w-6 h-6 border-2 border-slate-300 border-t-green-600 rounded-full animate-spin mb-3"></div>
-      <p class="text-sm">Cargando clubs...</p>
+  <main class="page-light">
+  <!-- Deportes -->
+  <section class="arena-section arena-section--compact arena-section--center" id="deportes">
+    <div class="arena-container reveal">
+      <span class="section-label">Deportes</span>
+      <h2 class="section-title">Elegí tu deporte</h2>
+      <div class="categories-row categories-row--center" id="categoriesGrid">
+        <button type="button" class="category-chip cut-corners cut-corners--xs is-active" data-deporte="todos">Todos</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="futbol">Fútbol</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="padel">Pádel</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="tenis">Tenis</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="basquet">Básquet</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="voley">Voley</button>
+      </div>
     </div>
+  </section>
 
-    <div id="emptyState" class="hidden text-center py-20">
-      <svg class="mx-auto mb-4 text-slate-300" width="48" height="48" viewBox="0 0 44 44" fill="none">
-        <rect x="7" y="13" width="30" height="20" rx="2" stroke="currentColor" stroke-width="2"/>
-        <line x1="22" y1="13" x2="22" y2="33" stroke="currentColor" stroke-width="2"/>
-        <circle cx="22" cy="23" r="4.5" stroke="currentColor" stroke-width="2"/>
-      </svg>
-      <p class="text-slate-500 font-medium">No hay clubs disponibles aún.</p>
+  <!-- Clubs destacados -->
+  <section class="arena-section clubs-section arena-section--center" id="clubs">
+    <div class="arena-container clubs-section__container">
+      <div class="reveal clubs-section__header">
+        <span class="section-label">Clubs</span>
+        <h2 class="section-title">Destacados</h2>
+        <div class="sport-filters" id="sportFilters" hidden></div>
+      </div>
+
+      <div id="loading" class="arena-loading reveal">
+        <div class="arena-spinner"></div>
+        <p>Cargando clubs...</p>
+      </div>
+
+      <div id="emptyState" class="arena-empty reveal hidden">
+        <svg width="56" height="56" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="7" y="13" width="30" height="20" rx="2"/><line x1="22" y1="13" x2="22" y2="33"/><circle cx="22" cy="23" r="4.5"/>
+        </svg>
+        <p>No hay clubs disponibles aún.</p>
+      </div>
+
+      <div id="clubsGrid" class="clubs-grid hidden"></div>
     </div>
+  </section>
 
-    <div id="clubsGrid" class="hidden grid gap-5 sm:grid-cols-2 lg:grid-cols-3"></div>
+  <!-- Beneficios -->
+  <section class="arena-section arena-section--compact" id="beneficios">
+    <div class="arena-container">
+      <div class="reveal section-header-minimal">
+        <span class="section-label">Beneficios</span>
+        <h2 class="section-title">Por qué CMR Match</h2>
+      </div>
+      <div class="benefits-showcase">
+        <article class="benefit-card-cut reveal">
+          <span class="benefit-card-cut__line" aria-hidden="true"></span>
+          <span class="benefit-card-cut__num">01</span>
+          <h3 class="benefit-card-cut__title">Reserva rápida</h3>
+          <p class="benefit-card-cut__text">Fecha, horario y cancha en segundos.</p>
+        </article>
+        <article class="benefit-card-cut benefit-card-cut--dark reveal">
+          <span class="benefit-card-cut__line" aria-hidden="true"></span>
+          <span class="benefit-card-cut__num">02</span>
+          <h3 class="benefit-card-cut__title">Pagos verificados</h3>
+          <p class="benefit-card-cut__text">Transferencia y comprobante digital.</p>
+        </article>
+        <article class="benefit-card-cut benefit-card-cut--green reveal">
+          <span class="benefit-card-cut__line" aria-hidden="true"></span>
+          <span class="benefit-card-cut__num">03</span>
+          <h3 class="benefit-card-cut__title">WhatsApp</h3>
+          <p class="benefit-card-cut__text">Confirmaciones directo al chat.</p>
+        </article>
+        <article class="benefit-card-cut reveal">
+          <span class="benefit-card-cut__line" aria-hidden="true"></span>
+          <span class="benefit-card-cut__num">04</span>
+          <h3 class="benefit-card-cut__title">Panel club</h3>
+          <p class="benefit-card-cut__text">Gestión de canchas en tiempo real.</p>
+        </article>
+      </div>
+    </div>
+  </section>
 
+  <!-- Planes -->
+  <section class="arena-section arena-section--plans" id="planes">
+    <div class="arena-container">
+      <div class="reveal section-header-center">
+        <span class="section-label">Planes</span>
+        <h2 class="section-title">Elegí el plan de tu club</h2>
+        <p class="section-subtitle section-subtitle--center">Sin costos de instalación. Activación en menos de 24 hs. Cancelá cuando quieras.</p>
+      </div>
+      <div class="plans-grid">
+        <article class="plan-card reveal">
+          <header class="plan-card__head">
+            <span class="plan-card__tier">Inicial</span>
+            <div class="plan-card__price">
+              <span class="plan-card__amount">$50.000</span>
+              <span class="plan-card__period">/ mes</span>
+            </div>
+          </header>
+          <ul class="plan-card__features">
+            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 2 canchas</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Reservas online</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
+          </ul>
+          <a href="/registro?plan=inicial" class="btn-arena btn-arena--plan-outline cut-corners cut-corners--sm">Empezar</a>
+        </article>
+        <article class="plan-card plan-card--featured reveal">
+          <span class="plan-card__badge cut-corners cut-corners--xs">Más popular</span>
+          <header class="plan-card__head">
+            <span class="plan-card__tier">Estándar</span>
+            <div class="plan-card__price">
+              <span class="plan-card__amount">$80.000</span>
+              <span class="plan-card__period">/ mes</span>
+            </div>
+          </header>
+          <ul class="plan-card__features">
+            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 5 canchas</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Reservas online</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Soporte prioritario</li>
+          </ul>
+          <a href="/registro?plan=estandar" class="btn-arena btn-arena--plan-primary cut-corners cut-corners--sm">Empezar</a>
+        </article>
+        <article class="plan-card reveal">
+          <header class="plan-card__head">
+            <span class="plan-card__tier">Max</span>
+            <div class="plan-card__price">
+              <span class="plan-card__amount">$100.000</span>
+              <span class="plan-card__period">/ mes</span>
+            </div>
+          </header>
+          <ul class="plan-card__features">
+            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 10 canchas</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Reservas online</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Soporte prioritario</li>
+          </ul>
+          <a href="/registro?plan=max" class="btn-arena btn-arena--plan-outline cut-corners cut-corners--sm">Empezar</a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cómo funciona -->
+  <section class="arena-section" id="como-funciona">
+    <div class="arena-container reveal">
+      <span class="section-label">Proceso</span>
+      <h2 class="section-title">Cómo funciona</h2>
+      <div class="steps-showcase" id="stepsShowcase">
+        <div class="steps-showcase__progress" aria-hidden="true"><span class="steps-showcase__bar" id="stepsBar"></span></div>
+        <article class="step-card-cut reveal" data-step="1" tabindex="0">
+          <span class="step-card-cut__num">01</span>
+          <div class="step-card-cut__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <h3 class="step-card-cut__title">Buscá tu club</h3>
+          <p class="step-card-cut__text">Explorá el directorio o filtrá por deporte.</p>
+        </article>
+        <article class="step-card-cut reveal" data-step="2" tabindex="0">
+          <span class="step-card-cut__num">02</span>
+          <div class="step-card-cut__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="0"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </div>
+          <h3 class="step-card-cut__title">Elegí horario</h3>
+          <p class="step-card-cut__text">Seleccioná fecha, cancha y franja disponible.</p>
+        </article>
+        <article class="step-card-cut reveal" data-step="3" tabindex="0">
+          <span class="step-card-cut__num">03</span>
+          <div class="step-card-cut__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="0"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+          </div>
+          <h3 class="step-card-cut__title">Confirmá pago</h3>
+          <p class="step-card-cut__text">Transferí y subí el comprobante.</p>
+        </article>
+        <article class="step-card-cut reveal" data-step="4" tabindex="0">
+          <span class="step-card-cut__num">04</span>
+          <div class="step-card-cut__icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h3 class="step-card-cut__title">¡A jugar!</h3>
+          <p class="step-card-cut__text">Confirmación por WhatsApp y listo.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="arena-section" style="padding-top:1rem; padding-bottom:2.1rem">
+    <div class="cta-arena reveal">
+      <div class="cta-arena__content">
+        <p class="cta-arena__eyebrow">¿Tenés un club?</p>
+        <h2 class="cta-arena__title">Publicá tu club en CMR Match</h2>
+        <p class="cta-arena__desc">Reservas online · Activación en 24 hs · Sin instalación.</p>
+        <div class="cta-arena__actions">
+          <a href="/registro" class="btn-arena btn-arena--primary cut-corners">Registrar club</a>
+          <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer" class="btn-arena btn-arena--ghost cut-corners">Contactar</a>
+        </div>
+      </div>
+    </div>
+  </section>
   </main>
 
-  <!-- Planes / Pricing -->
-  <section class="bg-white py-16 px-6">
-    <div class="mx-auto max-w-5xl">
-      <p class="text-green-700 text-sm font-semibold uppercase tracking-widest text-center mb-2">Planes</p>
-      <h2 class="text-3xl sm:text-4xl font-extrabold text-slate-800 text-center mb-3">Elegí el plan de tu club</h2>
-      <p class="text-slate-500 text-base text-center mb-10 max-w-lg mx-auto">
-        Sin costos de instalación. Activación en menos de 24 hs. Cancelá cuando quieras.
-      </p>
-
-      <div class="grid gap-6 sm:grid-cols-3">
-
-        <!-- Plan Inicial -->
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-7 flex flex-col gap-4">
-          <div>
-            <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Inicial</span>
-            <div class="mt-1 flex items-end gap-1">
-              <span class="text-4xl font-extrabold text-slate-800">$50.000</span>
-              <span class="text-sm text-slate-400 mb-1">/mes</span>
-            </div>
-          </div>
-          <ul class="space-y-2 text-sm text-slate-600 flex-1">
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Hasta <strong>2 canchas</strong>
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Reservas online
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Panel de administración
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Integración WhatsApp
-            </li>
-          </ul>
-          <a href="/registro?plan=inicial"
-             class="mt-2 block text-center rounded-xl border-2 border-green-700 py-2.5 text-sm font-bold text-green-700 hover:bg-green-700 hover:text-white transition-colors">
-            Empezar →
-          </a>
-        </div>
-
-        <!-- Plan Estándar (destacado) -->
-        <div class="rounded-2xl border-2 border-green-600 bg-green-950 p-7 flex flex-col gap-4 relative">
-          <span class="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wide">
-            Más popular
-          </span>
-          <div>
-            <span class="text-xs font-bold uppercase tracking-widest text-green-400">Estándar</span>
-            <div class="mt-1 flex items-end gap-1">
-              <span class="text-4xl font-extrabold text-white">$80.000</span>
-              <span class="text-sm text-green-300 mb-1">/mes</span>
-            </div>
-          </div>
-          <ul class="space-y-2 text-sm text-green-100 flex-1">
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Hasta <strong>5 canchas</strong>
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Reservas online
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Panel de administración
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Integración WhatsApp
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Soporte prioritario
-            </li>
-          </ul>
-          <a href="/registro?plan=estandar"
-             class="mt-2 block text-center rounded-xl bg-green-500 hover:bg-green-400 transition-colors py-2.5 text-sm font-bold text-white">
-            Empezar →
-          </a>
-        </div>
-
-        <!-- Plan Max -->
-        <div class="rounded-2xl border border-slate-200 bg-slate-50 p-7 flex flex-col gap-4">
-          <div>
-            <span class="text-xs font-bold uppercase tracking-widest text-slate-400">Max</span>
-            <div class="mt-1 flex items-end gap-1">
-              <span class="text-4xl font-extrabold text-slate-800">$100.000</span>
-              <span class="text-sm text-slate-400 mb-1">/mes</span>
-            </div>
-          </div>
-          <ul class="space-y-2 text-sm text-slate-600 flex-1">
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Hasta <strong>10 canchas</strong>
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Reservas online
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Panel de administración
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Integración WhatsApp
-            </li>
-            <li class="flex items-center gap-2">
-              <svg class="w-4 h-4 text-green-600 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Soporte prioritario
-            </li>
-          </ul>
-          <a href="/registro?plan=max"
-             class="mt-2 block text-center rounded-xl border-2 border-green-700 py-2.5 text-sm font-bold text-green-700 hover:bg-green-700 hover:text-white transition-colors">
-            Empezar →
-          </a>
-        </div>
-
-      </div>
-    </div>
-  </section>
-
-  <!-- CTA para clubs -->
-  <section class="bg-green-950 mt-10 py-14 px-6 text-center">
-    <p class="text-green-400 text-xs font-semibold uppercase tracking-widest mb-3">¿Tenés un club deportivo?</p>
-    <h2 class="text-2xl sm:text-3xl font-extrabold text-white mb-3">Publicalo en CMR Canchas</h2>
-    <p class="text-green-200 text-sm max-w-md mx-auto mb-8">
-      Empezá a recibir reservas online, gestioná tus canchas y confirmá turnos desde cualquier dispositivo.
-    </p>
-    <a href="/registro"
-       class="inline-block rounded-xl bg-green-500 hover:bg-green-400 transition-colors px-8 py-3 text-sm font-bold text-white shadow-lg">
-      Registrar mi club →
-    </a>
-  </section>
-
-  <script src="/home.js"></script>
-
   <!-- Footer -->
-  <footer class="bg-green-950 text-green-200">
-    <div class="mx-auto max-w-5xl px-6 py-10">
-      <div class="flex flex-col items-center gap-8 sm:flex-row sm:justify-between">
-        <div class="flex items-center gap-3">
-          <img src="/favicon.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
-          <div>
-            <p class="font-bold text-white text-base leading-tight">CMR Canchas</p>
-            <p class="text-xs text-green-500">by CMR Software Solutions</p>
+  <footer class="arena-footer page-light">
+    <div class="arena-container">
+      <div class="arena-footer__grid">
+        <div class="arena-footer__brand">
+          <a href="#" class="arena-footer__brand-title" style="margin-bottom:0.35rem; display:inline-block; text-decoration:none">
+            <span class="arena-nav__name">CMR <span>MATCH</span></span>
+          </a>
+          <div class="arena-footer__brand-meta">
+            <img src="/favicon.png" alt="CMR Match" class="arena-nav__logo" width="40" height="40" />
+            <span class="arena-footer__brand-company">CMR Software Solutions</span>
+          </div>
+          <p class="arena-footer__tagline">Reservas deportivas inteligentes</p>
+          <div class="arena-footer__social">
+            <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
+            </a>
+            <a href="https://www.instagram.com/cmrsoftware.sn" target="_blank" rel="noopener noreferrer" aria-label="Instagram">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+            </a>
+            <a href="mailto:cmrsoftware.sn@gmail.com" aria-label="Email">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 7L2 7"/></svg>
+            </a>
           </div>
         </div>
-        <div class="flex flex-col gap-3 text-sm text-center sm:text-right">
-          <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer"
-             class="flex items-center justify-center sm:justify-end gap-2 hover:text-green-400 transition-colors">
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.861 0-3.607-.505-5.106-1.386l-.363-.215-3.773.989.999-3.681-.236-.373A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-            </svg>
-            <span>+54 9 336 457-8599</span>
-          </a>
-          <a href="https://www.instagram.com/cmrsoftware.sn?igsh=MWFnOGpwa3M3aHV2Zw==" target="_blank" rel="noopener noreferrer"
-             class="flex items-center justify-center sm:justify-end gap-2 hover:text-pink-400 transition-colors">
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-            </svg>
-            <span>@cmrsoftware.sn</span>
-          </a>
-          <a href="mailto:cmrsoftware.sn@gmail.com"
-             class="flex items-center justify-center sm:justify-end gap-2 hover:text-blue-400 transition-colors">
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <path d="m22 7-10 7L2 7"/>
-            </svg>
-            <span>cmrsoftware.sn@gmail.com</span>
-          </a>
+        <div>
+          <h4 class="arena-footer__heading">Para clubs</h4>
+          <ul class="arena-footer__links">
+            <li><a href="#planes">Ver planes</a></li>
+            <li><a href="/registro">Registrar club</a></li>
+            <li><a href="/registro?plan=estandar">Plan Estándar</a></li>
+            <li><a href="/registro?plan=max">Plan Max</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="arena-footer__heading">Contacto</h4>
+          <ul class="arena-footer__links">
+            <li><a href="https://wa.me/5493364578599" target="_blank" rel="noopener">+54 9 336 457-8599</a></li>
+            <li><a href="mailto:cmrsoftware.sn@gmail.com">cmrsoftware.sn@gmail.com</a></li>
+            <li><a href="https://www.instagram.com/cmrsoftware.sn" target="_blank" rel="noopener">@cmrsoftware.sn</a></li>
+          </ul>
         </div>
       </div>
-      <div class="mt-8 border-t border-green-800 pt-6 text-center text-xs text-green-600">
-        © 2025 CMR Software Solutions. Todos los derechos reservados.
+      <div class="arena-footer__bottom">
+        <p class="arena-footer__legal">© 2025 CMR Software Solutions · CMR Match · Reservas deportivas inteligentes</p>
       </div>
     </div>
   </footer>
 
+  <script src="/home.js"></script>
 </body>
 </html>
