@@ -47,7 +47,7 @@ function formatFecha(fechaIso) {
 
 function setMessage(el, text, isError = true) {
   el.textContent = text;
-  el.style.color = isError ? "#c62020" : "#1d6d2b";
+  el.style.color = isError ? "var(--danger)" : "var(--success)";
 }
 
 async function api(url, options = {}) {
@@ -71,6 +71,12 @@ async function api(url, options = {}) {
 
 async function loadConfig() {
   config = await api(`/api/${CLUB_SLUG}/config`);
+  const brand = config.colorMarca || config.color_marca;
+  if (brand) {
+    document.documentElement.style.setProperty("--business-accent", brand);
+    document.documentElement.style.setProperty("--business-accent-hover", `color-mix(in srgb, ${brand} 85%, black)`);
+    document.documentElement.style.setProperty("--business-accent-light", `color-mix(in srgb, ${brand} 12%, white)`);
+  }
 
   // Poblar dropdown de canchas dinamicamente
   const canchaOptions = config.canchas
@@ -136,7 +142,7 @@ function whatsappHref(r) {
 function estadoBadge(estado) {
   const estilos = {
     pendiente: "bg-amber-100 text-amber-800 border border-amber-200",
-    confirmada: "bg-green-100 text-green-800 border border-green-200",
+    confirmada: "bg-accent-light text-accent-hover border border-accent/30",
   };
   const labels = { pendiente: "Sin pagar", confirmada: "Pagado" };
   const cls = estilos[estado] || estilos.pendiente;
@@ -152,7 +158,7 @@ function renderReservas(reservas) {
     return 0;
   });
   reservasList.innerHTML = sorted.map((r) => `
-    <article class="rounded-lg border border-green-100 bg-white p-3 shadow-sm">
+    <article class="rounded-lg border border-accent/20 bg-white p-3 shadow-sm">
       <div class="mb-1 flex items-center gap-2">
         ${estadoBadge(r.estado)}
         <strong>${escapeHtml(r.nombre)}</strong> — ${escapeHtml(r.telefono)}
@@ -160,16 +166,16 @@ function renderReservas(reservas) {
       <p class="text-sm text-slate-600">${escapeHtml(getCanchaEtiqueta(r.cancha))} · ${formatFecha(r.fecha)} · ${escapeHtml(r.horario)}</p>
       <p class="mt-1">
         <a href="${escapeHtml(r.comprobanteUrl)}" target="_blank" rel="noopener noreferrer"
-           class="text-sm text-green-700 underline hover:text-green-900">Ver comprobante</a>
+           class="text-sm text-accent underline hover:text-accent-hover">Ver comprobante</a>
       </p>
       <div class="mt-2 flex flex-wrap gap-2">
         ${r.estado === "pendiente"
-          ? `<button class="rounded-lg bg-green-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-800"
+          ? `<button class="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-hover"
                data-action="confirmar" data-id="${r.id}" type="button">Marcar pagado</button>`
-          : `<button class="rounded-lg bg-green-900 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-950"
+          : `<button class="rounded-lg bg-accent-hover px-3 py-1.5 text-sm font-semibold text-white hover:bg-sidebar"
                data-action="revertir" data-id="${r.id}" type="button">Marcar sin pagar</button>`}
         <a href="${escapeHtml(whatsappHref(r))}" target="_blank" rel="noopener noreferrer"
-           class="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-700">
+           class="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-hover">
           WhatsApp
         </a>
         <button class="rounded-lg bg-red-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-800"
@@ -398,10 +404,10 @@ async function loadCanchas() {
     return;
   }
   canchasList.innerHTML = planBadge + canchas.map((c) => `
-    <div class="flex items-center gap-2 rounded-lg border border-green-100 bg-green-50 px-3 py-2" data-cancha-id="${c.id}">
-      <span class="font-mono text-sm bg-green-200 text-green-900 rounded px-2 py-0.5">${escapeHtml(c.nombre)}</span>
-      <input type="text" value="${escapeHtml(c.etiqueta)}" class="flex-1 rounded border border-slate-300 px-2 py-1 text-sm cancha-etiqueta-input focus:outline-none focus:ring-1 focus:ring-green-500" data-id="${c.id}" />
-      <button class="rounded bg-green-700 px-2 py-1 text-xs font-semibold text-white hover:bg-green-800"
+    <div class="flex items-center gap-2 rounded-lg border border-accent/20 bg-accent-light px-3 py-2" data-cancha-id="${c.id}">
+      <span class="font-mono text-sm bg-accent-light text-accent-hover rounded px-2 py-0.5">${escapeHtml(c.nombre)}</span>
+      <input type="text" value="${escapeHtml(c.etiqueta)}" class="flex-1 rounded border border-slate-300 px-2 py-1 text-sm cancha-etiqueta-input focus:outline-none focus:ring-1 focus:ring-accent" data-id="${c.id}" />
+      <button class="rounded bg-accent px-2 py-1 text-xs font-semibold text-white hover:bg-accent-hover"
         data-action="renombrar-cancha" data-id="${c.id}" type="button">Guardar</button>
       <button class="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700"
         data-action="eliminar-cancha" data-id="${c.id}" type="button">Eliminar</button>
@@ -640,7 +646,7 @@ function renderCalGrid(dates, reservasPorDia, bloqueos, cancha) {
     ${dates.map((fecha, i) => {
       const [, mm, dd] = fecha.split("-");
       const isToday = fecha === todayStr;
-      return `<th class="min-w-[90px] border-b border-r border-slate-200 px-2 py-2 text-xs font-semibold ${isToday ? "bg-green-50 text-green-800" : "bg-slate-50 text-slate-500"}">
+      return `<th class="min-w-[90px] border-b border-r border-slate-200 px-2 py-2 text-xs font-semibold ${isToday ? "bg-accent-light text-accent-hover" : "bg-slate-50 text-slate-500"}">
         ${escapeHtml(DAY_NAMES[i])}<br/><span class="font-normal">${dd}/${mm}</span>
       </th>`;
     }).join("")}
@@ -661,7 +667,7 @@ function renderCalGrid(dates, reservasPorDia, bloqueos, cancha) {
         </td>`;
       }
       if (reserva) {
-        const color = reserva.estado === "confirmada" ? "text-green-700" : "text-amber-700";
+        const color = reserva.estado === "confirmada" ? "text-accent" : "text-amber-700";
         const label = reserva.estado === "confirmada" ? "Pagado" : "Sin pagar";
         return `<td class="border-r border-b border-slate-200 bg-blue-50 px-1.5 py-1.5 align-top text-xs">
           <span class="block max-w-[80px] truncate font-semibold leading-tight text-slate-700">${escapeHtml(reserva.nombre)}</span>
@@ -712,12 +718,12 @@ function setVista(vista) {
   vistaLista?.classList.toggle("hidden", !isLista);
   vistaCalendario?.classList.toggle("hidden", isLista);
   filtrosLista?.classList.toggle("hidden", !isLista);
-  btnVistaLista?.classList.toggle("bg-green-800", isLista);
+  btnVistaLista?.classList.toggle("bg-accent", isLista);
   btnVistaLista?.classList.toggle("text-white", isLista);
-  btnVistaLista?.classList.toggle("text-green-800", !isLista);
-  btnVistaCalendario?.classList.toggle("bg-green-800", !isLista);
+  btnVistaLista?.classList.toggle("text-accent-hover", !isLista);
+  btnVistaCalendario?.classList.toggle("bg-accent", !isLista);
   btnVistaCalendario?.classList.toggle("text-white", !isLista);
-  btnVistaCalendario?.classList.toggle("text-green-800", isLista);
+  btnVistaCalendario?.classList.toggle("text-accent-hover", isLista);
   if (!isLista) loadCalendario();
 }
 

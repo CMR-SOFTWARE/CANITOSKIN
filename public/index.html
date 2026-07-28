@@ -3,20 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CMR Canchas</title>
+    <title>CMR Turnos</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="stylesheet" href="/globals.css" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/tailwind-theme.js"></script>
+    <style>
+      .btn-brand { background-color: var(--business-accent); }
+      .btn-brand:hover { background-color: var(--business-accent-hover); }
+      .text-brand { color: var(--business-accent); }
+      .ring-brand:focus { --tw-ring-color: var(--business-accent); }
+      .service-card.is-selected {
+        border-color: var(--business-accent);
+        background: var(--business-accent-light);
+      }
+      .slot-btn.is-selected { background-color: var(--business-accent); color: white; }
+    </style>
   </head>
-  <body class="min-h-screen bg-slate-100 text-slate-800 flex flex-col">
-    <nav class="bg-green-950 shadow-md" aria-label="Principal">
+  <body class="scope-business min-h-screen bg-content text-primary flex flex-col font-sans">
+    <nav class="bg-sidebar shadow-sm" aria-label="Principal">
       <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 md:px-6">
         <a href="/" class="flex shrink-0 items-center gap-3" id="navLogoLink" aria-label="Inicio">
-          <div id="navLogo" class="h-12 w-12 md:h-14 md:w-14 rounded-full bg-green-800 flex items-center justify-center text-white font-bold text-lg select-none ring-1 ring-green-700"></div>
+          <div id="navLogo" class="h-12 w-12 md:h-14 md:w-14 rounded-full bg-accent flex items-center justify-center text-white font-bold text-lg select-none ring-1 ring-white/10"></div>
         </a>
         <a
           id="linkAdmin"
           href="#"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-green-800 text-green-100 shadow-sm transition hover:bg-green-700"
+          class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-on-dark shadow-sm transition hover:bg-white/20"
           aria-label="Entrar como administrador"
           title="Entrar como administrador"
         >
@@ -30,73 +43,94 @@
 
     <main class="mx-auto max-w-5xl p-4 md:p-6 flex-1 w-full">
       <header class="mb-4">
-        <h1 class="text-2xl font-bold md:text-3xl">Reservas de Canchas de Futbol</h1>
-        <p class="text-slate-600">Selecciona cancha, fecha y horario para reservar tu turno.</p>
+        <h1 class="text-2xl font-bold md:text-3xl">Reservá tu turno</h1>
+        <p class="text-slate-600">Elegí servicio, fecha y horario para confirmar tu turno.</p>
         <div class="mt-3 flex flex-wrap gap-2">
-          <button id="btnSolicitarCancelacion" class="rounded-lg bg-green-800 px-4 py-2 font-semibold text-white hover:bg-green-900" type="button">
-            Solicitar cancelacion
+          <button id="btnSolicitarCancelacion" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">
+            Solicitar cancelación
           </button>
         </div>
       </header>
 
-      <section class="mb-4 grid grid-cols-1 gap-3 rounded-xl bg-white p-4 shadow-sm md:grid-cols-3 md:items-end">
-        <div class="flex flex-col gap-1">
-          <label class="font-medium" for="cancha">Cancha</label>
-          <select id="cancha" class="rounded-lg border border-slate-300 px-3 py-2"></select>
-        </div>
-
-        <div class="flex flex-col gap-1">
-          <label class="font-medium" for="fecha">Fecha</label>
-          <input id="fecha" type="date" class="rounded-lg border border-slate-300 px-3 py-2" />
-        </div>
-
-        <button id="btnBuscar" class="rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800" type="button">
-          Actualizar horarios
-        </button>
+      <!-- 1. Servicio -->
+      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
+        <h2 class="text-lg font-semibold">1. Elegí el servicio</h2>
+        <div id="serviciosList" class="mt-3 grid gap-2 sm:grid-cols-2"></div>
       </section>
 
+      <!-- 2. Profesional (condicional) -->
+      <section id="profesionalSection" class="mb-4 hidden rounded-xl bg-white p-4 shadow-sm">
+        <h2 class="text-lg font-semibold">2. Elegí el profesional</h2>
+        <div class="mt-3 flex flex-col gap-1">
+          <label class="font-medium" for="profesional">Profesional</label>
+          <select id="profesional" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 ring-brand"></select>
+        </div>
+      </section>
+
+      <!-- 3. Fecha + slots -->
       <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-        <h2 class="text-xl font-semibold">Horarios disponibles</h2>
-        <p class="mt-2 flex flex-wrap items-center gap-4 text-sm text-slate-600">
-          <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-emerald-600"></span> Disponible</span>
-          <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-slate-400"></span> Ocupado</span>
-          <span><span class="mr-1 inline-block h-3 w-3 rounded-full bg-amber-500"></span> Bloqueado</span>
-        </p>
+        <h2 class="text-lg font-semibold" id="fechaSectionTitle">2. Elegí fecha y horario</h2>
+        <div class="mt-3 flex flex-wrap items-end gap-3">
+          <div class="flex flex-col gap-1">
+            <label class="font-medium" for="fecha">Fecha</label>
+            <input id="fecha" type="date" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 ring-brand" />
+          </div>
+          <button id="btnBuscar" class="rounded-lg btn-brand px-4 py-2 font-semibold text-white" type="button">
+            Ver horarios
+          </button>
+        </div>
+        <p id="slotsHint" class="mt-2 text-sm text-slate-500">Seleccioná un servicio para ver los horarios disponibles.</p>
         <div id="horarios" class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5"></div>
       </section>
 
+      <!-- Mis turnos -->
       <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
         <h2 class="text-xl font-semibold">Mis turnos</h2>
         <p class="mt-1 text-sm text-slate-500">Ingresá tu número de teléfono para ver tus turnos activos.</p>
         <div class="mt-3 flex gap-2">
           <input id="misTelefono" type="tel" inputmode="numeric" placeholder="Ej: 3364578599"
-            class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+            class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
           <button id="btnMisReservas" type="button"
-            class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+            class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">
             Consultar
           </button>
         </div>
         <div id="misTurnosList" class="mt-3 space-y-2"></div>
       </section>
+
+      <!-- Cancelar por token -->
+      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
+        <h2 class="text-lg font-semibold">Cancelar con código</h2>
+        <p class="mt-1 text-sm text-slate-500">Si tenés el código de cancelación de tu reserva, podés usarlo acá.</p>
+        <div class="mt-3 flex gap-2">
+          <input id="cancelToken" type="text" placeholder="Código de cancelación"
+            class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+          <button id="btnCancelarToken" type="button"
+            class="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">
+            Cancelar turno
+          </button>
+        </div>
+        <p id="cancelTokenMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+      </section>
     </main>
 
     <div id="modal" class="hidden fixed inset-0 z-10 flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true">
-      <div class="relative w-full max-w-xl rounded-xl bg-white p-4 shadow-md">
+      <div class="relative w-full max-w-xl rounded-xl bg-white p-4 shadow-md max-h-[90vh] overflow-y-auto">
         <button id="btnCerrarModal" class="absolute right-3 top-3 text-lg font-bold text-slate-600" type="button" aria-label="Cerrar">
           x
         </button>
-        <h3 class="text-xl font-semibold">Completa tu reserva</h3>
-        <p id="reservaSeleccion" class="mt-1 font-semibold text-emerald-700"></p>
+        <h3 class="text-xl font-semibold">Completá tu reserva</h3>
+        <p id="reservaSeleccion" class="mt-1 font-semibold text-brand"></p>
 
         <form id="formReserva" enctype="multipart/form-data">
           <div id="paso1" class="step">
-            <h4 class="mb-2 mt-3 font-semibold">Paso 1 - Datos personales</h4>
+            <h4 class="mb-2 mt-3 font-semibold">Paso 1 — Datos personales</h4>
             <div class="mb-2 flex flex-col gap-1">
               <label class="font-medium" for="nombre">Nombre y apellido</label>
               <input id="nombre" name="nombre" type="text" required class="rounded-lg border border-slate-300 px-3 py-2" />
             </div>
             <div class="mb-3 flex flex-col gap-1">
-              <label class="font-medium" for="telefono">Telefono</label>
+              <label class="font-medium" for="telefono">Teléfono</label>
               <input
                 id="telefono"
                 name="telefono"
@@ -108,13 +142,13 @@
                 class="rounded-lg border border-slate-300 px-3 py-2"
               />
             </div>
-            <button id="btnPaso2" class="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800" type="button">Continuar</button>
+            <button id="btnPaso2" class="rounded-lg btn-brand px-4 py-2 font-semibold text-white" type="button">Continuar</button>
           </div>
 
           <div id="paso2" class="step hidden">
-            <h4 class="mb-2 mt-3 font-semibold">Paso 2 - Transferencia y comprobante</h4>
-            <p class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium leading-snug text-amber-950">
-              Para reservar, la seña es de <strong>$12.000</strong>. Si no se transfiere ese monto, el turno se cancela automáticamente.
+            <h4 class="mb-2 mt-3 font-semibold">Paso 2 — Transferencia y comprobante</h4>
+            <p id="senaAviso" class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium leading-snug text-amber-950">
+              Para reservar, la seña es de <strong id="senaMonto">$0</strong>. Si no se transfiere ese monto, el turno se cancela automáticamente.
             </p>
             <div class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
               <p><strong>Alias:</strong> <span id="aliasTransferencia"></span></p>
@@ -129,23 +163,23 @@
               <button id="btnVolverPaso1" class="rounded-lg bg-slate-600 px-4 py-2 font-semibold text-white hover:bg-slate-700" type="button">
                 Volver
               </button>
-              <button id="btnReservar" class="rounded-lg bg-emerald-700 px-4 py-2 font-semibold text-white hover:bg-emerald-800" type="submit">Reservar</button>
+              <button id="btnReservar" class="rounded-lg btn-brand px-4 py-2 font-semibold text-white" type="submit">Reservar</button>
             </div>
           </div>
 
           <div id="paso3" class="step hidden">
             <div class="flex flex-col items-center gap-3 py-4 text-center">
-              <div class="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
-                <svg class="h-9 w-9 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <div class="flex h-16 w-16 items-center justify-center rounded-full bg-success-bg">
+                <svg class="h-9 w-9 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                   <polyline points="20 6 9 17 4 12"></polyline>
                 </svg>
               </div>
-              <h4 class="text-lg font-bold text-emerald-800">Turno reservado</h4>
+              <h4 class="text-lg font-bold text-success">Turno reservado</h4>
               <div id="confirmacionDetalle" class="w-full space-y-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-slate-700"></div>
               <p class="text-sm text-slate-500">Enviá el comprobante por WhatsApp para confirmar tu pago.</p>
               <div class="flex w-full flex-col gap-2">
                 <a id="btnWhatsAppConfirm" href="#" target="_blank" rel="noopener noreferrer"
-                  class="rounded-lg bg-emerald-700 px-4 py-2.5 text-center font-semibold text-white hover:bg-emerald-800">
+                  class="rounded-lg btn-brand px-4 py-2.5 text-center font-semibold text-white">
                   Enviar comprobante por WhatsApp
                 </a>
                 <button id="btnOtraReserva" type="button"
@@ -163,20 +197,19 @@
 
     <script src="/app.js"></script>
 
-    <!-- Footer -->
-    <footer class="bg-green-950 text-green-200 mt-10">
+    <footer class="bg-sidebar text-on-dark/80 mt-10">
       <div class="mx-auto max-w-5xl px-6 py-10">
         <div class="flex flex-col items-center gap-8 sm:flex-row sm:justify-between">
           <div class="flex items-center gap-3">
-            <img src="/favicon.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
+            <img src="/images/logo-cmr.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
             <div>
-              <p class="font-bold text-white text-base leading-tight">CMR Canchas</p>
-              <p class="text-xs text-green-500">by CMR Software Solutions</p>
+              <p class="font-bold text-white text-base leading-tight">CMR Turnos</p>
+              <p class="text-xs text-secondary">by CMR Software Solutions</p>
             </div>
           </div>
           <div class="flex flex-col gap-3 text-sm text-center sm:text-right">
             <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer"
-               class="flex items-center justify-center sm:justify-end gap-2 hover:text-green-400 transition-colors">
+               class="flex items-center justify-center sm:justify-end gap-2 hover:text-accent transition-colors">
               <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                 <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.861 0-3.607-.505-5.106-1.386l-.363-.215-3.773.989.999-3.681-.236-.373A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
@@ -200,8 +233,8 @@
             </a>
           </div>
         </div>
-        <div class="mt-8 border-t border-green-800 pt-6 text-center text-xs text-green-600">
-          © 2025 CMR Software Solutions. Todos los derechos reservados.
+        <div class="mt-8 border-t border-white/10 pt-6 text-center text-xs text-secondary">
+          © 2026 CMR Software Solutions. Todos los derechos reservados.
         </div>
       </div>
     </footer>

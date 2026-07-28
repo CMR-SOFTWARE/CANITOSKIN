@@ -3,102 +3,100 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CMR Canchas — Admin</title>
+    <title>CMR Turnos — Admin</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="stylesheet" href="/globals.css" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/tailwind-theme.js"></script>
   </head>
-  <body class="min-h-screen bg-slate-100 text-slate-800 flex flex-col">
+  <body class="scope-business min-h-screen bg-content text-primary flex flex-col font-sans">
 
-    <nav class="bg-green-950 shadow-md">
+    <nav class="bg-sidebar shadow-sm">
       <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 md:px-6">
         <a href="/" class="flex items-center gap-3">
-          <img src="/favicon.png" alt="CMR Canchas" class="h-9 w-9 rounded-lg object-contain" />
-          <span class="text-white font-bold text-base tracking-tight">CMR Canchas</span>
+          <img src="/images/logo-cmr.png" alt="CMR Turnos" class="h-9 w-9 rounded-lg object-contain" />
+          <span class="text-on-dark font-bold text-base tracking-tight">CMR Turnos</span>
         </a>
-        <span class="text-green-400 text-xs font-semibold uppercase tracking-wider">Panel Admin</span>
+        <span class="text-accent text-xs font-semibold uppercase tracking-wider">Panel Admin</span>
       </div>
     </nav>
 
     <main class="mx-auto max-w-5xl p-4 md:p-6 flex-1 w-full">
       <header class="mb-4">
         <h1 class="text-2xl font-bold md:text-3xl">Panel Administrador</h1>
-        <p class="text-slate-600">Gestion de reservas, bloqueos y cancelaciones.</p>
+        <p class="text-slate-600">Gestión de turnos, bloqueos, servicios y equipo.</p>
       </header>
 
       <section id="loginCard" class="mb-4 rounded-xl bg-white shadow-sm overflow-hidden">
-        <div class="h-1 bg-green-600"></div>
+        <div class="h-1 bg-accent"></div>
         <div class="p-4">
           <h2 class="mb-3 text-xl font-semibold">Acceso admin</h2>
           <div class="mb-3 flex flex-col gap-1">
             <label class="font-medium" for="adminPassword">Clave de administrador</label>
-            <input id="adminPassword" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input id="adminPassword" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
-          <button id="btnLogin" class="rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800" type="button">Ingresar</button>
+          <button id="btnLogin" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Ingresar</button>
           <p id="loginMessage" class="mt-2 min-h-5 text-sm font-semibold text-red-700"></p>
         </div>
       </section>
 
       <section id="adminPanel" class="hidden">
         <section class="mb-4 rounded-xl bg-white shadow-sm overflow-hidden">
-          <div class="h-1 bg-green-700"></div>
+          <div class="h-1 bg-accent"></div>
           <div class="p-4">
             <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 class="text-xl font-semibold">Bloquear cancha</h2>
+              <h2 class="text-xl font-semibold">Bloquear horarios</h2>
               <div class="flex flex-wrap items-center gap-2">
-                <a
-                  id="linkMenu"
-                  href="#"
-                  class="rounded-lg bg-green-800 px-4 py-2 font-semibold text-green-100 hover:bg-green-900"
-                >
-                  Volver al menu principal
+                <a id="linkMenu" href="#" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover">
+                  Volver al menú principal
                 </a>
-                <button id="btnLogout" class="rounded-lg border border-green-800 px-4 py-2 font-semibold text-green-900 hover:bg-green-50" type="button">Cerrar sesion</button>
+                <button id="btnLogout" class="rounded-lg border border-white/10 px-4 py-2 font-semibold text-accent-hover hover:bg-accent-light" type="button">Cerrar sesión</button>
               </div>
             </div>
             <div class="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-              <div class="flex flex-col gap-1">
-                <label class="font-medium" for="bloqCancha">Cancha</label>
-                <select id="bloqCancha" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"></select>
+              <div class="flex flex-col gap-1" id="bloqProWrap">
+                <label class="font-medium" for="bloqProfesional" id="bloqProLabel">Profesional</label>
+                <select id="bloqProfesional" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"></select>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="font-medium" for="bloqFecha">Fecha</label>
-                <input id="bloqFecha" type="date" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                <input id="bloqFecha" type="date" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
               </div>
               <div class="flex flex-col gap-1">
                 <label class="font-medium" for="bloqHorarioDesde">Horario desde</label>
-                <select id="bloqHorarioDesde" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"></select>
+                <select id="bloqHorarioDesde" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"></select>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="font-medium" for="bloqHorarioHasta">Horario hasta</label>
-                <select id="bloqHorarioHasta" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500"></select>
+                <select id="bloqHorarioHasta" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"></select>
               </div>
             </div>
             <div class="mb-3 flex items-center gap-2">
-              <input id="bloqDiaCompleto" type="checkbox" class="h-4 w-4 accent-green-700" />
-              <label for="bloqDiaCompleto" class="font-medium">Dia completo</label>
+              <input id="bloqDiaCompleto" type="checkbox" class="h-4 w-4 accent-accent" />
+              <label for="bloqDiaCompleto" class="font-medium">Día completo</label>
             </div>
             <div class="mb-3 flex flex-col gap-1">
               <label class="font-medium" for="bloqMotivo">Motivo</label>
-              <input id="bloqMotivo" type="text" placeholder="Ej: lluvia intensa" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <input id="bloqMotivo" type="text" placeholder="Ej: feriado" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
             </div>
-            <button id="btnCrearBloqueo" class="rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800" type="button">Crear bloqueo</button>
+            <button id="btnCrearBloqueo" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Crear bloqueo</button>
             <p id="adminMessage" class="mt-2 min-h-5 text-sm font-semibold text-red-700"></p>
           </div>
         </section>
 
         <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-          <h2 class="mb-3 text-xl font-semibold text-green-900">Bloqueos activos</h2>
+          <h2 class="mb-3 text-xl font-semibold text-accent-hover">Bloqueos activos</h2>
           <div id="bloqueosList" class="grid gap-3"></div>
         </section>
 
         <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
           <div class="flex items-start justify-between gap-2">
             <div>
-              <h2 class="text-xl font-semibold text-green-900">Bloqueos recurrentes</h2>
+              <h2 class="text-xl font-semibold text-accent-hover">Bloqueos recurrentes</h2>
               <p class="text-xs text-slate-400 mt-0.5">Se aplican automáticamente cada semana</p>
             </div>
             <button id="btnToggleBloqRec" type="button"
-              class="rounded-lg bg-green-700 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-800 shrink-0">
+              class="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-hover shrink-0">
               + Nuevo
             </button>
           </div>
@@ -106,12 +104,12 @@
           <div id="formBloqRecContainer" class="hidden mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
               <div class="flex flex-col gap-1">
-                <label class="text-sm font-medium" for="recCancha">Cancha</label>
-                <select id="recCancha" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"></select>
+                <label class="text-sm font-medium" for="recProfesional" id="recProLabel">Profesional</label>
+                <select id="recProfesional" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-sm font-medium" for="recDiaSemana">Día de la semana</label>
-                <select id="recDiaSemana" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select id="recDiaSemana" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
                   <option value="1">Lunes</option>
                   <option value="2">Martes</option>
                   <option value="3">Miércoles</option>
@@ -123,25 +121,25 @@
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-sm font-medium" for="recHorarioDesde">Horario desde</label>
-                <select id="recHorarioDesde" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"></select>
+                <select id="recHorarioDesde" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
               </div>
               <div class="flex flex-col gap-1">
                 <label class="text-sm font-medium" for="recHorarioHasta">Horario hasta</label>
-                <select id="recHorarioHasta" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"></select>
+                <select id="recHorarioHasta" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
               </div>
             </div>
             <div class="mt-3 flex items-center gap-2">
-              <input id="recDiaCompleto" type="checkbox" class="h-4 w-4 accent-green-700" />
+              <input id="recDiaCompleto" type="checkbox" class="h-4 w-4 accent-accent" />
               <label for="recDiaCompleto" class="text-sm font-medium">Día completo</label>
             </div>
             <div class="mt-3 flex flex-col gap-1">
               <label class="text-sm font-medium" for="recMotivo">Motivo</label>
-              <input id="recMotivo" type="text" placeholder="Ej: Liga reservada"
-                class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+              <input id="recMotivo" type="text" placeholder="Ej: Capacitación"
+                class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
             </div>
             <div class="mt-3 flex gap-2">
               <button id="btnGuardarBloqRec" type="button"
-                class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+                class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">
                 Guardar bloqueo
               </button>
               <button id="btnCancelarBloqRec" type="button"
@@ -156,44 +154,37 @@
         </section>
 
         <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-          <!-- Encabezado: título + tabs + exportar -->
           <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-xl font-semibold text-green-900">Turnos reservados</h2>
+            <h2 class="text-xl font-semibold text-accent-hover">Turnos reservados</h2>
             <div class="flex flex-wrap items-center gap-2">
               <div class="flex overflow-hidden rounded-lg border border-slate-200 text-sm font-semibold">
-                <button id="btnVistaLista" type="button"
-                  class="px-3 py-1.5 bg-green-800 text-white">Lista</button>
-                <button id="btnVistaCalendario" type="button"
-                  class="px-3 py-1.5 text-green-800 hover:bg-green-50">Calendario</button>
+                <button id="btnVistaLista" type="button" class="px-3 py-1.5 bg-accent text-white">Lista</button>
+                <button id="btnVistaCalendario" type="button" class="px-3 py-1.5 text-accent-hover hover:bg-accent-light">Calendario</button>
               </div>
               <button id="btnExportarCSV" type="button"
-                class="rounded-lg border border-green-700 px-3 py-1.5 text-sm font-semibold text-green-800 hover:bg-green-50">
+                class="rounded-lg border border-accent px-3 py-1.5 text-sm font-semibold text-accent-hover hover:bg-accent-light">
                 Exportar CSV
               </button>
             </div>
           </div>
-          <!-- Filtros (solo vista lista) -->
           <div id="filtrosLista" class="mb-3 flex flex-wrap items-center gap-2">
             <label class="text-sm font-medium text-slate-600" for="filtroFecha">Fecha</label>
-            <input id="filtroFecha" type="date" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-            <button id="btnFiltrarReservas" class="rounded-lg bg-green-800 px-3 py-1.5 text-sm font-semibold text-white hover:bg-green-900" type="button">Filtrar</button>
-            <button id="btnLimpiarFiltro" class="rounded-lg border border-green-700 px-3 py-1.5 text-sm font-semibold text-green-800 hover:bg-green-50" type="button">Todas</button>
+            <input id="filtroFecha" type="date" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+            <button id="btnFiltrarReservas" class="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-hover" type="button">Filtrar</button>
+            <button id="btnLimpiarFiltro" class="rounded-lg border border-accent px-3 py-1.5 text-sm font-semibold text-accent-hover hover:bg-accent-light" type="button">Todas</button>
           </div>
-          <!-- Vista lista -->
           <div id="vistaLista">
             <div id="reservasList" class="grid gap-3"></div>
           </div>
-          <!-- Vista calendario -->
           <div id="vistaCalendario" class="hidden">
             <div class="mb-3 flex flex-wrap items-center gap-3">
-              <label class="text-sm font-medium text-slate-600">Cancha:</label>
-              <select id="calCancha"
-                class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"></select>
+              <label class="text-sm font-medium text-slate-600" id="calProLabel">Profesional:</label>
+              <select id="calProfesional"
+                class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
               <div class="flex items-center gap-2">
                 <button id="btnCalPrev" type="button"
                   class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">&#8592; Anterior</button>
-                <span id="calSemanaLabel"
-                  class="min-w-[150px] text-center text-sm font-semibold text-slate-700"></span>
+                <span id="calSemanaLabel" class="min-w-[150px] text-center text-sm font-semibold text-slate-700"></span>
                 <button id="btnCalNext" type="button"
                   class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Siguiente &#8594;</button>
               </div>
@@ -204,86 +195,135 @@
 
         <section class="mb-4 rounded-xl bg-white shadow-sm overflow-hidden">
           <button id="btnToggleConfig" class="flex w-full items-center justify-between text-left p-4" type="button">
-            <h2 class="text-xl font-semibold text-green-900">Configuracion del club</h2>
-            <span id="configChevron" class="text-green-700 transition-transform">&#9660;</span>
+            <h2 class="text-xl font-semibold text-accent-hover">Configuración del negocio</h2>
+            <span id="configChevron" class="text-accent transition-transform">&#9660;</span>
           </button>
 
           <div id="configPanel" class="hidden border-t border-slate-100 p-4 space-y-6">
 
-            <!-- Info general -->
             <div>
-              <h3 class="mb-3 font-semibold text-green-800">Datos generales</h3>
+              <h3 class="mb-3 font-semibold text-accent-hover">Datos generales</h3>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgNombre">Nombre del club</label>
-                  <input id="cfgNombre" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <label class="text-sm font-medium" for="cfgNombre">Nombre del negocio</label>
+                  <input id="cfgNombre" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgWhatsapp">WhatsApp (solo numeros)</label>
-                  <input id="cfgWhatsapp" type="text" placeholder="5491112345678" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <label class="text-sm font-medium" for="cfgWhatsapp">WhatsApp (solo números)</label>
+                  <input id="cfgWhatsapp" type="text" placeholder="5491112345678" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-sm font-medium" for="cfgHoraInicio">Hora apertura</label>
-                  <input id="cfgHoraInicio" type="number" min="0" max="22" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="cfgHoraInicio" type="number" min="0" max="22" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-sm font-medium" for="cfgHoraFin">Hora cierre</label>
-                  <input id="cfgHoraFin" type="number" min="1" max="23" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="cfgHoraFin" type="number" min="1" max="23" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-sm font-medium" for="cfgPrecio">Precio de la seña</label>
-                  <input id="cfgPrecio" type="text" placeholder="12000" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="cfgPrecio" type="text" placeholder="12000" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-sm font-medium" for="cfgCategoria">Categoría</label>
+                  <select id="cfgCategoria" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                    <option value="peluqueria">Peluquería</option>
+                    <option value="estetica">Estética</option>
+                    <option value="masajes">Masajes</option>
+                    <option value="psicologia">Psicología</option>
+                    <option value="legal">Legal</option>
+                    <option value="otro">Otro</option>
+                  </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-sm font-medium" for="cfgCiudad">Ciudad</label>
+                  <input id="cfgCiudad" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-sm font-medium" for="cfgBarrio">Barrio</label>
+                  <input id="cfgBarrio" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="text-sm font-medium" for="cfgColor">Color de marca</label>
+                  <input id="cfgColor" type="color" value="#6366F1" class="h-10 w-full rounded-lg border border-slate-300 px-1 py-1 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
               </div>
             </div>
 
-            <!-- Transferencia -->
             <div>
-              <h3 class="mb-3 font-semibold text-green-800">Datos de transferencia</h3>
+              <h3 class="mb-3 font-semibold text-accent-hover">Datos de transferencia</h3>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div class="flex flex-col gap-1">
                   <label class="text-sm font-medium" for="cfgAlias">Alias</label>
-                  <input id="cfgAlias" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="cfgAlias" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-sm font-medium" for="cfgCbu">CBU</label>
-                  <input id="cfgCbu" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="cfgCbu" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="text-sm font-medium" for="cfgTitular">Titular</label>
-                  <input id="cfgTitular" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <input id="cfgTitular" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
               </div>
-              <button id="btnGuardarClub" class="mt-3 rounded-lg bg-green-700 px-4 py-2 font-semibold text-white hover:bg-green-800" type="button">Guardar cambios</button>
-              <p id="cfgClubMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+              <button id="btnGuardarNegocio" class="mt-3 rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Guardar cambios</button>
+              <p id="cfgNegocioMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
             </div>
 
-            <!-- Canchas -->
+            <!-- Servicios -->
             <div>
-              <h3 class="mb-3 font-semibold text-green-800">Canchas</h3>
-              <div id="canchasList" class="mb-3 space-y-2"></div>
-              <div class="flex flex-wrap gap-2">
-                <input id="nuevaCanchaNombre" type="text" placeholder="Nombre (ej: 11)" class="rounded-lg border border-slate-300 px-3 py-2 w-32 focus:outline-none focus:ring-2 focus:ring-green-500" />
-                <input id="nuevaCanchaEtiqueta" type="text" placeholder="Etiqueta (ej: Cancha 11)" class="rounded-lg border border-slate-300 px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-green-500" />
-                <button id="btnAgregarCancha" class="rounded-lg bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700" type="button">Agregar</button>
+              <h3 class="mb-3 font-semibold text-accent-hover">Servicios</h3>
+              <div id="serviciosAdminList" class="mb-3 space-y-2"></div>
+              <div class="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
+                <input id="nuevoServNombre" type="text" placeholder="Nombre" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input id="nuevoServDesc" type="text" placeholder="Descripción" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input id="nuevoServDuracion" type="number" min="5" step="5" placeholder="Duración (min)" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input id="nuevoServPrecio" type="text" placeholder="Precio" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input id="nuevoServCat" type="text" placeholder="Categoría (opcional)" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <button id="btnAgregarServicio" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Agregar servicio</button>
               </div>
-              <p id="cfgCanchaMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+              <p id="cfgServMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
             </div>
 
-            <!-- Cambiar clave -->
+            <!-- Profesionales -->
             <div>
-              <h3 class="mb-3 font-semibold text-green-800">Cambiar contrasena</h3>
+              <h3 class="mb-3 font-semibold text-accent-hover">Equipo / Profesionales</h3>
+              <div id="prosAdminList" class="mb-3 space-y-2"></div>
+              <div class="flex flex-wrap gap-2">
+                <input id="nuevoProNombre" type="text" placeholder="Nombre del profesional" class="rounded-lg border border-slate-300 px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-accent" />
+                <button id="btnAgregarPro" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Agregar</button>
+              </div>
+              <p id="cfgProMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+            </div>
+
+            <!-- Planes cliente -->
+            <div>
+              <h3 class="mb-3 font-semibold text-accent-hover">Planes para clientes</h3>
+              <p class="text-xs text-slate-400 mb-2">Packs de sesiones que ofrecés a tus clientes (opcional).</p>
+              <div id="planesClienteList" class="mb-3 space-y-2"></div>
+              <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+                <input id="nuevoPlanNombre" type="text" placeholder="Nombre del plan" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input id="nuevoPlanSesiones" type="number" min="1" placeholder="Sesiones" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input id="nuevoPlanPrecio" type="text" placeholder="Precio" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+                <input id="nuevoPlanDesc" type="text" placeholder="Descripción" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+              </div>
+              <button id="btnAgregarPlanCliente" class="mt-2 rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Agregar plan</button>
+              <p id="cfgPlanClienteMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+            </div>
+
+            <div>
+              <h3 class="mb-3 font-semibold text-accent-hover">Cambiar contraseña</h3>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgPassActual">Contrasena actual</label>
-                  <input id="cfgPassActual" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <label class="text-sm font-medium" for="cfgPassActual">Contraseña actual</label>
+                  <input id="cfgPassActual" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgPassNuevo">Nueva contrasena</label>
-                  <input id="cfgPassNuevo" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-green-500" />
+                  <label class="text-sm font-medium" for="cfgPassNuevo">Nueva contraseña</label>
+                  <input id="cfgPassNuevo" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
                 </div>
               </div>
-              <button id="btnCambiarPass" class="mt-3 rounded-lg bg-green-900 px-4 py-2 font-semibold text-white hover:bg-green-950" type="button">Cambiar contrasena</button>
+              <button id="btnCambiarPass" class="mt-3 rounded-lg bg-accent-hover px-4 py-2 font-semibold text-white hover:bg-sidebar" type="button">Cambiar contraseña</button>
               <p id="cfgPassMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
             </div>
 
@@ -294,20 +334,19 @@
 
     <script src="/admin.js"></script>
 
-    <!-- Footer -->
-    <footer class="bg-green-950 text-green-200 mt-10">
+    <footer class="bg-sidebar text-on-dark/80 mt-10">
       <div class="mx-auto max-w-5xl px-6 py-10">
         <div class="flex flex-col items-center gap-8 sm:flex-row sm:justify-between">
           <div class="flex items-center gap-3">
-            <img src="/favicon.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
+            <img src="/images/logo-cmr.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
             <div>
-              <p class="font-bold text-white text-base leading-tight">CMR Canchas</p>
-              <p class="text-xs text-green-500">by CMR Software Solutions</p>
+              <p class="font-bold text-white text-base leading-tight">CMR Turnos</p>
+              <p class="text-xs text-secondary">by CMR Software Solutions</p>
             </div>
           </div>
           <div class="flex flex-col gap-3 text-sm text-center sm:text-right">
             <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer"
-               class="flex items-center justify-center sm:justify-end gap-2 hover:text-green-400 transition-colors">
+               class="flex items-center justify-center sm:justify-end gap-2 hover:text-accent transition-colors">
               <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
                 <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.861 0-3.607-.505-5.106-1.386l-.363-.215-3.773.989.999-3.681-.236-.373A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
@@ -331,8 +370,8 @@
             </a>
           </div>
         </div>
-        <div class="mt-8 border-t border-green-800 pt-6 text-center text-xs text-green-600">
-          © 2025 CMR Software Solutions. Todos los derechos reservados.
+        <div class="mt-8 border-t border-white/10 pt-6 text-center text-xs text-secondary">
+          © 2026 CMR Software Solutions. Todos los derechos reservados.
         </div>
       </div>
     </footer>

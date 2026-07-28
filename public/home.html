@@ -3,12 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CMR Match — Reservá tu cancha en segundos</title>
-  <meta name="description" content="CMR Match: reservá canchas de fútbol, pádel y más. Encontrá clubs, elegí horario y confirmá tu turno al instante." />
+  <title>CMR Turnos — Tu turno. Un click.</title>
+  <meta name="description" content="CMR Turnos: reservá turnos de peluquería, estética, masajes, psicología y más. Encontrá el negocio, elegí servicio y confirmá online." />
   <link rel="icon" type="image/png" href="/favicon.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/globals.css" />
   <link rel="stylesheet" href="/home-arena.css" />
 </head>
 <body class="arena-page">
@@ -17,17 +15,17 @@
   <nav class="arena-nav" id="mainNav" aria-label="Navegación principal">
     <div class="arena-nav__inner">
       <a href="#" class="arena-nav__brand">
-        <img src="/images/logo-cmr-nav.png" alt="CMR Match" class="arena-nav__logo arena-nav__logo--nav" width="124" height="54" />
-        <span class="arena-nav__name">CMR <span>MATCH</span></span>
+        <img src="/images/logo-cmr.png" alt="CMR Turnos" class="arena-nav__logo arena-nav__logo--nav" width="44" height="44" />
+        <span class="arena-nav__name">CMR <span>TURNOS</span></span>
       </a>
 
       <ul class="arena-nav__menu" id="navMenu">
-        <li><a href="#clubs" class="arena-nav__link">Clubs</a></li>
+        <li><a href="#negocios" class="arena-nav__link">Negocios</a></li>
         <li><a href="#beneficios" class="arena-nav__link">Beneficios</a></li>
         <li><a href="#planes" class="arena-nav__link">Planes</a></li>
         <li><a href="#como-funciona" class="arena-nav__link">Cómo funciona</a></li>
-        <li><a href="#clubs" class="arena-nav__item arena-nav__item--outline cut-corners cut-corners--xs">Reservar</a></li>
-        <li><a href="/registro" class="arena-nav__item arena-nav__item--tag cut-corners cut-corners--xs">Registrar</a></li>
+        <li><a href="#negocios" class="arena-nav__item arena-nav__item--outline cut-corners cut-corners--xs">Reservar</a></li>
+        <li><a href="/sumate" class="arena-nav__item arena-nav__item--tag cut-corners cut-corners--xs">Registrar</a></li>
       </ul>
 
       <button class="arena-nav__toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false">
@@ -40,11 +38,12 @@
   <section class="hero-arena" id="hero">
     <div class="hero-arena__bg">
       <img
-        src="/images/hero-arena.png"
-        alt="Complejo deportivo nocturno con canchas de fútbol y pádel iluminadas"
+        src="/images/hero-turnos.png"
+        alt="Estudio de servicios listo para reservar turnos online"
         class="hero-arena__image"
         id="heroImage"
         fetchpriority="high"
+        onerror="this.src='/images/hero-arena.png'"
       />
       <div class="hero-arena__overlay"></div>
       <div class="hero-arena__particles" id="heroParticles" aria-hidden="true"></div>
@@ -52,29 +51,34 @@
     </div>
 
     <div class="hero-arena__content">
-      <p class="hero-arena__tag cut-corners cut-corners--sm">Reservas deportivas</p>
+      <p class="hero-arena__tag cut-corners cut-corners--sm">Reservas de servicios</p>
       <h1 class="hero-arena__title">
-        Tu cancha.<br/>
+        Tu turno.<br/>
         <span class="highlight">Un click.</span>
       </h1>
       <p class="hero-arena__desc">
-        Encontrá club, elegí horario y confirmá tu turno online.
+        Encontrá el negocio, elegí servicio y confirmá tu turno online.
       </p>
       <div class="hero-arena__actions">
-        <a href="#clubs" class="btn-arena btn-arena--primary cut-corners">Reservar</a>
-        <a href="/registro" class="btn-arena btn-arena--ghost cut-corners">Registrar club</a>
+        <a href="#negocios" class="btn-arena btn-arena--primary cut-corners">Reservar turno</a>
+        <a href="/sumate" class="btn-arena btn-arena--ghost cut-corners">Registrar negocio</a>
       </div>
-      <div class="hero-arena__search">
-        <svg class="hero-arena__search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input id="searchInput" class="cut-corners" type="search" placeholder="Buscar club por nombre..." autocomplete="off" />
+      <div class="hero-arena__search" style="display:flex;flex-wrap:wrap;gap:0.5rem;align-items:stretch">
+        <div style="position:relative;flex:1;min-width:180px">
+          <svg class="hero-arena__search-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="searchInput" class="cut-corners" type="search" placeholder="Buscar negocio por nombre..." autocomplete="off" />
+        </div>
+        <select id="ciudadFilter" class="cut-corners" aria-label="Filtrar por ciudad" style="min-width:140px;padding:0.75rem 1rem;border:none;background:rgba(255,255,255,0.12);color:inherit;font:inherit">
+          <option value="">Todas las ciudades</option>
+        </select>
       </div>
 
       <div class="hero-arena__stats">
         <div>
           <div class="hero-stat__value"><span id="statClubs">+</span><span id="statClubsNum">50</span></div>
-          <div class="hero-stat__label">Clubs</div>
+          <div class="hero-stat__label">Negocios</div>
         </div>
         <div>
           <div class="hero-stat__value">24/7</div>
@@ -85,41 +89,42 @@
   </section>
 
   <main class="page-light">
-  <!-- Deportes -->
-  <section class="arena-section arena-section--compact arena-section--center" id="deportes">
+  <!-- Categorías -->
+  <section class="arena-section arena-section--compact arena-section--center" id="categorias">
     <div class="arena-container reveal">
-      <span class="section-label">Deportes</span>
-      <h2 class="section-title">Elegí tu deporte</h2>
+      <span class="section-label">Categorías</span>
+      <h2 class="section-title">Elegí tu servicio</h2>
       <div class="categories-row categories-row--center" id="categoriesGrid">
-        <button type="button" class="category-chip cut-corners cut-corners--xs is-active" data-deporte="todos">Todos</button>
-        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="futbol">Fútbol</button>
-        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="padel">Pádel</button>
-        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="tenis">Tenis</button>
-        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="basquet">Básquet</button>
-        <button type="button" class="category-chip cut-corners cut-corners--xs" data-deporte="voley">Voley</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs is-active" data-categoria="todos">Todos</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-categoria="peluqueria">Peluquería</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-categoria="estetica">Estética</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-categoria="masajes">Masajes</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-categoria="psicologia">Psicología</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-categoria="legal">Legal</button>
+        <button type="button" class="category-chip cut-corners cut-corners--xs" data-categoria="otro">Otro</button>
       </div>
     </div>
   </section>
 
-  <!-- Clubs destacados -->
-  <section class="arena-section clubs-section arena-section--center" id="clubs">
+  <!-- Negocios destacados -->
+  <section class="arena-section clubs-section arena-section--center" id="negocios">
     <div class="arena-container clubs-section__container">
       <div class="reveal clubs-section__header">
-        <span class="section-label">Clubs</span>
+        <span class="section-label">Negocios</span>
         <h2 class="section-title">Destacados</h2>
         <div class="sport-filters" id="sportFilters" hidden></div>
       </div>
 
       <div id="loading" class="arena-loading reveal">
         <div class="arena-spinner"></div>
-        <p>Cargando clubs...</p>
+        <p>Cargando negocios...</p>
       </div>
 
       <div id="emptyState" class="arena-empty reveal hidden">
         <svg width="56" height="56" viewBox="0 0 44 44" fill="none" stroke="currentColor" stroke-width="1.5">
           <rect x="7" y="13" width="30" height="20" rx="2"/><line x1="22" y1="13" x2="22" y2="33"/><circle cx="22" cy="23" r="4.5"/>
         </svg>
-        <p>No hay clubs disponibles aún.</p>
+        <p>No hay negocios disponibles aún.</p>
       </div>
 
       <div id="clubsGrid" class="clubs-grid hidden"></div>
@@ -131,14 +136,14 @@
     <div class="arena-container">
       <div class="reveal section-header-minimal">
         <span class="section-label">Beneficios</span>
-        <h2 class="section-title">Por qué CMR Match</h2>
+        <h2 class="section-title">Por qué CMR Turnos</h2>
       </div>
       <div class="benefits-showcase">
         <article class="benefit-card-cut reveal">
           <span class="benefit-card-cut__line" aria-hidden="true"></span>
           <span class="benefit-card-cut__num">01</span>
           <h3 class="benefit-card-cut__title">Reserva rápida</h3>
-          <p class="benefit-card-cut__text">Fecha, horario y cancha en segundos.</p>
+          <p class="benefit-card-cut__text">Servicio, profesional y horario en segundos.</p>
         </article>
         <article class="benefit-card-cut benefit-card-cut--dark reveal">
           <span class="benefit-card-cut__line" aria-hidden="true"></span>
@@ -155,8 +160,8 @@
         <article class="benefit-card-cut reveal">
           <span class="benefit-card-cut__line" aria-hidden="true"></span>
           <span class="benefit-card-cut__num">04</span>
-          <h3 class="benefit-card-cut__title">Panel club</h3>
-          <p class="benefit-card-cut__text">Gestión de canchas en tiempo real.</p>
+          <h3 class="benefit-card-cut__title">Panel negocio</h3>
+          <p class="benefit-card-cut__text">Gestión de turnos en tiempo real.</p>
         </article>
       </div>
     </div>
@@ -167,7 +172,7 @@
     <div class="arena-container">
       <div class="reveal section-header-center">
         <span class="section-label">Planes</span>
-        <h2 class="section-title">Elegí el plan de tu club</h2>
+        <h2 class="section-title">Elegí el plan de tu negocio</h2>
         <p class="section-subtitle section-subtitle--center">Sin costos de instalación. Activación en menos de 24 hs. Cancelá cuando quieras.</p>
       </div>
       <div class="plans-grid">
@@ -175,52 +180,52 @@
           <header class="plan-card__head">
             <span class="plan-card__tier">Inicial</span>
             <div class="plan-card__price">
-              <span class="plan-card__amount">$50.000</span>
+              <span class="plan-card__amount">$20.000</span>
               <span class="plan-card__period">/ mes</span>
             </div>
           </header>
           <ul class="plan-card__features">
-            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 2 canchas</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Reservas online</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 1 profesional</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Turnos online</li>
             <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
             <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
           </ul>
-          <a href="/registro?plan=inicial" class="btn-arena btn-arena--plan-outline cut-corners cut-corners--sm">Empezar</a>
+          <a href="/sumate?plan=inicial" class="btn-arena btn-arena--plan-outline cut-corners cut-corners--sm">Empezar</a>
         </article>
         <article class="plan-card plan-card--featured reveal">
           <span class="plan-card__badge cut-corners cut-corners--xs">Más popular</span>
           <header class="plan-card__head">
-            <span class="plan-card__tier">Estándar</span>
+            <span class="plan-card__tier">Profesional</span>
             <div class="plan-card__price">
-              <span class="plan-card__amount">$80.000</span>
+              <span class="plan-card__amount">$35.000</span>
               <span class="plan-card__period">/ mes</span>
             </div>
           </header>
           <ul class="plan-card__features">
-            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 5 canchas</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Reservas online</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 3 profesionales</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Turnos online</li>
             <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
             <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
             <li><span class="plan-card__check" aria-hidden="true"></span>Soporte prioritario</li>
           </ul>
-          <a href="/registro?plan=estandar" class="btn-arena btn-arena--plan-primary cut-corners cut-corners--sm">Empezar</a>
+          <a href="/sumate?plan=profesional" class="btn-arena btn-arena--plan-primary cut-corners cut-corners--sm">Empezar</a>
         </article>
         <article class="plan-card reveal">
           <header class="plan-card__head">
             <span class="plan-card__tier">Max</span>
             <div class="plan-card__price">
-              <span class="plan-card__amount">$100.000</span>
+              <span class="plan-card__amount">$50.000</span>
               <span class="plan-card__period">/ mes</span>
             </div>
           </header>
           <ul class="plan-card__features">
-            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 10 canchas</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Reservas online</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Profesionales ilimitados</li>
+            <li><span class="plan-card__check" aria-hidden="true"></span>Turnos online</li>
             <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
             <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
             <li><span class="plan-card__check" aria-hidden="true"></span>Soporte prioritario</li>
           </ul>
-          <a href="/registro?plan=max" class="btn-arena btn-arena--plan-outline cut-corners cut-corners--sm">Empezar</a>
+          <a href="/sumate?plan=max" class="btn-arena btn-arena--plan-outline cut-corners cut-corners--sm">Empezar</a>
         </article>
       </div>
     </div>
@@ -238,32 +243,32 @@
           <div class="step-card-cut__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
           </div>
-          <h3 class="step-card-cut__title">Buscá tu club</h3>
-          <p class="step-card-cut__text">Explorá el directorio o filtrá por deporte.</p>
+          <h3 class="step-card-cut__title">Buscá negocio</h3>
+          <p class="step-card-cut__text">Explorá el directorio o filtrá por categoría.</p>
         </article>
         <article class="step-card-cut reveal" data-step="2" tabindex="0">
           <span class="step-card-cut__num">02</span>
           <div class="step-card-cut__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="0"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </div>
-          <h3 class="step-card-cut__title">Elegí horario</h3>
-          <p class="step-card-cut__text">Seleccioná fecha, cancha y franja disponible.</p>
+          <h3 class="step-card-cut__title">Elegí servicio</h3>
+          <p class="step-card-cut__text">Seleccioná servicio, profesional y horario.</p>
         </article>
         <article class="step-card-cut reveal" data-step="3" tabindex="0">
           <span class="step-card-cut__num">03</span>
           <div class="step-card-cut__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="0"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
           </div>
-          <h3 class="step-card-cut__title">Confirmá pago</h3>
-          <p class="step-card-cut__text">Transferí y subí el comprobante.</p>
+          <h3 class="step-card-cut__title">Confirmá</h3>
+          <p class="step-card-cut__text">Transferí la seña y subí el comprobante.</p>
         </article>
         <article class="step-card-cut reveal" data-step="4" tabindex="0">
           <span class="step-card-cut__num">04</span>
           <div class="step-card-cut__icon">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
           </div>
-          <h3 class="step-card-cut__title">¡A jugar!</h3>
-          <p class="step-card-cut__text">Confirmación por WhatsApp y listo.</p>
+          <h3 class="step-card-cut__title">Listo</h3>
+          <p class="step-card-cut__text">Confirmación por WhatsApp y tu turno queda agendado.</p>
         </article>
       </div>
     </div>
@@ -273,11 +278,11 @@
   <section class="arena-section" style="padding-top:1rem; padding-bottom:2.1rem">
     <div class="cta-arena reveal">
       <div class="cta-arena__content">
-        <p class="cta-arena__eyebrow">¿Tenés un club?</p>
-        <h2 class="cta-arena__title">Publicá tu club en CMR Match</h2>
-        <p class="cta-arena__desc">Reservas online · Activación en 24 hs · Sin instalación.</p>
+        <p class="cta-arena__eyebrow">¿Tenés un negocio?</p>
+        <h2 class="cta-arena__title">Publicá tu negocio en CMR Turnos</h2>
+        <p class="cta-arena__desc">Turnos online · Activación en 24 hs · Sin instalación.</p>
         <div class="cta-arena__actions">
-          <a href="/registro" class="btn-arena btn-arena--primary cut-corners">Registrar club</a>
+          <a href="/sumate" class="btn-arena btn-arena--primary cut-corners">Registrar negocio</a>
           <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer" class="btn-arena btn-arena--ghost cut-corners">Contactar</a>
         </div>
       </div>
@@ -291,13 +296,13 @@
       <div class="arena-footer__grid">
         <div class="arena-footer__brand">
           <a href="#" class="arena-footer__brand-title" style="margin-bottom:0.35rem; display:inline-block; text-decoration:none">
-            <span class="arena-nav__name">CMR <span>MATCH</span></span>
+            <span class="arena-nav__name">CMR <span>TURNOS</span></span>
           </a>
           <div class="arena-footer__brand-meta">
-            <img src="/favicon.png" alt="CMR Match" class="arena-nav__logo" width="40" height="40" />
+            <img src="/images/logo-cmr.png" alt="CMR Turnos" class="arena-nav__logo" width="40" height="40" />
             <span class="arena-footer__brand-company">CMR Software Solutions</span>
           </div>
-          <p class="arena-footer__tagline">Reservas deportivas inteligentes</p>
+          <p class="arena-footer__tagline">Turnos online · Reservas de servicios</p>
           <div class="arena-footer__social">
             <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0z"/></svg>
@@ -311,12 +316,12 @@
           </div>
         </div>
         <div>
-          <h4 class="arena-footer__heading">Para clubs</h4>
+          <h4 class="arena-footer__heading">Para negocios</h4>
           <ul class="arena-footer__links">
             <li><a href="#planes">Ver planes</a></li>
-            <li><a href="/registro">Registrar club</a></li>
-            <li><a href="/registro?plan=estandar">Plan Estándar</a></li>
-            <li><a href="/registro?plan=max">Plan Max</a></li>
+            <li><a href="/sumate">Registrar negocio</a></li>
+            <li><a href="/sumate?plan=profesional">Plan Profesional</a></li>
+            <li><a href="/sumate?plan=max">Plan Max</a></li>
           </ul>
         </div>
         <div>
@@ -329,7 +334,7 @@
         </div>
       </div>
       <div class="arena-footer__bottom">
-        <p class="arena-footer__legal">© 2025 CMR Software Solutions · CMR Match · Reservas deportivas inteligentes</p>
+        <p class="arena-footer__legal">© 2026 CMR Software Solutions · CMR Turnos · Reservas de servicios</p>
       </div>
     </div>
   </footer>

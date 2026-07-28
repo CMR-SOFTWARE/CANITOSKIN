@@ -3,34 +3,211 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Registrar mi club — CMR Canchas</title>
+  <title>Sumá tu negocio — CMR Turnos</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/globals.css" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/tailwind-theme.js"></script>
+  <style>
+    .pricing-section {
+      background: linear-gradient(180deg, #EEF2FF 0%, #F7F8FA 55%, #F7F8FA 100%);
+    }
+    .pricing-grid {
+      display: grid;
+      gap: 1.25rem;
+      align-items: stretch;
+    }
+    @media (min-width: 900px) {
+      .pricing-grid {
+        grid-template-columns: 1fr 1.12fr 1fr;
+        align-items: center;
+        gap: 1.5rem;
+      }
+    }
+    .price-card {
+      position: relative;
+      border-radius: 20px;
+      padding: 1.75rem 1.5rem 1.5rem;
+      background: #fff;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+    }
+    .price-card--featured {
+      background: linear-gradient(165deg, var(--accent-hover) 0%, var(--accent) 55%, #818CF8 100%);
+      border: none;
+      color: #fff;
+      box-shadow: 0 18px 40px rgba(79, 70, 229, 0.28);
+      transform: none;
+      padding-top: 2.25rem;
+      padding-bottom: 1.75rem;
+    }
+    @media (min-width: 900px) {
+      .price-card--featured {
+        transform: scale(1.04);
+        z-index: 2;
+      }
+    }
+    .price-card__badge {
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--accent-hover);
+      background: #EEF2FF;
+      border: 1px solid rgba(255,255,255,0.7);
+      border-radius: 999px;
+      padding: 0.35rem 0.85rem;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.15);
+    }
+    .price-card__tier {
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-secondary);
+      margin-bottom: 0.75rem;
+    }
+    .price-card--featured .price-card__tier {
+      color: rgba(255,255,255,0.85);
+    }
+    .price-card__amount {
+      font-size: clamp(2rem, 4vw, 2.5rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--text-primary);
+      line-height: 1;
+    }
+    .price-card--featured .price-card__amount { color: #fff; }
+    .price-card__period {
+      font-size: 0.95rem;
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-left: 0.35rem;
+    }
+    .price-card--featured .price-card__period { color: rgba(255,255,255,0.8); }
+    .price-card__divider {
+      height: 1px;
+      background: var(--border-color);
+      margin: 1.15rem 0;
+    }
+    .price-card--featured .price-card__divider {
+      background: rgba(255,255,255,0.22);
+    }
+    .price-card__features {
+      list-style: none;
+      margin: 0 0 1.5rem;
+      padding: 0;
+      display: grid;
+      gap: 0.7rem;
+      flex: 1;
+    }
+    .price-card__features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.55rem;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-primary);
+      line-height: 1.35;
+    }
+    .price-card--featured .price-card__features li { color: #fff; }
+    .price-card__check {
+      flex-shrink: 0;
+      width: 1.15rem;
+      height: 1.15rem;
+      margin-top: 0.1rem;
+      color: var(--accent);
+    }
+    .price-card--featured .price-card__check { color: #fff; }
+    .price-card__cta {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      min-height: 48px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      text-decoration: none;
+      transition: transform 150ms ease, background 150ms ease, color 150ms ease;
+      cursor: pointer;
+      border: 2px dashed var(--accent);
+      background: transparent;
+      color: var(--accent);
+    }
+    .price-card__cta:hover {
+      background: var(--accent-light);
+      transform: translateY(-1px);
+    }
+    .price-card--featured .price-card__cta {
+      border: none;
+      background: #fff;
+      color: var(--accent-hover);
+    }
+    .price-card--featured .price-card__cta:hover {
+      background: #F8FAFF;
+    }
+    .pricing-loading {
+      text-align: center;
+      color: var(--text-secondary);
+      padding: 2rem;
+    }
+  </style>
 </head>
-<body class="min-h-screen bg-slate-100 flex flex-col">
+<body class="min-h-screen bg-content text-primary flex flex-col font-sans">
 
-  <!-- Navbar -->
-  <nav class="bg-green-950 px-6 py-4">
-    <div class="mx-auto max-w-2xl flex items-center gap-3">
-      <img src="/favicon.png" alt="CMR Canchas" class="h-8 w-8 rounded-lg object-contain" />
-      <span class="text-white font-bold text-base tracking-tight">CMR Canchas</span>
-      <a href="/" class="ml-auto text-xs text-green-300 hover:text-white">← Volver al inicio</a>
+  <nav class="bg-sidebar px-6 py-4">
+    <div class="mx-auto max-w-5xl flex items-center gap-3">
+      <img src="/images/logo-cmr.png" alt="CMR Turnos" class="h-8 w-8 rounded-lg object-contain" />
+      <span class="text-on-dark font-bold text-base tracking-tight">CMR Turnos</span>
+      <a href="/" class="ml-auto text-xs text-on-dark/70 hover:text-on-dark">← Volver al inicio</a>
     </div>
   </nav>
 
-  <main class="mx-auto max-w-2xl px-4 py-10 flex-1 w-full">
+  <!-- Pricing -->
+  <section id="pricingSection" class="pricing-section py-12 md:py-16">
+    <div class="mx-auto max-w-5xl px-4">
+      <div class="text-center mb-10">
+        <p class="text-xs font-bold tracking-[0.14em] uppercase text-accent mb-2">Planes</p>
+        <h1 class="text-h1 md:text-[2rem] font-bold text-primary">Elegí el plan de tu negocio</h1>
+        <p class="text-secondary mt-2 text-sm md:text-base max-w-xl mx-auto">
+          Sin costos de instalación. Activación en menos de 24 hs. Cancelá cuando quieras.
+        </p>
+      </div>
+      <div id="pricingGrid" class="pricing-grid">
+        <p class="pricing-loading col-span-full">Cargando planes…</p>
+      </div>
+    </div>
+  </section>
 
-    <!-- Header -->
+  <!-- Formulario (aparece al elegir plan) -->
+  <main id="registroFlow" class="hidden mx-auto max-w-2xl px-4 py-10 flex-1 w-full">
+
     <div class="text-center mb-8">
-      <h1 class="text-3xl font-extrabold text-slate-800">Registrá tu club</h1>
-      <p class="text-slate-500 mt-2">Completá el formulario, abonás la suscripción y en 24 hs tu club está activo.</p>
+      <h2 class="text-2xl font-extrabold text-slate-800">Registrá tu negocio</h2>
+      <p class="text-slate-500 mt-2">
+        Plan seleccionado:
+        <strong id="planSeleccionadoLabel" class="text-accent">—</strong>
+      </p>
+      <button type="button" id="btnCambiarPlan" class="mt-2 text-xs font-semibold text-accent hover:underline">
+        ← Cambiar plan
+      </button>
     </div>
 
-    <!-- Stepper -->
     <div class="flex items-center justify-center gap-2 mb-8">
       <div id="step1Dot" class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-green-700 text-white text-sm font-bold flex items-center justify-center">1</div>
-        <span class="text-sm font-semibold text-green-700">Datos del club</span>
+        <div class="w-8 h-8 rounded-full bg-accent text-white text-sm font-bold flex items-center justify-center">1</div>
+        <span class="text-sm font-semibold text-accent">Datos del negocio</span>
       </div>
       <div class="flex-1 h-px bg-slate-300 max-w-12"></div>
       <div id="step2Dot" class="flex items-center gap-2">
@@ -44,94 +221,73 @@
       </div>
     </div>
 
-    <!-- Paso 1: Datos del club -->
-    <section id="paso1" class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
-      <h2 class="text-lg font-bold text-slate-700">Datos del club</h2>
+    <input type="hidden" id="planHidden" name="plan" value="inicial" />
+
+    <section id="paso1" class="bg-card rounded-card border border-border shadow-card p-6 space-y-5">
+      <h3 class="text-lg font-bold text-slate-700">Datos del negocio</h3>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-600 mb-1">Nombre del club *</label>
-        <input id="nombre" type="text" placeholder="Ej: Club Deportivo Norte"
-               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
-        <p class="text-xs text-slate-400 mt-1">URL generada: <span id="slugPreview" class="font-mono text-green-700">—</span></p>
+        <label class="block text-sm font-semibold text-slate-600 mb-1" for="nombre">Nombre del negocio *</label>
+        <input id="nombre" type="text" placeholder="Ej: Studio Ana · Peluquería"
+               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+        <p class="text-xs text-slate-400 mt-1">URL generada: <span id="slugPreview" class="font-mono text-accent">—</span></p>
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-600 mb-1">Deporte principal *</label>
-        <select id="deporte" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-          <option value="futbol">Fútbol</option>
-          <option value="padel">Pádel</option>
-          <option value="tenis">Tenis</option>
-          <option value="basquet">Básquet</option>
-          <option value="voley">Voley</option>
-          <option value="hockey">Hockey</option>
-          <option value="multideporte">Multideporte</option>
+        <label class="block text-sm font-semibold text-slate-600 mb-1" for="categoria">Categoría *</label>
+        <select id="categoria" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+          <option value="peluqueria">Peluquería</option>
+          <option value="estetica">Estética</option>
+          <option value="masajes">Masajes</option>
+          <option value="psicologia">Psicología</option>
+          <option value="legal">Legal</option>
+          <option value="otro">Otro</option>
         </select>
       </div>
 
-      <div>
-        <label class="block text-sm font-semibold text-slate-600 mb-2">Plan *</label>
-        <div class="grid grid-cols-3 gap-2" id="planSelector">
-          <label class="plan-option cursor-pointer">
-            <input type="radio" name="plan" value="inicial" class="sr-only" />
-            <div class="plan-card rounded-xl border-2 border-slate-200 bg-slate-50 p-3 text-center hover:border-green-500 transition-colors">
-              <div class="font-bold text-slate-700 text-sm">Inicial</div>
-              <div class="text-xs text-slate-500 mt-0.5">Hasta 2 canchas</div>
-              <div class="text-green-700 font-extrabold text-base mt-1">$50.000</div>
-              <div class="text-xs text-slate-400">/mes</div>
-            </div>
-          </label>
-          <label class="plan-option cursor-pointer">
-            <input type="radio" name="plan" value="estandar" class="sr-only" />
-            <div class="plan-card rounded-xl border-2 border-slate-200 bg-slate-50 p-3 text-center hover:border-green-500 transition-colors">
-              <div class="font-bold text-slate-700 text-sm">Estándar</div>
-              <div class="text-xs text-slate-500 mt-0.5">Hasta 5 canchas</div>
-              <div class="text-green-700 font-extrabold text-base mt-1">$80.000</div>
-              <div class="text-xs text-slate-400">/mes</div>
-            </div>
-          </label>
-          <label class="plan-option cursor-pointer">
-            <input type="radio" name="plan" value="max" class="sr-only" />
-            <div class="plan-card rounded-xl border-2 border-slate-200 bg-slate-50 p-3 text-center hover:border-green-500 transition-colors">
-              <div class="font-bold text-slate-700 text-sm">Max</div>
-              <div class="text-xs text-slate-500 mt-0.5">Hasta 10 canchas</div>
-              <div class="text-green-700 font-extrabold text-base mt-1">$100.000</div>
-              <div class="text-xs text-slate-400">/mes</div>
-            </div>
-          </label>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label class="block text-sm font-semibold text-slate-600 mb-1" for="ciudad">Ciudad</label>
+          <input id="ciudad" type="text" placeholder="Ej: San Nicolás"
+                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+        </div>
+        <div>
+          <label class="block text-sm font-semibold text-slate-600 mb-1" for="barrio">Barrio</label>
+          <input id="barrio" type="text" placeholder="Ej: Centro"
+                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
         </div>
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-600 mb-1">WhatsApp del club *</label>
+        <label class="block text-sm font-semibold text-slate-600 mb-1" for="whatsapp">WhatsApp del negocio *</label>
         <div class="flex gap-2">
           <span class="flex items-center px-3 rounded-lg border border-slate-300 bg-slate-50 text-sm text-slate-500">+54 9</span>
           <input id="whatsapp" type="tel" inputmode="numeric" placeholder="3364 218151"
-                 class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                 class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
         </div>
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-600 mb-1">Email de contacto *</label>
-        <input id="email" type="email" placeholder="admin@miclub.com"
-               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+        <label class="block text-sm font-semibold text-slate-600 mb-1" for="email">Email de contacto *</label>
+        <input id="email" type="email" placeholder="admin@minegocio.com"
+               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
       </div>
 
-      <p id="msg1" class="text-sm text-red-600 hidden"></p>
+      <p id="msg1" class="text-sm text-danger hidden"></p>
 
-      <button id="btnSiguiente"
-              class="w-full rounded-xl bg-green-700 py-3 text-sm font-bold text-white hover:bg-green-800 transition-colors">
+      <button id="btnSiguiente" type="button"
+              class="w-full rounded-xl bg-accent py-3 text-sm font-bold text-white hover:bg-accent-hover transition-colors">
         Continuar al pago →
       </button>
     </section>
 
-    <!-- Paso 2: Pago -->
-    <section id="paso2" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-6 space-y-5">
-      <h2 class="text-lg font-bold text-slate-700">Abonás la suscripción</h2>
+    <section id="paso2" class="hidden bg-card rounded-card border border-border shadow-card p-6 space-y-5">
+      <h3 class="text-lg font-bold text-slate-700">Abonás la suscripción</h3>
 
-      <div class="rounded-xl bg-green-50 border border-green-200 p-4 space-y-1">
-        <p class="text-sm font-semibold text-green-800">Monto a transferir</p>
-        <p class="text-3xl font-extrabold text-green-700">$<span id="precioSub">—</span></p>
-        <p class="text-xs text-green-600">Suscripción mensual — CMR Canchas</p>
+      <div class="rounded-xl bg-accent-light border border-accent/30 p-4 space-y-1">
+        <p class="text-sm font-semibold text-accent-hover">Monto a transferir</p>
+        <p class="text-3xl font-extrabold text-accent">$<span id="precioSub">—</span></p>
+        <p class="text-xs text-secondary">Suscripción mensual — CMR Turnos</p>
       </div>
 
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-1.5 text-sm">
@@ -141,87 +297,63 @@
       </div>
 
       <div>
-        <label class="block text-sm font-semibold text-slate-600 mb-1">Comprobante de transferencia *</label>
+        <label class="block text-sm font-semibold text-slate-600 mb-1" for="comprobante">Comprobante de transferencia *</label>
         <input id="comprobante" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf"
-               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-green-100 file:px-3 file:py-1 file:text-xs file:font-semibold file:text-green-700 hover:file:bg-green-200 cursor-pointer" />
+               class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-accent-light file:px-3 file:py-1 file:text-xs file:font-semibold file:text-accent cursor-pointer" />
         <p class="text-xs text-slate-400 mt-1">JPG, PNG, WEBP o PDF · máx. 5 MB</p>
       </div>
 
-      <p id="msg2" class="text-sm text-red-600 hidden"></p>
+      <p id="msg2" class="text-sm text-danger hidden"></p>
 
       <div class="flex gap-3">
-        <button id="btnVolver"
+        <button id="btnVolver" type="button"
                 class="flex-1 rounded-xl border border-slate-300 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
           ← Volver
         </button>
-        <button id="btnEnviar"
-                class="flex-1 rounded-xl bg-green-700 py-3 text-sm font-bold text-white hover:bg-green-800 transition-colors">
+        <button id="btnEnviar" type="button"
+                class="flex-1 rounded-xl bg-accent py-3 text-sm font-bold text-white hover:bg-accent-hover transition-colors">
           Enviar solicitud
         </button>
       </div>
     </section>
 
-    <!-- Paso 3: Confirmación -->
-    <section id="paso3" class="hidden bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center space-y-4">
-      <div class="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#15803d" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <section id="paso3" class="hidden bg-card rounded-card border border-border shadow-card p-8 text-center space-y-4">
+      <div class="w-16 h-16 rounded-full bg-accent-light flex items-center justify-center mx-auto">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6366F1" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
         </svg>
       </div>
       <h2 class="text-2xl font-extrabold text-slate-800">¡Solicitud enviada!</h2>
       <p class="text-slate-500 text-sm max-w-sm mx-auto">
-        Recibimos tu comprobante. Revisaremos el pago y activaremos tu club en menos de 24 horas.
+        Recibimos tu comprobante. Revisaremos el pago y activaremos tu negocio en menos de 24 horas.
         Te avisamos por WhatsApp cuando esté listo.
       </p>
-      <a href="/"
-         class="inline-block mt-4 rounded-xl bg-green-700 px-6 py-3 text-sm font-bold text-white hover:bg-green-800 transition-colors">
+      <a href="/" class="inline-block mt-4 rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white hover:bg-accent-hover transition-colors">
         Volver al inicio
       </a>
     </section>
-
   </main>
 
   <script src="/register.js"></script>
 
-  <!-- Footer -->
-  <footer class="bg-green-950 text-green-200 mt-10">
+  <footer class="bg-sidebar text-on-dark/80 mt-auto">
     <div class="mx-auto max-w-5xl px-6 py-10">
       <div class="flex flex-col items-center gap-8 sm:flex-row sm:justify-between">
         <div class="flex items-center gap-3">
-          <img src="/favicon.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
+          <img src="/images/logo-cmr.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
           <div>
-            <p class="font-bold text-white text-base leading-tight">CMR Canchas</p>
-            <p class="text-xs text-green-500">by CMR Software Solutions</p>
+            <p class="font-bold text-white text-base leading-tight">CMR Turnos</p>
+            <p class="text-xs text-secondary">by CMR Software Solutions</p>
           </div>
         </div>
         <div class="flex flex-col gap-3 text-sm text-center sm:text-right">
           <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer"
-             class="flex items-center justify-center sm:justify-end gap-2 hover:text-green-400 transition-colors">
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-              <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.861 0-3.607-.505-5.106-1.386l-.363-.215-3.773.989.999-3.681-.236-.373A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-            </svg>
-            <span>+54 9 336 457-8599</span>
-          </a>
-          <a href="https://www.instagram.com/cmrsoftware.sn?igsh=MWFnOGpwa3M3aHV2Zw==" target="_blank" rel="noopener noreferrer"
-             class="flex items-center justify-center sm:justify-end gap-2 hover:text-pink-400 transition-colors">
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-            </svg>
-            <span>@cmrsoftware.sn</span>
-          </a>
-          <a href="mailto:cmrsoftware.sn@gmail.com"
-             class="flex items-center justify-center sm:justify-end gap-2 hover:text-blue-400 transition-colors">
-            <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="2" y="4" width="20" height="16" rx="2"/>
-              <path d="m22 7-10 7L2 7"/>
-            </svg>
-            <span>cmrsoftware.sn@gmail.com</span>
-          </a>
+             class="hover:text-accent transition-colors">+54 9 336 457-8599</a>
+          <a href="mailto:cmrsoftware.sn@gmail.com" class="hover:text-accent transition-colors">cmrsoftware.sn@gmail.com</a>
         </div>
       </div>
-      <div class="mt-8 border-t border-green-800 pt-6 text-center text-xs text-green-600">
-        © 2025 CMR Software Solutions. Todos los derechos reservados.
+      <div class="mt-8 border-t border-white/10 pt-6 text-center text-xs text-secondary">
+        © 2026 CMR Software Solutions. Todos los derechos reservados.
       </div>
     </div>
   </footer>

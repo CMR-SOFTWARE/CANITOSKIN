@@ -1,9 +1,10 @@
-/* CMR Match — Landing interactions & clubs directory */
+/* CMR Turnos — Landing interactions & negocios directory */
 
 const loading = document.getElementById("loading");
 const emptyState = document.getElementById("emptyState");
 const clubsGrid = document.getElementById("clubsGrid");
 const searchInput = document.getElementById("searchInput");
+const ciudadFilter = document.getElementById("ciudadFilter");
 const sportFilters = document.getElementById("sportFilters");
 const categoriesGrid = document.getElementById("categoriesGrid");
 const mainNav = document.getElementById("mainNav");
@@ -16,21 +17,21 @@ const stepsShowcase = document.getElementById("stepsShowcase");
 const stepsBar = document.getElementById("stepsBar");
 
 const GRADIENT_AVATARS = [
-  "linear-gradient(135deg, #005C00, #71C55B)",
-  "linear-gradient(135deg, #052000, #007B00)",
-  "linear-gradient(135deg, #203500, #4EA93B)",
-  "linear-gradient(135deg, #006600, #92E27A)",
-  "linear-gradient(135deg, #007000, #B4FF9A)",
-  "linear-gradient(135deg, #005200, #586E26)",
+  "linear-gradient(135deg, #4F46E5, #818CF8)",
+  "linear-gradient(135deg, #312E81, #6366F1)",
+  "linear-gradient(135deg, #4338CA, #A5B4FC)",
+  "linear-gradient(135deg, #3730A3, #C7D2FE)",
+  "linear-gradient(135deg, #4F46E5, #EEF2FF)",
+  "linear-gradient(135deg, #1E1B4B, #6366F1)",
 ];
 
-const DEPORTE_LABEL = {
-  futbol: "Fútbol",
-  padel: "Pádel",
-  tenis: "Tenis",
-  basquet: "Básquet",
-  voley: "Voley",
-  hockey: "Hockey",
+const CATEGORIA_LABEL = {
+  peluqueria: "Peluquería",
+  estetica: "Estética",
+  masajes: "Masajes",
+  psicologia: "Psicología",
+  legal: "Legal",
+  otro: "Otro",
 };
 
 function initials(nombre) {
@@ -47,12 +48,21 @@ function gradientForSlug(slug) {
   return GRADIENT_AVATARS[n % GRADIENT_AVATARS.length];
 }
 
-function deporteLabel(d) {
-  return DEPORTE_LABEL[d] || (d ? d.charAt(0).toUpperCase() + d.slice(1) : "Otro");
+function categoriaLabel(c) {
+  return CATEGORIA_LABEL[c] || (c ? c.charAt(0).toUpperCase() + c.slice(1) : "Otro");
 }
 
-let allClubs = [];
-let activeDeporte = "todos";
+function escapeHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+let allNegocios = [];
+let activeCategoria = "todos";
 
 /* ─── Navbar scroll & mobile ─── */
 function initNav() {
@@ -148,63 +158,48 @@ function initReveal() {
   reveals.forEach((el) => observer.observe(el));
 }
 
-/* ─── Category & sport filters ─── */
-function setActiveDeporte(deporte) {
-  activeDeporte = deporte;
+/* ─── Category filters ─── */
+function setActiveCategoria(categoria) {
+  activeCategoria = categoria;
 
   categoriesGrid?.querySelectorAll(".category-chip, .category-card").forEach((card) => {
-    card.classList.toggle("is-active", card.dataset.deporte === deporte);
+    card.classList.toggle("is-active", card.dataset.categoria === categoria);
   });
 
-  buildFilters();
   renderGrid();
 }
 
 function initCategories() {
   categoriesGrid?.addEventListener("click", (e) => {
-    const card = e.target.closest("[data-deporte]");
+    const card = e.target.closest("[data-categoria]");
     if (!card) return;
-    setActiveDeporte(card.dataset.deporte);
-    document.getElementById("clubs")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    setActiveCategoria(card.dataset.categoria);
+    document.getElementById("negocios")?.scrollIntoView({ behavior: "smooth", block: "start" });
   });
 }
 
-function buildFilters() {
-  const deportes = [...new Set(allClubs.map((c) => c.deporte))];
-  if (deportes.length <= 1) {
-    sportFilters.hidden = true;
-    return;
-  }
-
-  sportFilters.hidden = false;
-  const all = ["todos", ...deportes];
-  sportFilters.innerHTML = all
-    .map(
-      (d) => `
-    <button type="button" data-deporte="${d}"
-      class="sport-filter-btn cut-corners cut-corners--xs ${d === activeDeporte ? "is-active" : ""}">
-      ${d === "todos" ? "Todos" : deporteLabel(d)}
-    </button>`
-    )
-    .join("");
+function populateCiudades() {
+  if (!ciudadFilter) return;
+  const ciudades = [...new Set(allNegocios.map((n) => n.ciudad).filter(Boolean))].sort((a, b) =>
+    a.localeCompare(b, "es")
+  );
+  const current = ciudadFilter.value;
+  ciudadFilter.innerHTML =
+    `<option value="">Todas las ciudades</option>` +
+    ciudades.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  if (ciudades.includes(current)) ciudadFilter.value = current;
 }
 
-function initSportFilters() {
-  sportFilters?.addEventListener("click", (e) => {
-    const btn = e.target.closest("[data-deporte]");
-    if (!btn) return;
-    setActiveDeporte(btn.dataset.deporte);
-  });
-}
-
-/* ─── Clubs grid ─── */
+/* ─── Negocios grid ─── */
 function renderGrid() {
   const query = searchInput?.value.trim().toLowerCase() || "";
+  const ciudad = ciudadFilter?.value || "";
 
-  const filtered = allClubs.filter((c) => {
-    const matchDeporte = activeDeporte === "todos" || c.deporte === activeDeporte;
-    const matchSearch = !query || c.nombre.toLowerCase().includes(query);
-    return matchDeporte && matchSearch;
+  const filtered = allNegocios.filter((n) => {
+    const matchCat = activeCategoria === "todos" || n.categoria === activeCategoria;
+    const matchSearch = !query || n.nombre.toLowerCase().includes(query);
+    const matchCiudad = !ciudad || n.ciudad === ciudad;
+    return matchCat && matchSearch && matchCiudad;
   });
 
   if (!filtered.length) {
@@ -213,9 +208,9 @@ function renderGrid() {
     const msg = emptyState.querySelector("p");
     if (msg) {
       msg.textContent =
-        query || activeDeporte !== "todos"
-          ? "No se encontraron clubs con ese criterio."
-          : "No hay clubs disponibles aún.";
+        query || activeCategoria !== "todos" || ciudad
+          ? "No se encontraron negocios con ese criterio."
+          : "No hay negocios disponibles aún.";
     }
     return;
   }
@@ -224,19 +219,21 @@ function renderGrid() {
   clubsGrid.classList.remove("hidden");
 
   clubsGrid.innerHTML = filtered
-    .map((club, i) => {
-      const grad = gradientForSlug(club.slug);
-      const avatar = club.logoUrl
-        ? `<img src="${club.logoUrl}" alt="${club.nombre}" class="club-card__avatar" loading="lazy" />`
-        : `<div class="club-card__initials" style="background:${grad}">${initials(club.nombre)}</div>`;
+    .map((negocio, i) => {
+      const grad = gradientForSlug(negocio.slug);
+      const avatar = negocio.logoUrl
+        ? `<img src="${escapeHtml(negocio.logoUrl)}" alt="${escapeHtml(negocio.nombre)}" class="club-card__avatar" loading="lazy" />`
+        : `<div class="club-card__initials" style="background:${grad}">${escapeHtml(initials(negocio.nombre))}</div>`;
 
+      const lugar = [negocio.ciudad, negocio.barrio].filter(Boolean).join(" · ");
       const delay = Math.min(i, 5);
       return `
       <article class="club-card cut-corners cut-corners--sm reveal" style="transition-delay:${delay * 0.06}s">
         ${avatar}
-        <h3 class="club-card__name">${club.nombre}</h3>
-        <span class="club-card__sport cut-corners cut-corners--xs">${deporteLabel(club.deporte)}</span>
-        <a href="/${club.slug}" class="btn-arena btn-arena--primary cut-corners">Reservar turno</a>
+        <h3 class="club-card__name">${escapeHtml(negocio.nombre)}</h3>
+        <span class="club-card__sport cut-corners cut-corners--xs">${escapeHtml(categoriaLabel(negocio.categoria))}</span>
+        ${lugar ? `<p class="club-card__meta" style="font-size:0.8rem;opacity:0.75;margin:0.25rem 0 0">${escapeHtml(lugar)}</p>` : ""}
+        <a href="/${escapeHtml(negocio.slug)}" class="btn-arena btn-arena--primary cut-corners">Reservar turno</a>
       </article>`;
     })
     .join("");
@@ -247,24 +244,26 @@ function renderGrid() {
 }
 
 searchInput?.addEventListener("input", renderGrid);
+ciudadFilter?.addEventListener("change", renderGrid);
 
-async function initClubs() {
+async function initNegocios() {
   try {
-    const res = await fetch("/api/clubs");
-    allClubs = await res.json();
+    let res = await fetch("/api/negocios");
+    if (!res.ok) res = await fetch("/api/clubs");
+    allNegocios = await res.json();
     loading?.classList.add("hidden");
-    buildFilters();
+    populateCiudades();
     renderGrid();
 
     const statNum = document.getElementById("statClubsNum");
     const statPlus = document.getElementById("statClubs");
-    if (statNum && allClubs.length > 0) {
-      statNum.textContent = String(allClubs.length);
-      if (statPlus) statPlus.textContent = allClubs.length >= 10 ? "+" : "";
+    if (statNum && allNegocios.length > 0) {
+      statNum.textContent = String(allNegocios.length);
+      if (statPlus) statPlus.textContent = allNegocios.length >= 10 ? "+" : "";
     }
   } catch (_) {
     if (loading) {
-      loading.innerHTML = "<p>No se pudo cargar la lista de clubs.</p>";
+      loading.innerHTML = "<p>No se pudo cargar la lista de negocios.</p>";
     }
   }
 }
@@ -352,7 +351,6 @@ initNav();
 initHero();
 initReveal();
 initCategories();
-initSportFilters();
-initClubs();
+initNegocios();
 initSteps();
 initBenefits();

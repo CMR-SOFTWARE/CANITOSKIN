@@ -134,13 +134,13 @@ async function loadClubs() {
         </div>
         <div class="flex items-center gap-2 pt-1 border-t border-slate-200">
           <span class="text-xs text-slate-500 shrink-0">Plan:</span>
-          <select class="plan-select flex-1 rounded border border-slate-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-green-500"
+          <select class="plan-select flex-1 rounded border border-slate-300 px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-accent"
                   data-club-id="${c.id}">
             <option value="inicial" ${plan === "inicial" ? "selected" : ""}>Inicial — hasta 2 canchas</option>
             <option value="estandar" ${plan === "estandar" ? "selected" : ""}>Estándar — hasta 5 canchas</option>
             <option value="max" ${plan === "max" ? "selected" : ""}>Max — hasta 10 canchas</option>
           </select>
-          <button class="rounded-lg bg-green-700 px-3 py-1 text-xs font-semibold text-white hover:bg-green-800 shrink-0"
+          <button class="rounded-lg bg-accent px-3 py-1 text-xs font-semibold text-white hover:bg-accent-hover shrink-0"
                   data-action="cambiar-plan" data-club-id="${c.id}">
             Guardar plan
           </button>
@@ -274,7 +274,7 @@ async function loadSolicitudes() {
         ${s.comprobante_url ? `<a href="${escapeHtml(s.comprobante_url)}" target="_blank" class="text-xs text-blue-600 hover:underline">Ver comprobante</a>` : ""}
         ${s.estado === "pendiente" ? `
         <div class="flex gap-2 pt-1">
-          <button class="rounded-lg bg-green-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-green-800"
+          <button class="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover"
                   data-sol-action="aprobar" data-sol-id="${s.id}" data-sol-slug="${s.slug}" data-sol-plan="${s.plan || 'inicial'}">
             Aprobar
           </button>

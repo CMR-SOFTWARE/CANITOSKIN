@@ -3,20 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Super Admin — CMR Canchas</title>
+  <title>Super Admin — CMR Turnos</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
+  <link rel="stylesheet" href="/globals.css" />
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/tailwind-theme.js"></script>
 </head>
-<body class="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col">
+<body class="min-h-screen bg-content text-primary flex flex-col font-sans">
 
-  <header class="bg-green-950 shadow-md px-6 py-4">
+  <header class="bg-sidebar shadow-sm px-6 py-4">
     <div class="mx-auto max-w-2xl flex items-center gap-3">
-      <img src="/favicon.png" alt="CMR Canchas" class="h-9 w-9 rounded-lg object-contain" />
+      <img src="/images/logo-cmr.png" alt="CMR Turnos" class="h-9 w-9 rounded-lg object-contain" />
       <div>
-        <h1 class="text-lg font-bold text-white leading-tight">Super Admin</h1>
-        <p class="text-xs text-green-400 leading-tight">CMR Canchas</p>
+        <h1 class="text-lg font-bold text-on-dark leading-tight">Super Admin</h1>
+        <p class="text-xs text-accent leading-tight">CMR Turnos</p>
       </div>
-      <a href="/" class="ml-auto text-xs text-green-300 hover:text-green-100">← Inicio</a>
+      <a href="/" class="ml-auto text-xs text-on-dark/70 hover:text-on-dark">← Inicio</a>
     </div>
   </header>
 
@@ -27,9 +29,9 @@
       <h2 class="text-lg font-semibold text-slate-700">Acceso super-admin</h2>
       <div class="flex gap-2">
         <input id="saPassword" type="password" placeholder="Clave maestra"
-               class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+               class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
         <button id="btnSaLogin"
-                class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
+                class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">
           Ingresar
         </button>
       </div>
@@ -42,8 +44,8 @@
       <!-- Clubs existentes -->
       <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
         <div class="flex items-center justify-between">
-          <h2 class="text-lg font-semibold text-slate-700">Clubs registrados</h2>
-          <button id="btnRefreshClubs" class="text-xs text-green-700 hover:underline font-semibold">
+          <h2 class="text-lg font-semibold text-slate-700">Negocios registrados</h2>
+          <button id="btnRefreshClubs" class="text-xs text-accent hover:underline font-semibold">
             Actualizar
           </button>
         </div>
@@ -56,9 +58,9 @@
         <div class="flex items-center justify-between">
           <div>
             <h2 class="text-lg font-semibold text-slate-700">Solicitudes de registro</h2>
-            <p class="text-xs text-slate-400">Clubs que quieren unirse y esperan aprobación</p>
+            <p class="text-xs text-slate-400">Negocios que quieren unirse y esperan aprobación</p>
           </div>
-          <button id="btnRefreshSolicitudes" class="text-xs text-green-700 hover:underline font-semibold">Actualizar</button>
+          <button id="btnRefreshSolicitudes" class="text-xs text-accent hover:underline font-semibold">Actualizar</button>
         </div>
         <div id="solicitudesList" class="space-y-3 text-sm text-slate-500">Cargando...</div>
         <p id="solicitudMsg" class="text-sm hidden"></p>
@@ -69,23 +71,23 @@
         <div class="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm space-y-4">
           <h3 class="text-lg font-bold text-slate-800">Aprobar solicitud</h3>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">Slug del club (URL)</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Slug del negocio (URL)</label>
             <input id="modalSlug" type="text"
-                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Plan asignado</label>
             <select id="modalPlan"
-                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500">
-              <option value="inicial">Inicial — hasta 2 canchas ($50.000/mes)</option>
-              <option value="estandar">Estándar — hasta 5 canchas ($80.000/mes)</option>
-              <option value="max">Max — hasta 10 canchas ($100.000/mes)</option>
+                    class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+              <option value="inicial">Inicial — hasta 2 profesionales ($50.000/mes)</option>
+              <option value="estandar">Estándar — hasta 5 profesionales ($80.000/mes)</option>
+              <option value="max">Max — hasta 10 profesionales ($100.000/mes)</option>
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">Clave admin del club</label>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Clave admin del negocio</label>
             <input id="modalPassword" type="text" placeholder="Clave que usará el admin"
-                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
           <p id="modalMsg" class="text-sm text-red-600 hidden"></p>
           <div class="flex gap-3">
@@ -94,40 +96,40 @@
               Cancelar
             </button>
             <button id="btnConfirmarAprobar"
-                    class="flex-1 rounded-lg bg-green-700 py-2 text-sm font-bold text-white hover:bg-green-800">
+                    class="flex-1 rounded-lg bg-accent py-2 text-sm font-bold text-white hover:bg-accent-hover">
               Confirmar alta
             </button>
           </div>
         </div>
       </div>
 
-      <!-- Crear club nuevo -->
+      <!-- Crear negocio nuevo -->
       <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
-        <h2 class="text-lg font-semibold text-slate-700">Agregar club nuevo</h2>
+        <h2 class="text-lg font-semibold text-slate-700">Agregar negocio nuevo</h2>
 
         <div class="space-y-3">
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">Nombre del club</label>
-            <input id="cfgNombre" type="text" placeholder="Ej: Club CMR Fútbol"
-                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Nombre del negocio</label>
+            <input id="cfgNombre" type="text" placeholder="Ej: Studio Ana"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">
-              Slug <span class="font-normal text-slate-400">(URL del club: /slug)</span>
+              Slug <span class="font-normal text-slate-400">(URL del negocio: /slug)</span>
             </label>
-            <input id="cfgSlug" type="text" placeholder="Ej: cmr-futbol"
-                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <input id="cfgSlug" type="text" placeholder="Ej: studio-ana"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-500 mb-1">Clave admin del club</label>
-            <input id="cfgPassword" type="text" placeholder="Clave que usará el admin del club"
-                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500" />
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Clave admin del negocio</label>
+            <input id="cfgPassword" type="text" placeholder="Clave que usará el admin del negocio"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
           </div>
         </div>
 
         <button id="btnCrearClub"
-                class="rounded-lg bg-green-700 px-4 py-2 text-sm font-semibold text-white hover:bg-green-800">
-          Crear club
+                class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">
+          Crear negocio
         </button>
         <p id="createMsg" class="text-sm hidden"></p>
       </section>
@@ -138,19 +140,19 @@
   <script src="/superadmin.js"></script>
 
   <!-- Footer -->
-  <footer class="bg-green-950 text-green-200 mt-10">
+  <footer class="bg-sidebar text-on-dark/80 mt-10">
     <div class="mx-auto max-w-5xl px-6 py-10">
       <div class="flex flex-col items-center gap-8 sm:flex-row sm:justify-between">
         <div class="flex items-center gap-3">
-          <img src="/favicon.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
+          <img src="/images/logo-cmr.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
           <div>
-            <p class="font-bold text-white text-base leading-tight">CMR Canchas</p>
-            <p class="text-xs text-green-500">by CMR Software Solutions</p>
+            <p class="font-bold text-white text-base leading-tight">CMR Turnos</p>
+            <p class="text-xs text-secondary">by CMR Software Solutions</p>
           </div>
         </div>
         <div class="flex flex-col gap-3 text-sm text-center sm:text-right">
           <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer"
-             class="flex items-center justify-center sm:justify-end gap-2 hover:text-green-400 transition-colors">
+             class="flex items-center justify-center sm:justify-end gap-2 hover:text-accent transition-colors">
             <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
               <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
               <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.861 0-3.607-.505-5.106-1.386l-.363-.215-3.773.989.999-3.681-.236-.373A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
@@ -174,7 +176,7 @@
           </a>
         </div>
       </div>
-      <div class="mt-8 border-t border-green-800 pt-6 text-center text-xs text-green-600">
+      <div class="mt-8 border-t border-white/10 pt-6 text-center text-xs text-secondary">
         © 2025 CMR Software Solutions. Todos los derechos reservados.
       </div>
     </div>

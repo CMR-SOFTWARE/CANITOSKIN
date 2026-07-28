@@ -1,24 +1,31 @@
 {
-  "name": "reservas-turno",
+  "name": "cmr-turnos",
   "version": "1.0.0",
-  "description": "Aplicacion web simple para reservar turnos de canchas de futbol",
+  "description": "CMR Turnos — sistema multi-tenant de reservas de turnos para negocios",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js"
   },
   "keywords": [
+    "turnos",
     "reservas",
-    "futbol",
-    "express"
+    "express",
+    "cmr"
   ],
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
     "@supabase/supabase-js": "^2.105.1",
     "@vercel/kv": "^3.0.0",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "multer": "^1.4.5-lts.1",
     "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2"
   }
 }
