@@ -72,14 +72,254 @@ if (!fsSync.existsSync(LOGOS_DIR)) fsSync.mkdirSync(LOGOS_DIR, { recursive: true
 if (!fsSync.existsSync(SOLICITUDES_DIR)) fsSync.mkdirSync(SOLICITUDES_DIR, { recursive: true });
 
 const SUBSCRIPTION_PRECIO = process.env.SUBSCRIPTION_PRECIO || "0";
-const SUBSCRIPTION_ALIAS = process.env.SUBSCRIPTION_TRANSFER_ALIAS || "";
-const SUBSCRIPTION_CBU = process.env.SUBSCRIPTION_TRANSFER_CBU || "";
-const SUBSCRIPTION_TITULAR = process.env.SUBSCRIPTION_TRANSFER_TITULAR || "";
+const SUBSCRIPTION_ALIAS_ENV = process.env.SUBSCRIPTION_TRANSFER_ALIAS || "";
+const SUBSCRIPTION_CBU_ENV = process.env.SUBSCRIPTION_TRANSFER_CBU || "";
+const SUBSCRIPTION_TITULAR_ENV = process.env.SUBSCRIPTION_TRANSFER_TITULAR || "";
+
+let platformTransferCache = null;
+let platformTransferCacheAt = 0;
+const PLATFORM_TRANSFER_TTL_MS = 30 * 1000;
+
+async function loadPlatformTransfer() {
+  const now = Date.now();
+  if (platformTransferCache && now - platformTransferCacheAt < PLATFORM_TRANSFER_TTL_MS) {
+    return platformTransferCache;
+  }
+  const fallback = {
+    alias: SUBSCRIPTION_ALIAS_ENV,
+    cbu: SUBSCRIPTION_CBU_ENV,
+    titular: SUBSCRIPTION_TITULAR_ENV,
+  };
+  try {
+    if (USE_SQLITE) {
+      const rows = await dbAll(
+        "SELECT key, value FROM platform_settings WHERE key IN ('transfer_alias','transfer_cbu','transfer_titular')"
+      );
+      const map = Object.fromEntries((rows || []).map((r) => [r.key, r.value || ""]));
+      platformTransferCache = {
+        alias: map.transfer_alias || fallback.alias,
+        cbu: map.transfer_cbu || fallback.cbu,
+        titular: map.transfer_titular || fallback.titular,
+      };
+      platformTransferCacheAt = now;
+      return platformTransferCache;
+    }
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase
+        .from("platform_settings")
+        .select("key, value")
+        .in("key", ["transfer_alias", "transfer_cbu", "transfer_titular"]);
+      if (!error && data?.length) {
+        const map = Object.fromEntries(data.map((r) => [r.key, r.value || ""]));
+        platformTransferCache = {
+          alias: map.transfer_alias || fallback.alias,
+          cbu: map.transfer_cbu || fallback.cbu,
+          titular: map.transfer_titular || fallback.titular,
+        };
+        platformTransferCacheAt = now;
+        return platformTransferCache;
+      }
+    }
+  } catch (_) { /* fallback */ }
+  platformTransferCache = fallback;
+  platformTransferCacheAt = now;
+  return fallback;
+}
+
+async function savePlatformTransfer({ alias, cbu, titular }) {
+  const rows = [
+    { key: "transfer_alias", value: alias ?? "" },
+    { key: "transfer_cbu", value: cbu ?? "" },
+    { key: "transfer_titular", value: titular ?? "" },
+  ];
+  if (USE_SQLITE) {
+    for (const r of rows) {
+      await dbRun(
+        "INSERT INTO platform_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+        [r.key, r.value]
+      );
+    }
+  } else if (USE_SUPABASE) {
+    const { error } = await supabase.from("platform_settings").upsert(rows, { onConflict: "key" });
+    if (error) throw new Error(error.message);
+  } else {
+    throw new Error("No hay backend disponible.");
+  }
+  platformTransferCache = { alias: alias ?? "", cbu: cbu ?? "", titular: titular ?? "" };
+  platformTransferCacheAt = Date.now();
+  return platformTransferCache;
+}
+
+async function uploadBusinessLogoFile(businessId, file) {
+  const ext = path.extname(file.originalname) || ".jpg";
+  const filename = `${businessId}_${Date.now()}${ext}`;
+
+  if (USE_SQLITE) {
+    await fs.mkdir(LOGOS_DIR, { recursive: true });
+    await fs.writeFile(path.join(LOGOS_DIR, filename), file.buffer);
+    const logoUrl = `/uploads/logos/${filename}`;
+    await dbRun("UPDATE businesses SET logo_url = ? WHERE id = ?", [logoUrl, businessId]);
+    return logoUrl;
+  }
+  if (USE_SUPABASE) {
+    const storagePath = `logos/${filename}`;
+    const { error: uploadErr } = await supabase.storage
+      .from(SUPABASE_BUCKET)
+      .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: true });
+    if (uploadErr) throw new Error(uploadErr.message);
+    const { data: { publicUrl } } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
+    const { error } = await supabase.from("businesses").update({ logo_url: publicUrl }).eq("id", businessId);
+    if (error) throw new Error(error.message);
+    return publicUrl;
+  }
+  throw new Error("No hay backend disponible.");
+}
+
+async function uploadProfessionalFotoFile(businessId, professionalId, file) {
+  const ext = path.extname(file.originalname) || ".jpg";
+  const filename = `pro_${businessId}_${professionalId}_${Date.now()}${ext}`;
+
+  if (USE_SQLITE) {
+    await fs.mkdir(LOGOS_DIR, { recursive: true });
+    await fs.writeFile(path.join(LOGOS_DIR, filename), file.buffer);
+    const fotoUrl = `/uploads/logos/${filename}`;
+    await dbRun(
+      "UPDATE professionals SET foto_url = ? WHERE id = ? AND business_id = ?",
+      [fotoUrl, professionalId, businessId]
+    );
+    return fotoUrl;
+  }
+  if (USE_SUPABASE) {
+    const storagePath = `professionals/${filename}`;
+    const { error: uploadErr } = await supabase.storage
+      .from(SUPABASE_BUCKET)
+      .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: true });
+    if (uploadErr) throw new Error(uploadErr.message);
+    const { data: { publicUrl } } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
+    const { error } = await supabase
+      .from("professionals")
+      .update({ foto_url: publicUrl })
+      .eq("id", professionalId)
+      .eq("business_id", businessId);
+    if (error) throw new Error(error.message);
+    return publicUrl;
+  }
+  throw new Error("No hay backend disponible.");
+}
+
+function parseProfessionalProfile(body = {}) {
+  const nombre = String(body.nombre || "").trim();
+  const especialidad = String(body.especialidad || "").trim().slice(0, 80) || null;
+  const matricula = String(body.matricula || "").trim().slice(0, 60) || null;
+  const bio = String(body.bio || "").trim().slice(0, 400) || null;
+  return { nombre, especialidad, matricula, bio };
+}
+
+/** Horario propio del profesional. horarioPropio=false → hereda el del negocio (nulls). */
+function parseProfessionalSchedule(body = {}) {
+  const propio =
+    body.horarioPropio === true ||
+    body.horarioPropio === "true" ||
+    body.horarioPropio === 1 ||
+    body.horarioPropio === "1";
+  if (!propio) {
+    return {
+      horarioPropio: false,
+      horaInicio: null,
+      horaFin: null,
+      horaInicio2: null,
+      horaFin2: null,
+      diasAtencionCsv: null,
+    };
+  }
+  const horaInicio = Number(body.horaInicio);
+  const horaFin = Number(body.horaFin);
+  if (!Number.isFinite(horaInicio) || !Number.isFinite(horaFin) || horaInicio >= horaFin) {
+    const err = new Error("Horario inválido: Desde debe ser menor que Hasta.");
+    err.status = 400;
+    throw err;
+  }
+  let horaInicio2 = null;
+  let horaFin2 = null;
+  const rawI2 = body.horaInicio2;
+  const rawF2 = body.horaFin2;
+  if (rawI2 !== "" && rawI2 != null && rawF2 !== "" && rawF2 != null) {
+    horaInicio2 = Number(rawI2);
+    horaFin2 = Number(rawF2);
+    if (!Number.isFinite(horaInicio2) || !Number.isFinite(horaFin2) || horaInicio2 >= horaFin2) {
+      const err = new Error("Franja 2 inválida.");
+      err.status = 400;
+      throw err;
+    }
+  }
+  return {
+    horarioPropio: true,
+    horaInicio,
+    horaFin,
+    horaInicio2,
+    horaFin2,
+    diasAtencionCsv: serializeDiasAtencion(body.diasAtencion),
+  };
+}
+
+function findProfessional(business, professionalId) {
+  if (professionalId == null || professionalId === "") return null;
+  const pid = Number(professionalId);
+  if (!Number.isFinite(pid)) return null;
+  return (business.professionals || []).find((p) => Number(p.id) === pid) || null;
+}
+
+function professionalHasOwnSchedule(pro) {
+  if (!pro) return false;
+  return (
+    pro.horaInicio != null &&
+    pro.horaInicio !== "" &&
+    Number.isFinite(Number(pro.horaInicio)) &&
+    pro.horaFin != null &&
+    pro.horaFin !== "" &&
+    Number.isFinite(Number(pro.horaFin))
+  );
+}
+
+/** Horario efectivo: propio del profesional o, si no tiene, el del negocio. */
+function effectiveSchedule(business, pro) {
+  const baseDays = Array.isArray(business.diasAtencion)
+    ? business.diasAtencion
+    : parseDiasAtencion(business.dias_atencion ?? business.diasAtencion);
+  const base = {
+    horaInicio: business.horaInicio,
+    horaFin: business.horaFin,
+    horaInicio2: business.horaInicio2 ?? null,
+    horaFin2: business.horaFin2 ?? null,
+    diasAtencion: baseDays,
+  };
+  if (!pro) return base;
+
+  const hasDays =
+    pro.diasAtencion != null &&
+    (Array.isArray(pro.diasAtencion)
+      ? pro.diasAtencion.length > 0
+      : String(pro.diasAtencion).trim() !== "");
+
+  if (!professionalHasOwnSchedule(pro)) {
+    if (hasDays) return { ...base, diasAtencion: parseDiasAtencion(pro.diasAtencion) };
+    return base;
+  }
+
+  return {
+    horaInicio: Number(pro.horaInicio),
+    horaFin: Number(pro.horaFin),
+    horaInicio2:
+      pro.horaInicio2 != null && pro.horaInicio2 !== "" ? Number(pro.horaInicio2) : null,
+    horaFin2: pro.horaFin2 != null && pro.horaFin2 !== "" ? Number(pro.horaFin2) : null,
+    diasAtencion: hasDays ? parseDiasAtencion(pro.diasAtencion) : baseDays,
+  };
+}
 
 const PLANES_FALLBACK = {
   inicial:     { nombre: "Inicial",     limiteProfesionales: 1,    precio: 20000 },
   profesional: { nombre: "Profesional", limiteProfesionales: 3,    precio: 35000 },
-  max:         { nombre: "Max",         limiteProfesionales: null, precio: 50000 },
+  max:         { nombre: "Max",         limiteProfesionales: null, precio: 60000 },
 };
 
 let platformPlansCache = null;
@@ -276,10 +516,32 @@ async function initDb() {
       transfer_titular TEXT NOT NULL DEFAULT '',
       hora_inicio INTEGER NOT NULL DEFAULT 9,
       hora_fin INTEGER NOT NULL DEFAULT 20,
+      hora_inicio_2 INTEGER,
+      hora_fin_2 INTEGER,
+      dias_atencion TEXT NOT NULL DEFAULT '1,2,3,4,5',
       precio TEXT NOT NULL DEFAULT '0',
       plan TEXT NOT NULL DEFAULT 'inicial',
       estado TEXT NOT NULL DEFAULT 'activo',
       estado_motivo TEXT,
+      creado_en TEXT NOT NULL
+    )
+  `);
+  try {
+    const bizCols = await dbAll("PRAGMA table_info(businesses)");
+    const bizNames = new Set(bizCols.map((c) => c.name));
+    if (!bizNames.has("hora_inicio_2")) await dbRun("ALTER TABLE businesses ADD COLUMN hora_inicio_2 INTEGER");
+    if (!bizNames.has("hora_fin_2")) await dbRun("ALTER TABLE businesses ADD COLUMN hora_fin_2 INTEGER");
+    if (!bizNames.has("dias_atencion")) {
+      await dbRun("ALTER TABLE businesses ADD COLUMN dias_atencion TEXT NOT NULL DEFAULT '1,2,3,4,5'");
+    }
+    if (!bizNames.has("direccion")) await dbRun("ALTER TABLE businesses ADD COLUMN direccion TEXT");
+  } catch (_) { /* ignore */ }
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS localidades (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL UNIQUE,
+      activo INTEGER NOT NULL DEFAULT 1,
       creado_en TEXT NOT NULL
     )
   `);
@@ -289,10 +551,53 @@ async function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       business_id INTEGER NOT NULL,
       nombre TEXT NOT NULL,
+      especialidad TEXT,
+      matricula TEXT,
+      bio TEXT,
+      foto_url TEXT,
       activo INTEGER NOT NULL DEFAULT 1,
       FOREIGN KEY (business_id) REFERENCES businesses(id)
     )
   `);
+  try {
+    const proCols = await dbAll("PRAGMA table_info(professionals)");
+    const proNames = new Set(proCols.map((c) => c.name));
+    if (!proNames.has("especialidad")) await dbRun("ALTER TABLE professionals ADD COLUMN especialidad TEXT");
+    if (!proNames.has("matricula")) await dbRun("ALTER TABLE professionals ADD COLUMN matricula TEXT");
+    if (!proNames.has("bio")) await dbRun("ALTER TABLE professionals ADD COLUMN bio TEXT");
+    if (!proNames.has("foto_url")) await dbRun("ALTER TABLE professionals ADD COLUMN foto_url TEXT");
+    if (!proNames.has("hora_inicio")) await dbRun("ALTER TABLE professionals ADD COLUMN hora_inicio INTEGER");
+    if (!proNames.has("hora_fin")) await dbRun("ALTER TABLE professionals ADD COLUMN hora_fin INTEGER");
+    if (!proNames.has("hora_inicio_2")) await dbRun("ALTER TABLE professionals ADD COLUMN hora_inicio_2 INTEGER");
+    if (!proNames.has("hora_fin_2")) await dbRun("ALTER TABLE professionals ADD COLUMN hora_fin_2 INTEGER");
+    if (!proNames.has("dias_atencion")) await dbRun("ALTER TABLE professionals ADD COLUMN dias_atencion TEXT");
+  } catch (_) { /* ignore */ }
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS professional_services (
+      professional_id INTEGER NOT NULL,
+      service_id INTEGER NOT NULL,
+      business_id INTEGER NOT NULL,
+      PRIMARY KEY (professional_id, service_id),
+      FOREIGN KEY (professional_id) REFERENCES professionals(id) ON DELETE CASCADE,
+      FOREIGN KEY (service_id) REFERENCES services(id) ON DELETE CASCADE,
+      FOREIGN KEY (business_id) REFERENCES businesses(id) ON DELETE CASCADE
+    )
+  `);
+  try {
+    // Migrar vínculos legacy services.professional_id → professional_services
+    const legacy = await dbAll(
+      `SELECT id AS service_id, professional_id, business_id FROM services
+       WHERE professional_id IS NOT NULL`
+    );
+    for (const row of legacy) {
+      await dbRun(
+        `INSERT OR IGNORE INTO professional_services (professional_id, service_id, business_id)
+         VALUES (?, ?, ?)`,
+        [row.professional_id, row.service_id, row.business_id]
+      );
+    }
+  } catch (_) { /* ignore */ }
 
   await dbRun(`
     CREATE TABLE IF NOT EXISTS services (
@@ -302,6 +607,7 @@ async function initDb() {
       descripcion TEXT DEFAULT '',
       duracion_min INTEGER NOT NULL DEFAULT 30,
       precio TEXT NOT NULL DEFAULT '0',
+      sena TEXT NOT NULL DEFAULT '0',
       categoria TEXT,
       activo INTEGER NOT NULL DEFAULT 1,
       professional_id INTEGER,
@@ -309,6 +615,11 @@ async function initDb() {
       FOREIGN KEY (professional_id) REFERENCES professionals(id)
     )
   `);
+  try {
+    const svcCols = await dbAll("PRAGMA table_info(services)");
+    const svcNames = new Set(svcCols.map((c) => c.name));
+    if (!svcNames.has("sena")) await dbRun("ALTER TABLE services ADD COLUMN sena TEXT NOT NULL DEFAULT '0'");
+  } catch (_) { /* ignore */ }
 
   await dbRun(`
     CREATE TABLE IF NOT EXISTS plans (
@@ -322,6 +633,28 @@ async function initDb() {
       FOREIGN KEY (business_id) REFERENCES businesses(id)
     )
   `);
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS movimientos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      business_id INTEGER NOT NULL,
+      tipo TEXT NOT NULL,
+      descripcion TEXT NOT NULL DEFAULT '',
+      categoria TEXT NOT NULL DEFAULT 'Otros',
+      monto REAL NOT NULL DEFAULT 0,
+      fecha TEXT NOT NULL,
+      appointment_id INTEGER,
+      creado_en TEXT NOT NULL,
+      FOREIGN KEY (business_id) REFERENCES businesses(id)
+    )
+  `);
+  try {
+    const movCols = await dbAll("PRAGMA table_info(movimientos)");
+    const movNames = new Set(movCols.map((c) => c.name));
+    if (!movNames.has("appointment_id")) {
+      await dbRun("ALTER TABLE movimientos ADD COLUMN appointment_id INTEGER");
+    }
+  } catch (_) { /* ignore */ }
 
   await dbRun(`
     CREATE TABLE IF NOT EXISTS business_admins (
@@ -427,6 +760,7 @@ async function initDb() {
       categoria TEXT NOT NULL DEFAULT 'otro',
       ciudad TEXT,
       barrio TEXT,
+      direccion TEXT,
       whatsapp TEXT NOT NULL,
       email TEXT NOT NULL,
       comprobante_url TEXT,
@@ -435,9 +769,23 @@ async function initDb() {
       creado_en TEXT NOT NULL
     )
   `);
+  try {
+    const solCols = await dbAll("PRAGMA table_info(solicitudes)");
+    const solNames = new Set(solCols.map((c) => c.name));
+    if (!solNames.has("direccion")) await dbRun("ALTER TABLE solicitudes ADD COLUMN direccion TEXT");
+  } catch (_) { /* ignore */ }
+
+  await dbRun(`
+    CREATE TABLE IF NOT EXISTS platform_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL DEFAULT ''
+    )
+  `);
 
   await dbRun("CREATE INDEX IF NOT EXISTS idx_appointments_biz_fecha ON appointments (business_id, fecha)");
   await dbRun("CREATE INDEX IF NOT EXISTS idx_appointments_cancel ON appointments (cancel_token)");
+  await dbRun("CREATE INDEX IF NOT EXISTS idx_movimientos_biz_fecha ON movimientos (business_id, fecha)");
+  await dbRun("CREATE INDEX IF NOT EXISTS idx_movimientos_appointment ON movimientos (appointment_id)");
 }
 
 // ============================================================
@@ -578,10 +926,44 @@ function isAppointmentExpired(appt, nowMs = Date.now()) {
   return !Number.isNaN(ms) && ms < nowMs;
 }
 
+function getBusinessOpenRanges(business) {
+  const ranges = [];
+  const a1 = Number(business.horaInicio);
+  const b1 = Number(business.horaFin);
+  if (Number.isFinite(a1) && Number.isFinite(b1) && a1 < b1) {
+    ranges.push({ start: a1 * 60, end: b1 * 60 });
+  }
+  const a2 = business.horaInicio2 != null && business.horaInicio2 !== ""
+    ? Number(business.horaInicio2)
+    : NaN;
+  const b2 = business.horaFin2 != null && business.horaFin2 !== ""
+    ? Number(business.horaFin2)
+    : NaN;
+  if (Number.isFinite(a2) && Number.isFinite(b2) && a2 < b2) {
+    ranges.push({ start: a2 * 60, end: b2 * 60 });
+  }
+  return ranges.sort((x, y) => x.start - y.start);
+}
+
+/** True si [startMin, endMin) entra completo en alguna franja abierta (horario efectivo). */
+function fitsBusinessOpenRange(startMin, endMin, business, professionalId = null) {
+  if (!Number.isFinite(startMin) || !Number.isFinite(endMin) || endMin <= startMin) return false;
+  const schedule = effectiveSchedule(business, findProfessional(business, professionalId));
+  return getBusinessOpenRanges(schedule).some((r) => startMin >= r.start && endMin <= r.end);
+}
+
+function getBusinessDaySpan(business) {
+  const ranges = getBusinessOpenRanges(business);
+  if (!ranges.length) return { desde: 0, hasta: 24 * 60 };
+  return {
+    desde: Math.min(...ranges.map((r) => r.start)),
+    hasta: Math.max(...ranges.map((r) => r.end)),
+  };
+}
+
 function getBloqueoRangeMinutes(bloqueo, business) {
-  const openStart = Number(business.horaInicio) * 60;
-  const openEnd = Number(business.horaFin) * 60;
-  if (bloqueo.diaCompleto) return { desde: openStart, hasta: openEnd };
+  const span = getBusinessDaySpan(business);
+  if (bloqueo.diaCompleto) return { desde: span.desde, hasta: span.hasta };
   if (bloqueo.horarioDesde && bloqueo.horarioHasta) {
     return {
       desde: timeToMinutes(bloqueo.horarioDesde),
@@ -607,39 +989,72 @@ function appointmentConflictsForProfessional(appt, professionalId) {
   return appt.professionalId != null && Number(appt.professionalId) === Number(professionalId);
 }
 
+function parseDiasAtencion(raw) {
+  const fallback = [1, 2, 3, 4, 5]; // Lun–Vie
+  if (raw == null || raw === "") return fallback;
+  let parts;
+  if (Array.isArray(raw)) {
+    parts = raw.map(Number);
+  } else {
+    parts = String(raw).split(/[,\s]+/).map(Number);
+  }
+  const days = [...new Set(parts.filter((d) => Number.isInteger(d) && d >= 0 && d <= 6))].sort((a, b) => a - b);
+  return days.length ? days : fallback;
+}
+
+function serializeDiasAtencion(days) {
+  return parseDiasAtencion(days).join(",");
+}
+
+function isBusinessOpenOnDate(business, fechaIso, professionalId = null) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fechaIso || ""))) return false;
+  const [y, m, d] = String(fechaIso).split("-").map(Number);
+  const dow = new Date(y, m - 1, d).getDay(); // 0=Dom … 6=Sáb
+  const schedule = effectiveSchedule(business, findProfessional(business, professionalId));
+  const days = Array.isArray(schedule.diasAtencion)
+    ? schedule.diasAtencion
+    : parseDiasAtencion(schedule.diasAtencion);
+  return days.includes(dow);
+}
+
 /**
  * Genera slots HH:MM cada SLOT_STEP_MIN donde cabe un servicio de duracionMin.
- * Los turnos deben terminar a más tardar en hora_fin (cierre).
+ * Soporta una o dos franjas horarias (ej. 9-13 y 16-20).
  */
-function generateAvailableSlots(duracionMin, appointments, bloqueos, professionalId, business) {
+function generateAvailableSlots(duracionMin, appointments, bloqueos, professionalId, business, options = {}) {
   const duration = Number(duracionMin);
   if (!Number.isFinite(duration) || duration <= 0) return [];
-  const openStart = Number(business.horaInicio) * 60;
-  const openEnd = Number(business.horaFin) * 60;
-  if (!Number.isFinite(openStart) || !Number.isFinite(openEnd) || openStart >= openEnd) return [];
+  const pro = findProfessional(business, professionalId);
+  const schedule = effectiveSchedule(business, pro);
+  const ranges = getBusinessOpenRanges(schedule);
+  if (!ranges.length) return [];
+  const excludeId = options.excludeAppointmentId != null ? Number(options.excludeAppointmentId) : null;
 
   const slots = [];
-  for (let start = openStart; start + duration <= openEnd; start += SLOT_STEP_MIN) {
-    const end = start + duration;
+  for (const range of ranges) {
+    for (let start = range.start; start + duration <= range.end; start += SLOT_STEP_MIN) {
+      const end = start + duration;
 
-    const conflictAppt = (appointments || []).some((a) => {
-      if (!appointmentConflictsForProfessional(a, professionalId)) return false;
-      const aStart = timeToMinutes(a.horaInicio);
-      const aEnd = timeToMinutes(a.horaFin);
-      if (aStart == null || aEnd == null) return false;
-      return rangesOverlap(start, end, aStart, aEnd);
-    });
-    if (conflictAppt) continue;
+      const conflictAppt = (appointments || []).some((a) => {
+        if (excludeId != null && Number(a.id) === excludeId) return false;
+        if (!appointmentConflictsForProfessional(a, professionalId)) return false;
+        const aStart = timeToMinutes(a.horaInicio);
+        const aEnd = timeToMinutes(a.horaFin);
+        if (aStart == null || aEnd == null) return false;
+        return rangesOverlap(start, end, aStart, aEnd);
+      });
+      if (conflictAppt) continue;
 
-    const conflictBloqueo = (bloqueos || []).some((b) => {
-      if (!bloqueoAppliesToProfessional(b, professionalId)) return false;
-      const range = getBloqueoRangeMinutes(b, business);
-      if (range.desde == null || range.hasta == null) return false;
-      return rangesOverlap(start, end, range.desde, range.hasta);
-    });
-    if (conflictBloqueo) continue;
+      const conflictBloqueo = (bloqueos || []).some((b) => {
+        if (!bloqueoAppliesToProfessional(b, professionalId)) return false;
+        const br = getBloqueoRangeMinutes(b, schedule);
+        if (br.desde == null || br.hasta == null) return false;
+        return rangesOverlap(start, end, br.desde, br.hasta);
+      });
+      if (conflictBloqueo) continue;
 
-    slots.push(minutesToTime(start));
+      slots.push(minutesToTime(start));
+    }
   }
   return slots;
 }
@@ -652,16 +1067,48 @@ function bloqueosSeSuperponen(a, b, business) {
   return rangesOverlap(ra.desde, ra.hasta, rb.desde, rb.hasta);
 }
 
+/** True si el turno choca con el alcance (pro + horario) del bloqueo propuesto. */
+function appointmentOverlapsBloqueo(appt, bloqueo, business) {
+  if (!appt || appt.estado === "cancelada") return false;
+
+  // Bloqueo de un profesional: no choca con turnos de otro profesional
+  if (bloqueo.professionalId != null) {
+    if (appt.professionalId != null && Number(appt.professionalId) !== Number(bloqueo.professionalId)) {
+      return false;
+    }
+  }
+
+  if (bloqueo.diaCompleto) return true;
+
+  const br = getBloqueoRangeMinutes(bloqueo, business);
+  const aStart = timeToMinutes(appt.horaInicio);
+  const aEnd = timeToMinutes(appt.horaFin);
+  if (br.desde == null || br.hasta == null || aStart == null || aEnd == null) return false;
+  return rangesOverlap(aStart, aEnd, br.desde, br.hasta);
+}
+
+function describeTurnoConflictos(appointments) {
+  const list = (appointments || []).slice(0, 3).map((a) => {
+    const hora = a.horaInicio || "?";
+    const nombre = a.nombre || "Cliente";
+    return `${nombre} ${hora}hs`;
+  });
+  const extra = appointments.length > 3 ? ` y ${appointments.length - 3} más` : "";
+  return list.length ? ` (${list.join(", ")}${extra})` : "";
+}
+
+function conflictErrorBloqueoVsTurnos(appointments) {
+  const detalle = describeTurnoConflictos(appointments);
+  const n = appointments.length;
+  return `Hay ${n} turno${n === 1 ? "" : "s"} agendado${n === 1 ? "" : "s"}${detalle}. Cancelalo${n === 1 ? "" : "s"} antes de crear el bloqueo.`;
+}
+
 // ============================================================
 // MAPPERS
 // ============================================================
 function mapBusinessRow(row, professionals = [], services = [], clientPlans = []) {
   const plan = row.plan || "inicial";
-  const pros = (professionals || []).map((p) => ({
-    id: p.id,
-    nombre: p.nombre,
-    activo: Boolean(p.activo ?? p.activa ?? true),
-  }));
+  const pros = (professionals || []).map((p) => mapProfessionalRow(p));
   return {
     id: row.id,
     slug: row.slug,
@@ -669,6 +1116,7 @@ function mapBusinessRow(row, professionals = [], services = [], clientPlans = []
     categoria: row.categoria || "otro",
     ciudad: row.ciudad || null,
     barrio: row.barrio || null,
+    direccion: row.direccion || null,
     colorMarca: row.color_marca || "#0f766e",
     logoUrl: row.logo_url || null,
     whatsapp: row.whatsapp || "",
@@ -679,6 +1127,9 @@ function mapBusinessRow(row, professionals = [], services = [], clientPlans = []
     },
     horaInicio: Number(row.hora_inicio),
     horaFin: Number(row.hora_fin),
+    horaInicio2: row.hora_inicio_2 == null || row.hora_inicio_2 === "" ? null : Number(row.hora_inicio_2),
+    horaFin2: row.hora_fin_2 == null || row.hora_fin_2 === "" ? null : Number(row.hora_fin_2),
+    diasAtencion: parseDiasAtencion(row.dias_atencion),
     precio: row.precio || "0",
     plan,
     estado: row.estado || "activo",
@@ -698,10 +1149,289 @@ function mapServiceRow(row) {
     descripcion: row.descripcion || "",
     duracionMin: Number(row.duracion_min),
     precio: row.precio,
+    sena: row.sena != null && row.sena !== "" ? row.sena : "0",
     categoria: row.categoria || null,
     activo: Boolean(row.activo),
     professionalId: row.professional_id ?? null,
   };
+}
+
+function mapMovimientoRow(row) {
+  return {
+    id: row.id,
+    businessId: row.business_id,
+    tipo: row.tipo === "gasto" ? "gasto" : "ingreso",
+    descripcion: row.descripcion || "",
+    categoria: row.categoria || "Otros",
+    monto: Number(row.monto) || 0,
+    fecha: row.fecha,
+    appointmentId: row.appointment_id ?? null,
+    creadoEn: row.creado_en,
+  };
+}
+
+function mapLocalidadRow(row) {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    activo: row.activo === true || row.activo === 1 || row.activo === "1",
+    creadoEn: row.creado_en || null,
+  };
+}
+
+async function listLocalidades({ soloActivas = false } = {}) {
+  if (USE_SQLITE) {
+    const rows = soloActivas
+      ? await dbAll("SELECT * FROM localidades WHERE activo = 1 ORDER BY nombre ASC")
+      : await dbAll("SELECT * FROM localidades ORDER BY nombre ASC");
+    return rows.map(mapLocalidadRow);
+  }
+  if (USE_SUPABASE) {
+    let query = supabase.from("localidades").select("*").order("nombre", { ascending: true });
+    if (soloActivas) query = query.eq("activo", true);
+    const { data, error } = await query;
+    if (error) {
+      if (/localidades|does not exist|relation|schema cache/i.test(error.message || "")) {
+        return [];
+      }
+      throw new Error(error.message);
+    }
+    return (data || []).map(mapLocalidadRow);
+  }
+  return [];
+}
+
+async function assertLocalidadActiva(nombre) {
+  const ciudad = String(nombre || "").trim();
+  if (!ciudad) return { ok: false, error: "Seleccioná una localidad." };
+  const list = await listLocalidades({ soloActivas: true });
+  if (!list.length) {
+    return { ok: false, error: "Todavía no hay localidades cargadas. Pedile al superadmin que cree una." };
+  }
+  const hit = list.find((l) => l.nombre.toLowerCase() === ciudad.toLowerCase());
+  if (!hit) return { ok: false, error: "Localidad inválida. Elegí una de la lista." };
+  return { ok: true, nombre: hit.nombre };
+}
+
+function parseMoneyAmount(raw) {
+  const n = Number(String(raw ?? "0").replace(/[^\d.-]/g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : 0;
+}
+
+function appointmentPaymentAmount(service, business) {
+  const sena = parseMoneyAmount(service?.sena);
+  if (sena > 0) return sena;
+  const precio = parseMoneyAmount(service?.precio);
+  if (precio > 0) return precio;
+  return parseMoneyAmount(business?.precio);
+}
+
+function turnoTag(appointmentId) {
+  return `#turno:${appointmentId}`;
+}
+
+function descripcionTieneTurno(descripcion, appointmentId) {
+  return String(descripcion || "").includes(turnoTag(appointmentId));
+}
+
+async function listMovimientosRaw(businessId) {
+  if (USE_SQLITE) {
+    return dbAll("SELECT * FROM movimientos WHERE business_id = ? ORDER BY fecha DESC, id DESC", [businessId]);
+  }
+  if (USE_SUPABASE) {
+    const { data, error } = await supabase.from("movimientos").select("*")
+      .eq("business_id", businessId)
+      .order("fecha", { ascending: false })
+      .order("id", { ascending: false });
+    if (error) throw new Error(error.message);
+    return data || [];
+  }
+  return [];
+}
+
+async function findMovimientoForAppointment(businessId, appointmentId, allMovs = null) {
+  if (!appointmentId) return null;
+  const rows = allMovs || await listMovimientosRaw(businessId);
+  const hit = rows.find((r) =>
+    Number(r.appointment_id) === Number(appointmentId) ||
+    descripcionTieneTurno(r.descripcion, appointmentId)
+  );
+  return hit || null;
+}
+
+async function createIngresoTurnoMovimiento({
+  businessId,
+  appointmentId,
+  nombre,
+  serviceNombre,
+  fecha,
+  horaInicio,
+  monto,
+  creadoEn,
+  existingMovs = null,
+}) {
+  const amount = Number(monto) || 0;
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  if (!appointmentId) return null;
+
+  const existing = await findMovimientoForAppointment(businessId, appointmentId, existingMovs);
+  if (existing) return mapMovimientoRow(existing);
+
+  const tag = turnoTag(appointmentId);
+  const descripcion = `Turno · ${serviceNombre || "Servicio"} · ${nombre || "Cliente"} · ${horaInicio || ""}hs ${tag}`
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 200);
+  const now = creadoEn || new Date().toISOString();
+  const base = {
+    business_id: businessId,
+    tipo: "ingreso",
+    descripcion,
+    categoria: "Turnos",
+    monto: amount,
+    fecha,
+    creado_en: now,
+  };
+
+  if (USE_SUPABASE) {
+    // Intento 1: con appointment_id (si la columna existe)
+    let { data, error } = await supabase.from("movimientos").insert({
+      ...base,
+      appointment_id: appointmentId,
+    }).select().single();
+
+    if (error) {
+      // Intento 2: sin appointment_id (migración pendiente)
+      const retry = await supabase.from("movimientos").insert(base).select().single();
+      if (retry.error) {
+        const msg = retry.error.message || error.message;
+        console.warn("[movimientos] No se pudo crear ingreso de turno:", msg);
+        const err = new Error(msg);
+        err.code = "MOVIMIENTO_INSERT";
+        throw err;
+      }
+      data = retry.data;
+    }
+    return mapMovimientoRow(data);
+  }
+
+  try {
+    const result = await dbRun(
+      `INSERT INTO movimientos (business_id, tipo, descripcion, categoria, monto, fecha, appointment_id, creado_en)
+       VALUES (?, 'ingreso', ?, 'Turnos', ?, ?, ?, ?)`,
+      [businessId, descripcion, amount, fecha, appointmentId, now]
+    );
+    return {
+      id: result.lastID,
+      businessId,
+      tipo: "ingreso",
+      descripcion,
+      categoria: "Turnos",
+      monto: amount,
+      fecha,
+      appointmentId,
+      creadoEn: now,
+    };
+  } catch (err) {
+    try {
+      const result = await dbRun(
+        `INSERT INTO movimientos (business_id, tipo, descripcion, categoria, monto, fecha, creado_en)
+         VALUES (?, 'ingreso', ?, 'Turnos', ?, ?, ?)`,
+        [businessId, descripcion, amount, fecha, now]
+      );
+      return {
+        id: result.lastID,
+        businessId,
+        tipo: "ingreso",
+        descripcion,
+        categoria: "Turnos",
+        monto: amount,
+        fecha,
+        appointmentId: null,
+        creadoEn: now,
+      };
+    } catch (err2) {
+      const e = new Error(err2.message || err.message);
+      e.code = "MOVIMIENTO_INSERT";
+      throw e;
+    }
+  }
+}
+
+async function syncTurnoMovimientosForBusiness(business) {
+  const result = { created: 0, error: null };
+  try {
+    const appointments = await readAppointments({
+      businessId: business.id,
+      includeCanceladas: false,
+    });
+    if (!appointments.length) return result;
+
+    let existingMovs = [];
+    try {
+      existingMovs = await listMovimientosRaw(business.id);
+    } catch (err) {
+      result.error = err.message || String(err);
+      console.warn("[movimientos] no se pudieron leer movimientos:", result.error);
+      return result;
+    }
+
+    for (const appt of appointments) {
+      if (await findMovimientoForAppointment(business.id, appt.id, existingMovs)) continue;
+
+      let service = null;
+      if (appt.serviceId) {
+        try {
+          service = await getServiceById(business.id, appt.serviceId);
+        } catch (_) { service = null; }
+      }
+
+      if (!service && Array.isArray(business.services)) {
+        service = business.services.find((s) => Number(s.id) === Number(appt.serviceId)) || null;
+      }
+
+      const mappedService = service && service.duracionMin != null
+        ? service
+        : service
+          ? mapServiceRow(service)
+          : null;
+
+      const monto = appointmentPaymentAmount(mappedService || service, business);
+      if (monto <= 0) continue;
+
+      try {
+        const mov = await createIngresoTurnoMovimiento({
+          businessId: business.id,
+          appointmentId: appt.id,
+          nombre: appt.nombre,
+          serviceNombre: (mappedService || service)?.nombre || "Servicio",
+          fecha: appt.fecha,
+          horaInicio: appt.horaInicio,
+          monto,
+          creadoEn: appt.creadoEn || new Date().toISOString(),
+          existingMovs,
+        });
+        if (mov) {
+          result.created += 1;
+          existingMovs.push({
+            id: mov.id,
+            business_id: business.id,
+            appointment_id: mov.appointmentId,
+            descripcion: mov.descripcion,
+          });
+        }
+      } catch (err) {
+        result.error = err.message || String(err);
+        console.warn("[movimientos] sync insert falló:", result.error);
+        break;
+      }
+    }
+    return result;
+  } catch (err) {
+    result.error = err.message || String(err);
+    console.warn("[movimientos] sync falló:", result.error);
+    return result;
+  }
 }
 
 function mapClientPlanRow(row) {
@@ -717,12 +1447,223 @@ function mapClientPlanRow(row) {
 }
 
 function mapProfessionalRow(row) {
+  const horaInicio = row.hora_inicio != null ? Number(row.hora_inicio) : null;
+  const horaFin = row.hora_fin != null ? Number(row.hora_fin) : null;
+  const horarioPropio = Number.isFinite(horaInicio) && Number.isFinite(horaFin);
   return {
     id: row.id,
     businessId: row.business_id,
     nombre: row.nombre,
+    especialidad: row.especialidad || null,
+    matricula: row.matricula || null,
+    bio: row.bio || null,
+    fotoUrl: row.foto_url || null,
     activo: Boolean(row.activo),
+    horarioPropio,
+    horaInicio: horarioPropio ? horaInicio : null,
+    horaFin: horarioPropio ? horaFin : null,
+    horaInicio2: row.hora_inicio_2 != null ? Number(row.hora_inicio_2) : null,
+    horaFin2: row.hora_fin_2 != null ? Number(row.hora_fin_2) : null,
+    diasAtencion:
+      row.dias_atencion != null && String(row.dias_atencion).trim() !== ""
+        ? parseDiasAtencion(row.dias_atencion)
+        : null,
+    serviceIds: Array.isArray(row.serviceIds)
+      ? row.serviceIds.map(Number).filter(Number.isFinite)
+      : [],
   };
+}
+
+async function listProfessionalServiceLinks(businessId) {
+  if (USE_SQLITE) {
+    return dbAll(
+      "SELECT professional_id, service_id FROM professional_services WHERE business_id = ?",
+      [businessId]
+    );
+  }
+  if (USE_SUPABASE) {
+    const { data, error } = await supabase
+      .from("professional_services")
+      .select("professional_id, service_id")
+      .eq("business_id", businessId);
+    if (error) {
+      if (/professional_services|does not exist|relation|schema cache/i.test(error.message || "")) {
+        // Fallback legacy: services.professional_id
+        const { data: services } = await supabase
+          .from("services")
+          .select("id, professional_id")
+          .eq("business_id", businessId)
+          .not("professional_id", "is", null);
+        return (services || []).map((s) => ({
+          professional_id: s.professional_id,
+          service_id: s.id,
+        }));
+      }
+      throw new Error(error.message);
+    }
+    return data || [];
+  }
+  return [];
+}
+
+async function attachServiceIdsToProfessionals(businessId, professionals) {
+  const links = await listProfessionalServiceLinks(businessId);
+  const byPro = new Map();
+  for (const link of links) {
+    const pid = Number(link.professional_id);
+    const sid = Number(link.service_id);
+    if (!byPro.has(pid)) byPro.set(pid, []);
+    byPro.get(pid).push(sid);
+  }
+  return (professionals || []).map((p) => {
+    const mapped = mapProfessionalRow(p);
+    mapped.serviceIds = byPro.get(Number(mapped.id)) || [];
+    return mapped;
+  });
+}
+
+function parseServiceIds(raw) {
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw.map(Number).filter((n) => Number.isFinite(n) && n > 0))];
+}
+
+function rlsHintProfessionalServices(message) {
+  if (/row-level security|rls/i.test(message || "")) {
+    return (
+      "Supabase bloquea professional_services (RLS). En SQL Editor ejecutá: " +
+      "alter table professional_services disable row level security;"
+    );
+  }
+  return message;
+}
+
+async function syncProfessionalServices(businessId, professionalId, serviceIds) {
+  const ids = parseServiceIds(serviceIds);
+
+  if (USE_SQLITE) {
+    const valid = ids.length
+      ? await dbAll(
+          `SELECT id FROM services WHERE business_id = ? AND id IN (${ids.map(() => "?").join(",")})`,
+          [businessId, ...ids]
+        )
+      : [];
+    const validIds = valid.map((r) => Number(r.id));
+    await dbRun(
+      "DELETE FROM professional_services WHERE business_id = ? AND professional_id = ?",
+      [businessId, professionalId]
+    );
+    for (const sid of validIds) {
+      await dbRun(
+        `INSERT OR IGNORE INTO professional_services (professional_id, service_id, business_id)
+         VALUES (?, ?, ?)`,
+        [professionalId, sid, businessId]
+      );
+      await dbRun(
+        "UPDATE services SET professional_id = ? WHERE id = ? AND business_id = ?",
+        [professionalId, sid, businessId]
+      );
+    }
+    if (validIds.length) {
+      await dbRun(
+        `UPDATE services SET professional_id = NULL
+         WHERE business_id = ? AND professional_id = ?
+           AND id NOT IN (${validIds.map(() => "?").join(",")})`,
+        [businessId, professionalId, ...validIds]
+      );
+    } else {
+      await dbRun(
+        "UPDATE services SET professional_id = NULL WHERE business_id = ? AND professional_id = ?",
+        [businessId, professionalId]
+      );
+    }
+    return validIds;
+  }
+
+  if (USE_SUPABASE) {
+    let validIds = [];
+    if (ids.length) {
+      const { data: valid, error: vErr } = await supabase
+        .from("services")
+        .select("id")
+        .eq("business_id", businessId)
+        .in("id", ids);
+      if (vErr) throw new Error(vErr.message);
+      validIds = (valid || []).map((r) => Number(r.id));
+    }
+
+    const { error: delErr } = await supabase
+      .from("professional_services")
+      .delete()
+      .eq("business_id", businessId)
+      .eq("professional_id", professionalId);
+    if (delErr && !/professional_services|does not exist|relation|schema cache/i.test(delErr.message || "")) {
+      throw new Error(rlsHintProfessionalServices(delErr.message));
+    }
+
+    if (validIds.length && !delErr) {
+      const rows = validIds.map((sid) => ({
+        professional_id: professionalId,
+        service_id: sid,
+        business_id: businessId,
+      }));
+      const { error: insErr } = await supabase.from("professional_services").insert(rows);
+      if (insErr) throw new Error(rlsHintProfessionalServices(insErr.message));
+    }
+
+    // Legacy FK update best-effort
+    await supabase
+      .from("services")
+      .update({ professional_id: null })
+      .eq("business_id", businessId)
+      .eq("professional_id", professionalId);
+    for (const sid of validIds) {
+      await supabase
+        .from("services")
+        .update({ professional_id: professionalId })
+        .eq("id", sid)
+        .eq("business_id", businessId);
+    }
+    return validIds;
+  }
+  return ids;
+}
+
+/** Vincula un servicio a un profesional sin tocar el resto de sus servicios. */
+async function ensureProfessionalServiceLink(businessId, serviceId, professionalId) {
+  if (!Number.isFinite(Number(serviceId)) || !Number.isFinite(Number(professionalId))) return;
+  const sid = Number(serviceId);
+  const pid = Number(professionalId);
+
+  if (USE_SQLITE) {
+    const pro = await dbGet(
+      "SELECT id FROM professionals WHERE id = ? AND business_id = ? LIMIT 1",
+      [pid, businessId]
+    );
+    if (!pro) return;
+    await dbRun(
+      `INSERT OR IGNORE INTO professional_services (professional_id, service_id, business_id)
+       VALUES (?, ?, ?)`,
+      [pid, sid, businessId]
+    );
+    return;
+  }
+
+  if (USE_SUPABASE) {
+    const { data: pro } = await supabase
+      .from("professionals")
+      .select("id")
+      .eq("id", pid)
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (!pro) return;
+    const { error } = await supabase.from("professional_services").upsert(
+      { professional_id: pid, service_id: sid, business_id: businessId },
+      { onConflict: "professional_id,service_id", ignoreDuplicates: true }
+    );
+    if (error && !/professional_services|does not exist|relation|schema cache|duplicate/i.test(error.message || "")) {
+      throw new Error(rlsHintProfessionalServices(error.message));
+    }
+  }
 }
 
 function mapAppointmentRow(row) {
@@ -801,6 +1742,18 @@ async function getBusinessBySlug(slug, { onlyActivo = true } = {}) {
       [row.id]
     );
     const mapped = mapBusinessRow(row, professionals, services, clientPlans);
+    const withLinks = await attachServiceIdsToProfessionals(row.id, professionals);
+    const byId = new Map(withLinks.map((p) => [Number(p.id), p.serviceIds || []]));
+    mapped.professionals = mapped.professionals.map((p) => ({
+      ...p,
+      serviceIds: byId.get(Number(p.id)) || [],
+    }));
+    mapped.services = mapped.services.map((s) => ({
+      ...s,
+      professionalIds: withLinks
+        .filter((p) => (p.serviceIds || []).includes(Number(s.id)))
+        .map((p) => Number(p.id)),
+    }));
     mapped.maxProfessionals = await getMaxProfessionals(mapped.plan);
     return mapped;
   }
@@ -815,6 +1768,18 @@ async function getBusinessBySlug(slug, { onlyActivo = true } = {}) {
       supabase.from("plans").select("*").eq("business_id", row.id).eq("activo", true).order("id"),
     ]);
     const mapped = mapBusinessRow(row, professionals || [], services || [], clientPlans || []);
+    const withLinks = await attachServiceIdsToProfessionals(row.id, professionals || []);
+    const byId = new Map(withLinks.map((p) => [Number(p.id), p.serviceIds || []]));
+    mapped.professionals = mapped.professionals.map((p) => ({
+      ...p,
+      serviceIds: byId.get(Number(p.id)) || [],
+    }));
+    mapped.services = mapped.services.map((s) => ({
+      ...s,
+      professionalIds: withLinks
+        .filter((p) => (p.serviceIds || []).includes(Number(s.id)))
+        .map((p) => Number(p.id)),
+    }));
     mapped.maxProfessionals = await getMaxProfessionals(mapped.plan);
     return mapped;
   }
@@ -824,7 +1789,7 @@ async function getBusinessBySlug(slug, { onlyActivo = true } = {}) {
 async function listPublicBusinesses() {
   if (USE_SQLITE) {
     const rows = await dbAll(
-      `SELECT slug, nombre, logo_url, categoria, ciudad, barrio, color_marca
+      `SELECT slug, nombre, logo_url, categoria, ciudad, barrio, direccion, color_marca
        FROM businesses WHERE estado = 'activo' ORDER BY id ASC`
     );
     return rows.map((r) => ({
@@ -834,13 +1799,14 @@ async function listPublicBusinesses() {
       categoria: r.categoria || "otro",
       ciudad: r.ciudad || null,
       barrio: r.barrio || null,
+      direccion: r.direccion || null,
       colorMarca: r.color_marca || null,
     }));
   }
   if (USE_SUPABASE) {
     const { data, error } = await supabase
       .from("businesses")
-      .select("slug, nombre, logo_url, categoria, ciudad, barrio, color_marca")
+      .select("slug, nombre, logo_url, categoria, ciudad, barrio, direccion, color_marca")
       .eq("estado", "activo")
       .order("id");
     if (error) throw new Error(error.message);
@@ -851,6 +1817,7 @@ async function listPublicBusinesses() {
       categoria: r.categoria || "otro",
       ciudad: r.ciudad || null,
       barrio: r.barrio || null,
+      direccion: r.direccion || null,
       colorMarca: r.color_marca || null,
     }));
   }
@@ -902,7 +1869,7 @@ async function seedPlatformPlans() {
   const rows = [
     { id: "inicial", nombre: "Inicial", limite_profesionales: 1, precio: 20000 },
     { id: "profesional", nombre: "Profesional", limite_profesionales: 3, precio: 35000 },
-    { id: "max", nombre: "Max", limite_profesionales: null, precio: 50000 },
+    { id: "max", nombre: "Max", limite_profesionales: null, precio: 60000 },
   ];
   if (USE_SQLITE) {
     for (const p of rows) {
@@ -921,6 +1888,16 @@ async function seedPlatformPlans() {
       );
     }
     await dbRun("DELETE FROM platform_plans WHERE id = 'estandar'");
+    for (const [key, value] of [
+      ["transfer_alias", SUBSCRIPTION_ALIAS_ENV || ""],
+      ["transfer_cbu", SUBSCRIPTION_CBU_ENV || ""],
+      ["transfer_titular", SUBSCRIPTION_TITULAR_ENV || ""],
+    ]) {
+      await dbRun(
+        "INSERT INTO platform_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
+        [key, value]
+      );
+    }
     platformPlansCache = null;
     return;
   }
@@ -939,6 +1916,15 @@ async function seedPlatformPlans() {
     }
     await supabase.from("platform_plans").delete().eq("id", "estandar");
     platformPlansCache = null;
+    // Intenta crear claves de transferencia si la tabla existe
+    await supabase.from("platform_settings").upsert(
+      [
+        { key: "transfer_alias", value: SUBSCRIPTION_ALIAS_ENV || "" },
+        { key: "transfer_cbu", value: SUBSCRIPTION_CBU_ENV || "" },
+        { key: "transfer_titular", value: SUBSCRIPTION_TITULAR_ENV || "" },
+      ],
+      { onConflict: "key", ignoreDuplicates: true }
+    );
   }
 }
 
@@ -1191,10 +2177,26 @@ async function getServiceById(businessId, serviceId) {
   return null;
 }
 
-function resolveProfessionalForBooking(business, requestedProfessionalId) {
-  const activePros = (business.professionals || []).filter((p) => p.activo);
+function resolveProfessionalForBooking(business, requestedProfessionalId, serviceId = null) {
+  let activePros = (business.professionals || []).filter((p) => p.activo !== false);
+  const sid = serviceId != null && serviceId !== "" ? Number(serviceId) : null;
+  if (Number.isFinite(sid)) {
+    const linked = activePros.filter((p) => {
+      const ids = Array.isArray(p.serviceIds) ? p.serviceIds.map(Number) : [];
+      return ids.includes(sid);
+    });
+    const svc = (business.services || []).find((s) => Number(s.id) === sid);
+    const fromSvc = Array.isArray(svc?.professionalIds) ? svc.professionalIds.map(Number) : [];
+    if (linked.length) {
+      activePros = linked;
+    } else if (fromSvc.length) {
+      activePros = activePros.filter((p) => fromSvc.includes(Number(p.id)));
+    } else if (svc?.professionalId != null) {
+      activePros = activePros.filter((p) => Number(p.id) === Number(svc.professionalId));
+    }
+  }
   if (activePros.length === 0) {
-    return { professionalId: null, error: null };
+    return { professionalId: null, error: Number.isFinite(sid) ? "Este servicio no tiene profesional asignado." : null };
   }
   if (activePros.length === 1) {
     return { professionalId: activePros[0].id, error: null };
@@ -1204,7 +2206,7 @@ function resolveProfessionalForBooking(business, requestedProfessionalId) {
   }
   const pid = Number(requestedProfessionalId);
   if (!activePros.some((p) => Number(p.id) === pid)) {
-    return { professionalId: null, error: "Profesional inválido." };
+    return { professionalId: null, error: "Ese profesional no atiende este servicio." };
   }
   return { professionalId: pid, error: null };
 }
@@ -1262,9 +2264,26 @@ app.use((_req, res, next) => {
   next();
 });
 
+app.use("/api", (_req, res, next) => {
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate");
+  res.setHeader("Pragma", "no-cache");
+  next();
+});
+
 app.use(express.json());
 app.use("/uploads", express.static(UPLOADS_DIR));
-app.use(express.static(path.join(ROOT_DIR, "public"), { index: false }));
+app.use(express.static(path.join(ROOT_DIR, "public"), {
+  index: false,
+  etag: true,
+  maxAge: IS_VERCEL ? "5m" : 0,
+  setHeaders(res, filePath) {
+    if (/\.(html)$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "no-store");
+    } else if (/\.(js|css)$/i.test(filePath)) {
+      res.setHeader("Cache-Control", "public, max-age=60, must-revalidate");
+    }
+  },
+}));
 
 const dbReady = initDb()
   .then(() => seedDefaultBusiness())
@@ -1296,6 +2315,22 @@ async function handleListNegocios(_req, res, next) {
 app.get("/api/negocios", handleListNegocios);
 app.get("/api/clubs", handleListNegocios);
 
+app.get("/api/localidades", async (_req, res, next) => {
+  try {
+    res.json(await listLocalidades({ soloActivas: true }));
+  } catch (error) { next(error); }
+});
+
+app.get("/api/maps-config", (_req, res) => {
+  const apiKey = String(process.env.GOOGLE_MAPS_API_KEY || "").trim();
+  res.json({
+    enabled: Boolean(apiKey),
+    apiKey: apiKey || null,
+    region: "AR",
+    language: "es",
+  });
+});
+
 // ============================================================
 // API /api/:slug/...
 // ============================================================
@@ -1309,23 +2344,49 @@ app.get("/api/:slug/config", resolveBusiness, async (req, res, next) => {
       categoria: b.categoria,
       ciudad: b.ciudad,
       barrio: b.barrio,
+      direccion: b.direccion || null,
       colorMarca: b.colorMarca,
       logoUrl: b.logoUrl,
       horaInicio: b.horaInicio,
       horaFin: b.horaFin,
+      horaInicio2: b.horaInicio2,
+      horaFin2: b.horaFin2,
+      diasAtencion: b.diasAtencion || [1, 2, 3, 4, 5],
       precio: b.precio,
       plan: b.plan,
       maxProfessionals: b.maxProfessionals,
       transferencia: b.transferencia,
       whatsappNumero: b.whatsapp,
-      services: b.services,
+      services: (b.services || []).map((s) => ({
+        id: s.id,
+        nombre: s.nombre,
+        descripcion: s.descripcion,
+        duracionMin: s.duracionMin,
+        precio: s.precio,
+        sena: s.sena,
+        categoria: s.categoria,
+        professionalId: s.professionalId ?? null,
+        professionalIds: Array.isArray(s.professionalIds)
+          ? s.professionalIds
+          : (s.professionalId != null ? [Number(s.professionalId)] : []),
+      })),
       plans: b.plans,
       requiereProfesional: activePros.length > 1,
-      professionals: activePros.length > 1
-        ? activePros.map((p) => ({ id: p.id, nombre: p.nombre }))
-        : activePros.length === 1
-          ? [{ id: activePros[0].id, nombre: activePros[0].nombre }]
-          : [],
+      professionals: activePros.map((p) => ({
+        id: p.id,
+        nombre: p.nombre,
+        especialidad: p.especialidad || null,
+        matricula: p.matricula || null,
+        bio: p.bio || null,
+        fotoUrl: p.fotoUrl || null,
+        serviceIds: Array.isArray(p.serviceIds) ? p.serviceIds : [],
+        horarioPropio: Boolean(p.horarioPropio),
+        horaInicio: p.horaInicio ?? null,
+        horaFin: p.horaFin ?? null,
+        horaInicio2: p.horaInicio2 ?? null,
+        horaFin2: p.horaFin2 ?? null,
+        diasAtencion: Array.isArray(p.diasAtencion) ? p.diasAtencion : null,
+      })),
       professionalsCount: activePros.length,
       slotStepMin: SLOT_STEP_MIN,
     });
@@ -1350,21 +2411,38 @@ app.get("/api/:slug/disponibilidad", resolveBusiness, async (req, res, next) => 
 
     const { professionalId, error: proError } = resolveProfessionalForBooking(
       req.business,
-      req.query.professionalId
+      req.query.professionalId,
+      serviceId
     );
     if (proError) return res.status(400).json({ error: proError });
+
+    if (!isBusinessOpenOnDate(req.business, fecha, professionalId)) {
+      return res.json({
+        fecha,
+        serviceId,
+        professionalId,
+        duracionMin: Number(service.duracion_min),
+        slots: [],
+        cerrado: true,
+      });
+    }
 
     const [appointments, bloqueos] = await Promise.all([
       readAppointments({ businessId: req.business.id, fecha }),
       readBloqueos({ businessId: req.business.id, fecha, professionalId: professionalId ?? undefined }),
     ]);
 
+    const excludeAppointmentId = req.query.excludeAppointmentId
+      ? Number(req.query.excludeAppointmentId)
+      : null;
+
     const slots = generateAvailableSlots(
       service.duracion_min,
       appointments,
       bloqueos,
       professionalId,
-      req.business
+      req.business,
+      { excludeAppointmentId: Number.isFinite(excludeAppointmentId) ? excludeAppointmentId : null }
     );
 
     res.json({
@@ -1468,16 +2546,20 @@ app.post("/api/:slug/reservas", resolveBusiness, upload.single("comprobante"), a
 
     const { professionalId, error: proError } = resolveProfessionalForBooking(
       req.business,
-      req.body?.professionalId
+      req.body?.professionalId,
+      serviceId
     );
     if (proError) return res.status(400).json({ error: proError });
+
+    if (!isBusinessOpenOnDate(req.business, fecha, professionalId)) {
+      return res.status(400).json({ error: "Ese día no hay atención para el profesional elegido." });
+    }
 
     const duracionMin = Number(service.duracion_min);
     const startMin = timeToMinutes(horaInicio);
     if (startMin == null) return res.status(400).json({ error: "Horario inválido." });
     const endMin = startMin + duracionMin;
-    const openEnd = req.business.horaFin * 60;
-    if (endMin > openEnd) {
+    if (!fitsBusinessOpenRange(startMin, endMin, req.business, professionalId)) {
       return res.status(400).json({ error: "El turno supera el horario de cierre." });
     }
     const horaFin = minutesToTime(endMin);
@@ -1519,7 +2601,7 @@ app.post("/api/:slug/reservas", resolveBusiness, upload.single("comprobante"), a
         hora_inicio: horaInicio,
         hora_fin: horaFin,
         duracion_min: duracionMin,
-        estado: "pendiente",
+        estado: "confirmada",
         cancel_token: cancelToken,
         comprobante_nombre_original: req.file.originalname,
         comprobante_archivo: storagePath,
@@ -1537,7 +2619,7 @@ app.post("/api/:slug/reservas", resolveBusiness, upload.single("comprobante"), a
            hora_inicio, hora_fin, duracion_min, estado, cancel_token,
            comprobante_nombre_original, comprobante_archivo, comprobante_mimetype,
            comprobante_size, creado_en
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?, ?, ?)`,
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'confirmada', ?, ?, ?, ?, ?, ?)`,
         [
           businessId, serviceId, professionalId, nombre, telefono, fecha,
           horaInicio, horaFin, duracionMin, cancelToken,
@@ -1547,13 +2629,29 @@ app.post("/api/:slug/reservas", resolveBusiness, upload.single("comprobante"), a
       appointmentId = insertResult.lastID;
     }
 
+    // Ingreso automático en caja (seña / pago del turno)
+    try {
+      await createIngresoTurnoMovimiento({
+        businessId,
+        appointmentId,
+        nombre,
+        serviceNombre: service.nombre,
+        fecha,
+        horaInicio,
+        monto: appointmentPaymentAmount(service, req.business),
+        creadoEn,
+      });
+    } catch (movErr) {
+      console.warn("[movimientos] ingreso de turno no creado:", movErr.message || movErr);
+    }
+
     const comprobanteUrl = comprobantePublicUrl(req, comprobanteArchivo);
     const serviceNombre = service.nombre;
     const proNombre = professionalId
       ? (req.business.professionals.find((p) => Number(p.id) === Number(professionalId))?.nombre || "")
       : "";
     const waText = [
-      `Hola! Quiero confirmar mi turno en ${req.business.nombre}.`,
+      `Hola! Reservé un turno en ${req.business.nombre}.`,
       `Nombre: ${nombre}`,
       `Servicio: ${serviceNombre}`,
       proNombre ? `Profesional: ${proNombre}` : null,
@@ -1572,7 +2670,7 @@ app.post("/api/:slug/reservas", resolveBusiness, upload.single("comprobante"), a
       horaInicio,
       horaFin,
       duracionMin,
-      estado: "pendiente",
+      estado: "confirmada",
       cancelToken,
       comprobante: {
         nombreOriginal: req.file.originalname,
@@ -1657,12 +2755,202 @@ app.get("/api/:slug/admin/reservas", resolveBusiness, requireAdmin, async (req, 
       fecha: fecha || undefined,
       includeCanceladas: true,
     });
-    res.json(appointments.map((a) => ({
-      ...a,
-      comprobanteUrl: USE_SUPABASE
-        ? supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(a.comprobante.archivo).data.publicUrl
-        : `/uploads/${a.comprobante.archivo}`,
-    })));
+    res.json(appointments.map((a) => {
+      const archivo = a.comprobante?.archivo;
+      const isManual = !archivo || archivo === "manual" || archivo === "-";
+      return {
+        ...a,
+        manual: isManual,
+        comprobanteUrl: isManual
+          ? null
+          : USE_SUPABASE
+            ? supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(archivo).data.publicUrl
+            : `/uploads/${archivo}`,
+      };
+    }));
+  } catch (error) { next(error); }
+});
+
+/** Snapshot liviano para panel en tiempo real (una sola request). */
+app.get("/api/:slug/admin/live", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    await purgeExpiredAppointments(req.business.id);
+    const fecha = (req.query.fecha || "").trim();
+    const [appointments, bloqueos, bloqueosRecurrentes, movimientosRaw] = await Promise.all([
+      readAppointments({
+        businessId: req.business.id,
+        fecha: fecha || undefined,
+        includeCanceladas: true,
+      }),
+      readBloqueos({ businessId: req.business.id }),
+      readBloqueosRecurrentes({ businessId: req.business.id }),
+      listMovimientosRaw(req.business.id),
+    ]);
+
+    const reservas = appointments.map((a) => {
+      const archivo = a.comprobante?.archivo;
+      const isManual = !archivo || archivo === "manual" || archivo === "-";
+      return {
+        ...a,
+        manual: isManual,
+        comprobanteUrl: isManual
+          ? null
+          : USE_SUPABASE
+            ? supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(archivo).data.publicUrl
+            : `/uploads/${archivo}`,
+      };
+    });
+
+    res.json({
+      reservas,
+      bloqueos,
+      bloqueosRecurrentes,
+      movimientos: (movimientosRaw || []).map(mapMovimientoRow),
+      serverTime: new Date().toISOString(),
+    });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/:slug/admin/reservas", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    const nombre = String(req.body?.nombre || "").trim();
+    const telefono = String(req.body?.telefono || "").replace(/\D/g, "");
+    const fecha = String(req.body?.fecha || "").trim();
+    const horaInicio = String(req.body?.horaInicio || req.body?.horario || "").trim();
+    const serviceId = Number(req.body?.serviceId);
+    const estadoRaw = String(req.body?.estado || "confirmada").trim().toLowerCase();
+    const estado = ESTADOS_TURNO.has(estadoRaw) && estadoRaw !== "cancelada" ? estadoRaw : "confirmada";
+
+    if (!nombre || nombre.length < 2) return res.status(400).json({ error: "El nombre es obligatorio." });
+    if (nombre.length > 100) return res.status(400).json({ error: "El nombre no puede superar 100 caracteres." });
+    if (!telefono || telefono.length < 6 || telefono.length > 15) {
+      return res.status(400).json({ error: "Teléfono inválido (solo números)." });
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return res.status(400).json({ error: "Fecha inválida." });
+    if (!/^\d{2}:\d{2}$/.test(horaInicio)) return res.status(400).json({ error: "Horario inválido." });
+    if (!Number.isFinite(serviceId)) return res.status(400).json({ error: "Servicio inválido." });
+
+    const service = await getServiceById(req.business.id, serviceId);
+    if (!service || !service.activo) return res.status(404).json({ error: "Servicio no encontrado." });
+
+    const { professionalId, error: proError } = resolveProfessionalForBooking(
+      req.business,
+      req.body?.professionalId,
+      serviceId
+    );
+    if (proError) return res.status(400).json({ error: proError });
+
+    if (!isBusinessOpenOnDate(req.business, fecha, professionalId)) {
+      return res.status(400).json({ error: "Ese día no hay atención para el profesional elegido." });
+    }
+
+    const duracionMin = Number(service.duracion_min);
+    if (!Number.isFinite(duracionMin) || duracionMin <= 0) {
+      return res.status(400).json({ error: "Duración de servicio inválida." });
+    }
+    const startMin = timeToMinutes(horaInicio);
+    if (startMin == null) return res.status(400).json({ error: "Horario inválido." });
+    if (!fitsBusinessOpenRange(startMin, startMin + duracionMin, req.business, professionalId)) {
+      return res.status(400).json({ error: "El turno supera el horario de cierre." });
+    }
+    const horaFin = minutesToTime(startMin + duracionMin);
+
+    const [appointments, bloqueos] = await Promise.all([
+      readAppointments({ businessId: req.business.id, fecha }),
+      readBloqueos({ businessId: req.business.id, fecha, professionalId: professionalId ?? undefined }),
+    ]);
+    const available = generateAvailableSlots(
+      duracionMin,
+      appointments,
+      bloqueos,
+      professionalId,
+      req.business
+    );
+    if (!available.includes(horaInicio)) {
+      return res.status(409).json({ error: "Ese horario no está disponible (turno o bloqueo)." });
+    }
+
+    const cancelToken = generateCancelToken();
+    const creadoEn = new Date().toISOString();
+    const businessId = req.business.id;
+    const comprobante = {
+      nombreOriginal: "manual",
+      archivo: "manual",
+      mimetype: "text/plain",
+      size: 0,
+    };
+
+    let appointmentId;
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase.from("appointments").insert({
+        business_id: businessId,
+        service_id: serviceId,
+        professional_id: professionalId,
+        nombre,
+        telefono,
+        fecha,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        duracion_min: duracionMin,
+        estado,
+        cancel_token: cancelToken,
+        comprobante_nombre_original: comprobante.nombreOriginal,
+        comprobante_archivo: comprobante.archivo,
+        comprobante_mimetype: comprobante.mimetype,
+        comprobante_size: comprobante.size,
+        creado_en: creadoEn,
+      }).select().single();
+      if (error) throw new Error(error.message);
+      appointmentId = data.id;
+    } else {
+      const insertResult = await dbRun(
+        `INSERT INTO appointments (
+           business_id, service_id, professional_id, nombre, telefono, fecha,
+           hora_inicio, hora_fin, duracion_min, estado, cancel_token,
+           comprobante_nombre_original, comprobante_archivo, comprobante_mimetype,
+           comprobante_size, creado_en
+         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          businessId, serviceId, professionalId, nombre, telefono, fecha,
+          horaInicio, horaFin, duracionMin, estado, cancelToken,
+          comprobante.nombreOriginal, comprobante.archivo, comprobante.mimetype, comprobante.size, creadoEn,
+        ]
+      );
+      appointmentId = insertResult.lastID;
+    }
+
+    try {
+      await createIngresoTurnoMovimiento({
+        businessId,
+        appointmentId,
+        nombre,
+        serviceNombre: service.nombre,
+        fecha,
+        horaInicio,
+        monto: appointmentPaymentAmount(mapServiceRow(service), req.business),
+        creadoEn,
+      });
+    } catch (movErr) {
+      console.warn("[movimientos] ingreso manual no creado:", movErr.message || movErr);
+    }
+
+    return res.status(201).json({
+      id: appointmentId,
+      businessId,
+      serviceId,
+      professionalId,
+      nombre,
+      telefono,
+      fecha,
+      horaInicio,
+      horaFin,
+      duracionMin,
+      estado,
+      cancelToken,
+      manual: true,
+      comprobanteUrl: null,
+      creadoEn,
+    });
   } catch (error) { next(error); }
 });
 
@@ -1673,16 +2961,19 @@ app.delete("/api/:slug/admin/reservas/:id", resolveBusiness, requireAdmin, async
     const eliminada = appointments.find((a) => Number(a.id) === id);
     if (!eliminada) return res.status(404).json({ error: "Turno no encontrado." });
 
+    const archivo = eliminada.comprobante?.archivo;
+    const isManual = !archivo || archivo === "manual" || archivo === "-";
+
     if (USE_SUPABASE) {
-      if (eliminada.comprobante?.archivo) {
-        await supabase.storage.from(SUPABASE_BUCKET).remove([eliminada.comprobante.archivo]);
+      if (!isManual) {
+        await supabase.storage.from(SUPABASE_BUCKET).remove([archivo]);
       }
       const { error } = await supabase.from("appointments").delete().eq("id", id).eq("business_id", req.business.id);
       if (error) throw new Error(error.message);
     } else {
       await dbRun("DELETE FROM appointments WHERE id = ? AND business_id = ?", [id, req.business.id]);
-      if (eliminada.comprobante?.archivo) {
-        fs.unlink(path.join(UPLOADS_DIR, eliminada.comprobante.archivo)).catch(() => {});
+      if (!isManual && archivo) {
+        fs.unlink(path.join(UPLOADS_DIR, archivo)).catch(() => {});
       }
     }
     return res.json({ ok: true, appointment: eliminada });
@@ -1707,6 +2998,85 @@ app.patch("/api/:slug/admin/reservas/:id/estado", resolveBusiness, requireAdmin,
     );
     if (!result.changes) return res.status(404).json({ error: "Turno no encontrado." });
     return res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+app.patch("/api/:slug/admin/reservas/:id/horario", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const fecha = String(req.body?.fecha || "").trim();
+    const horaInicio = String(req.body?.horaInicio || req.body?.horario || "").trim();
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return res.status(400).json({ error: "Fecha inválida." });
+    if (!/^\d{2}:\d{2}$/.test(horaInicio)) return res.status(400).json({ error: "Horario inválido." });
+
+    let appt;
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase.from("appointments").select("*")
+        .eq("id", id).eq("business_id", req.business.id).maybeSingle();
+      if (error) throw new Error(error.message);
+      appt = data ? mapAppointmentRow(data) : null;
+    } else {
+      const row = await dbGet(
+        "SELECT * FROM appointments WHERE id = ? AND business_id = ? LIMIT 1",
+        [id, req.business.id]
+      );
+      appt = row ? mapAppointmentRow(row) : null;
+    }
+    if (!appt) return res.status(404).json({ error: "Turno no encontrado." });
+    if (appt.estado === "cancelada") {
+      return res.status(400).json({ error: "No se puede modificar un turno cancelado." });
+    }
+
+    const service = await getServiceById(req.business.id, appt.serviceId);
+    if (!service || !service.activo) return res.status(404).json({ error: "Servicio no encontrado." });
+
+    const professionalId = appt.professionalId ?? null;
+    if (!isBusinessOpenOnDate(req.business, fecha, professionalId)) {
+      return res.status(400).json({ error: "Ese día no hay atención para el profesional del turno." });
+    }
+
+    const duracionMin = Number(service.duracion_min) || Number(appt.duracionMin) || 30;
+    const startMin = timeToMinutes(horaInicio);
+    if (startMin == null) return res.status(400).json({ error: "Horario inválido." });
+    const endMin = startMin + duracionMin;
+    if (!fitsBusinessOpenRange(startMin, endMin, req.business, professionalId)) {
+      return res.status(400).json({ error: "El turno supera el horario de cierre." });
+    }
+    const horaFin = minutesToTime(endMin);
+
+    const [appointments, bloqueos] = await Promise.all([
+      readAppointments({ businessId: req.business.id, fecha }),
+      readBloqueos({ businessId: req.business.id, fecha, professionalId: professionalId ?? undefined }),
+    ]);
+    const available = generateAvailableSlots(
+      duracionMin,
+      appointments,
+      bloqueos,
+      professionalId,
+      req.business,
+      { excludeAppointmentId: id }
+    );
+    if (!available.includes(horaInicio)) {
+      return res.status(409).json({ error: "Ese horario no está disponible. Elegí otro." });
+    }
+
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from("appointments").update({
+        fecha,
+        hora_inicio: horaInicio,
+        hora_fin: horaFin,
+        duracion_min: duracionMin,
+      }).eq("id", id).eq("business_id", req.business.id);
+      if (error) throw new Error(error.message);
+    } else {
+      await dbRun(
+        `UPDATE appointments SET fecha = ?, hora_inicio = ?, hora_fin = ?, duracion_min = ?
+         WHERE id = ? AND business_id = ?`,
+        [fecha, horaInicio, horaFin, duracionMin, id, req.business.id]
+      );
+    }
+    return res.json({ ok: true, fecha, horaInicio, horaFin });
   } catch (error) { next(error); }
 });
 
@@ -1746,6 +3116,30 @@ app.post("/api/:slug/admin/bloqueos-recurrentes", resolveBusiness, requireAdmin,
     }
     if (!diaCompleto && (!horarioDesde || !horarioHasta)) {
       return res.status(400).json({ error: "Indicá horario desde y hasta." });
+    }
+
+    const propuesto = {
+      professionalId,
+      diaCompleto,
+      horarioDesde: diaCompleto ? null : horarioDesde,
+      horarioHasta: diaCompleto ? null : horarioHasta,
+    };
+
+    const appointments = await readAppointments({
+      businessId: req.business.id,
+      includeCanceladas: false,
+    });
+    const now = new Date();
+    const tz = now.getTimezoneOffset() * 60000;
+    const todayStr = new Date(now - tz).toISOString().split("T")[0];
+    const conflictos = appointments.filter((a) => {
+      if (!a.fecha || a.fecha < todayStr) return false;
+      const [y, m, d] = String(a.fecha).split("-").map(Number);
+      if (new Date(y, m - 1, d).getDay() !== diaSemana) return false;
+      return appointmentOverlapsBloqueo(a, propuesto, req.business);
+    });
+    if (conflictos.length) {
+      return res.status(409).json({ error: conflictErrorBloqueoVsTurnos(conflictos) });
     }
 
     const creadoEn = new Date().toISOString();
@@ -1846,6 +3240,18 @@ app.post("/api/:slug/admin/bloqueos", resolveBusiness, requireAdmin, async (req,
     });
     if (yaExiste) return res.status(409).json({ error: "Ese bloqueo se superpone con otro ya existente." });
 
+    const appointments = await readAppointments({
+      businessId: req.business.id,
+      fecha,
+      includeCanceladas: false,
+    });
+    const conflictos = appointments.filter((a) =>
+      appointmentOverlapsBloqueo(a, nuevoBloqueo, req.business)
+    );
+    if (conflictos.length) {
+      return res.status(409).json({ error: conflictErrorBloqueoVsTurnos(conflictos) });
+    }
+
     const creadoEn = new Date().toISOString();
     let bloqueoId;
     if (USE_SUPABASE) {
@@ -1916,20 +3322,26 @@ app.get("/api/:slug/admin/professionals", resolveBusiness, requireAdmin, async (
       const { data, error } = await supabase.from("professionals").select("*")
         .eq("business_id", req.business.id).order("id");
       if (error) throw new Error(error.message);
-      return res.json((data || []).map(mapProfessionalRow));
+      return res.json(await attachServiceIdsToProfessionals(req.business.id, data || []));
     }
     const rows = await dbAll(
       "SELECT * FROM professionals WHERE business_id = ? ORDER BY id ASC",
       [req.business.id]
     );
-    return res.json(rows.map(mapProfessionalRow));
+    return res.json(await attachServiceIdsToProfessionals(req.business.id, rows));
   } catch (error) { next(error); }
 });
 
 app.post("/api/:slug/admin/professionals", resolveBusiness, requireAdmin, async (req, res, next) => {
   try {
-    const nombre = (req.body?.nombre || "").trim();
+    const { nombre, especialidad, matricula, bio } = parseProfessionalProfile(req.body);
+    const schedule = parseProfessionalSchedule(req.body);
+    const serviceIds = parseServiceIds(req.body?.serviceIds);
     if (!nombre) return res.status(400).json({ error: "El nombre del profesional es obligatorio." });
+    if (nombre.length > 100) return res.status(400).json({ error: "El nombre es demasiado largo." });
+    if (!serviceIds.length) {
+      return res.status(400).json({ error: "Seleccioná al menos un servicio para este profesional." });
+    }
 
     const maxPros = await getMaxProfessionals(req.business.plan);
     const planInfo = await getPlanInfo(req.business.plan);
@@ -1937,15 +3349,28 @@ app.post("/api/:slug/admin/professionals", resolveBusiness, requireAdmin, async 
     if (USE_SUPABASE) {
       const { count } = await supabase.from("professionals").select("id", { count: "exact", head: true })
         .eq("business_id", req.business.id).eq("activo", true);
-    if (Number.isFinite(maxPros) && (count || 0) >= maxPros) {
+      if (Number.isFinite(maxPros) && (count || 0) >= maxPros) {
         return res.status(403).json({
           error: `Tu plan ${planInfo.nombre} permite hasta ${maxPros} profesional${maxPros === 1 ? "" : "es"}. Mejorá tu plan para agregar más.`,
         });
       }
       const { data, error } = await supabase.from("professionals")
-        .insert({ business_id: req.business.id, nombre, activo: true }).select().single();
+        .insert({
+          business_id: req.business.id,
+          nombre,
+          especialidad,
+          matricula,
+          bio,
+          activo: true,
+          hora_inicio: schedule.horaInicio,
+          hora_fin: schedule.horaFin,
+          hora_inicio_2: schedule.horaInicio2,
+          hora_fin_2: schedule.horaFin2,
+          dias_atencion: schedule.diasAtencionCsv,
+        }).select().single();
       if (error) throw new Error(error.message);
-      return res.status(201).json(mapProfessionalRow(data));
+      const linked = await syncProfessionalServices(req.business.id, data.id, serviceIds);
+      return res.status(201).json({ ...mapProfessionalRow(data), serviceIds: linked });
     }
     const countRow = await dbGet(
       "SELECT COUNT(*) as cnt FROM professionals WHERE business_id = ? AND activo = 1",
@@ -1957,40 +3382,128 @@ app.post("/api/:slug/admin/professionals", resolveBusiness, requireAdmin, async 
       });
     }
     const result = await dbRun(
-      "INSERT INTO professionals (business_id, nombre, activo) VALUES (?, ?, 1)",
-      [req.business.id, nombre]
+      `INSERT INTO professionals (
+         business_id, nombre, especialidad, matricula, bio, activo,
+         hora_inicio, hora_fin, hora_inicio_2, hora_fin_2, dias_atencion
+       ) VALUES (?, ?, ?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+      [
+        req.business.id, nombre, especialidad, matricula, bio,
+        schedule.horaInicio, schedule.horaFin, schedule.horaInicio2, schedule.horaFin2,
+        schedule.diasAtencionCsv,
+      ]
     );
-    return res.status(201).json({ id: result.lastID, businessId: req.business.id, nombre, activo: true });
-  } catch (error) { next(error); }
+    const linked = await syncProfessionalServices(req.business.id, result.lastID, serviceIds);
+    return res.status(201).json({
+      id: result.lastID,
+      businessId: req.business.id,
+      nombre,
+      especialidad,
+      matricula,
+      bio,
+      fotoUrl: null,
+      activo: true,
+      horarioPropio: schedule.horarioPropio,
+      horaInicio: schedule.horaInicio,
+      horaFin: schedule.horaFin,
+      horaInicio2: schedule.horaInicio2,
+      horaFin2: schedule.horaFin2,
+      diasAtencion: schedule.diasAtencionCsv ? parseDiasAtencion(schedule.diasAtencionCsv) : null,
+      serviceIds: linked,
+    });
+  } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
+    next(error);
+  }
 });
 
 app.put("/api/:slug/admin/professionals/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
-    const nombre = (req.body?.nombre || "").trim();
+    const { nombre, especialidad, matricula, bio } = parseProfessionalProfile(req.body);
+    const hasSchedule = Object.prototype.hasOwnProperty.call(req.body || {}, "horarioPropio");
+    const schedule = hasSchedule ? parseProfessionalSchedule(req.body) : null;
     const activo = req.body?.activo;
+    const hasServiceIds = Array.isArray(req.body?.serviceIds);
+    const serviceIds = hasServiceIds ? parseServiceIds(req.body.serviceIds) : null;
     if (!nombre) return res.status(400).json({ error: "El nombre es obligatorio." });
+    if (nombre.length > 100) return res.status(400).json({ error: "El nombre es demasiado largo." });
+    if (hasServiceIds && !serviceIds.length && activo !== false) {
+      return res.status(400).json({ error: "Seleccioná al menos un servicio para este profesional." });
+    }
 
     if (USE_SUPABASE) {
-      const patch = { nombre };
+      const patch = { nombre, especialidad, matricula, bio };
       if (typeof activo === "boolean") patch.activo = activo;
+      if (schedule) {
+        patch.hora_inicio = schedule.horaInicio;
+        patch.hora_fin = schedule.horaFin;
+        patch.hora_inicio_2 = schedule.horaInicio2;
+        patch.hora_fin_2 = schedule.horaFin2;
+        patch.dias_atencion = schedule.diasAtencionCsv;
+      }
       const { error } = await supabase.from("professionals").update(patch)
         .eq("id", id).eq("business_id", req.business.id);
       if (error) throw new Error(error.message);
+      if (hasServiceIds) await syncProfessionalServices(req.business.id, id, serviceIds);
       return res.json({ ok: true });
     }
-    if (typeof activo === "boolean") {
+    if (schedule) {
       await dbRun(
-        "UPDATE professionals SET nombre = ?, activo = ? WHERE id = ? AND business_id = ?",
-        [nombre, activo ? 1 : 0, id, req.business.id]
+        `UPDATE professionals SET nombre = ?, especialidad = ?, matricula = ?, bio = ?,
+           hora_inicio = ?, hora_fin = ?, hora_inicio_2 = ?, hora_fin_2 = ?, dias_atencion = ?,
+           activo = COALESCE(?, activo)
+         WHERE id = ? AND business_id = ?`,
+        [
+          nombre, especialidad, matricula, bio,
+          schedule.horaInicio, schedule.horaFin, schedule.horaInicio2, schedule.horaFin2,
+          schedule.diasAtencionCsv,
+          typeof activo === "boolean" ? (activo ? 1 : 0) : null,
+          id, req.business.id,
+        ]
+      );
+    } else if (typeof activo === "boolean") {
+      await dbRun(
+        `UPDATE professionals SET nombre = ?, especialidad = ?, matricula = ?, bio = ?, activo = ?
+         WHERE id = ? AND business_id = ?`,
+        [nombre, especialidad, matricula, bio, activo ? 1 : 0, id, req.business.id]
       );
     } else {
       await dbRun(
-        "UPDATE professionals SET nombre = ? WHERE id = ? AND business_id = ?",
-        [nombre, id, req.business.id]
+        `UPDATE professionals SET nombre = ?, especialidad = ?, matricula = ?, bio = ?
+         WHERE id = ? AND business_id = ?`,
+        [nombre, especialidad, matricula, bio, id, req.business.id]
       );
     }
+    if (hasServiceIds) await syncProfessionalServices(req.business.id, id, serviceIds);
     return res.json({ ok: true });
+  } catch (error) {
+    if (error.status === 400) return res.status(400).json({ error: error.message });
+    next(error);
+  }
+});
+
+app.patch("/api/:slug/admin/professionals/:id/foto", resolveBusiness, requireAdmin, logoUpload.single("foto"), async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+    if (!req.file) return res.status(400).json({ error: "No se recibió imagen." });
+    const validMagic = await validateFileMagicBytes(req.file);
+    if (!validMagic) return res.status(400).json({ error: "Imagen inválida." });
+
+    if (USE_SUPABASE) {
+      const { data: pro } = await supabase.from("professionals").select("id")
+        .eq("id", id).eq("business_id", req.business.id).maybeSingle();
+      if (!pro) return res.status(404).json({ error: "Profesional no encontrado." });
+    } else {
+      const pro = await dbGet(
+        "SELECT id FROM professionals WHERE id = ? AND business_id = ? LIMIT 1",
+        [id, req.business.id]
+      );
+      if (!pro) return res.status(404).json({ error: "Profesional no encontrado." });
+    }
+
+    const fotoUrl = await uploadProfessionalFotoFile(req.business.id, id, req.file);
+    return res.json({ ok: true, fotoUrl });
   } catch (error) { next(error); }
 });
 
@@ -2048,6 +3561,7 @@ app.post("/api/:slug/admin/services", resolveBusiness, requireAdmin, async (req,
     const descripcion = (req.body?.descripcion || "").trim();
     const duracionMin = parseInt(req.body?.duracionMin, 10);
     const precio = String(req.body?.precio ?? "0").trim();
+    const sena = String(req.body?.sena ?? "0").trim();
     const categoria = (req.body?.categoria || "").trim() || null;
     const professionalId = req.body?.professionalId != null && req.body.professionalId !== ""
       ? Number(req.body.professionalId)
@@ -2061,19 +3575,21 @@ app.post("/api/:slug/admin/services", resolveBusiness, requireAdmin, async (req,
     if (USE_SUPABASE) {
       const { data, error } = await supabase.from("services").insert({
         business_id: req.business.id, nombre, descripcion, duracion_min: duracionMin,
-        precio, categoria, professional_id: professionalId, activo: true,
+        precio, sena, categoria, professional_id: professionalId, activo: true,
       }).select().single();
       if (error) throw new Error(error.message);
+      if (professionalId) await ensureProfessionalServiceLink(req.business.id, data.id, professionalId);
       return res.status(201).json(mapServiceRow(data));
     }
     const result = await dbRun(
-      `INSERT INTO services (business_id, nombre, descripcion, duracion_min, precio, categoria, professional_id, activo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-      [req.business.id, nombre, descripcion, duracionMin, precio, categoria, professionalId]
+      `INSERT INTO services (business_id, nombre, descripcion, duracion_min, precio, sena, categoria, professional_id, activo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      [req.business.id, nombre, descripcion, duracionMin, precio, sena, categoria, professionalId]
     );
+    if (professionalId) await ensureProfessionalServiceLink(req.business.id, result.lastID, professionalId);
     return res.status(201).json({
       id: result.lastID, businessId: req.business.id, nombre, descripcion,
-      duracionMin, precio, categoria, professionalId, activo: true,
+      duracionMin, precio, sena, categoria, professionalId, activo: true,
     });
   } catch (error) { next(error); }
 });
@@ -2085,6 +3601,7 @@ app.put("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (r
     const descripcion = (req.body?.descripcion || "").trim();
     const duracionMin = parseInt(req.body?.duracionMin, 10);
     const precio = String(req.body?.precio ?? "0").trim();
+    const sena = String(req.body?.sena ?? "0").trim();
     const categoria = (req.body?.categoria || "").trim() || null;
     const activo = req.body?.activo;
     const professionalId = req.body?.professionalId != null && req.body.professionalId !== ""
@@ -2098,23 +3615,25 @@ app.put("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (r
 
     if (USE_SUPABASE) {
       const patch = {
-        nombre, descripcion, duracion_min: duracionMin, precio, categoria, professional_id: professionalId,
+        nombre, descripcion, duracion_min: duracionMin, precio, sena, categoria, professional_id: professionalId,
       };
       if (typeof activo === "boolean") patch.activo = activo;
       const { error } = await supabase.from("services").update(patch)
         .eq("id", id).eq("business_id", req.business.id);
       if (error) throw new Error(error.message);
+      if (professionalId) await ensureProfessionalServiceLink(req.business.id, id, professionalId);
       return res.json({ ok: true });
     }
     await dbRun(
-      `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, categoria=?, professional_id=?, activo=?
+      `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, sena=?, categoria=?, professional_id=?, activo=?
        WHERE id=? AND business_id=?`,
       [
-        nombre, descripcion, duracionMin, precio, categoria, professionalId,
+        nombre, descripcion, duracionMin, precio, sena, categoria, professionalId,
         typeof activo === "boolean" ? (activo ? 1 : 0) : 1,
         id, req.business.id,
       ]
     );
+    if (professionalId) await ensureProfessionalServiceLink(req.business.id, id, professionalId);
     return res.json({ ok: true });
   } catch (error) { next(error); }
 });
@@ -2122,16 +3641,56 @@ app.put("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (r
 app.delete("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+    const hoy = new Date().toISOString().split("T")[0];
+
     if (USE_SUPABASE) {
-      const { error } = await supabase.from("services").update({ activo: false })
-        .eq("id", id).eq("business_id", req.business.id);
+      const { data: svc } = await supabase.from("services").select("id")
+        .eq("id", id).eq("business_id", req.business.id).maybeSingle();
+      if (!svc) return res.status(404).json({ error: "Servicio no encontrado." });
+      const { data: futuras } = await supabase.from("appointments").select("id")
+        .eq("business_id", req.business.id).eq("service_id", id)
+        .gte("fecha", hoy).neq("estado", "cancelada");
+      if (futuras?.length) {
+        return res.status(409).json({
+          error: `Tiene ${futuras.length} turno(s) futuro(s). Cancelalos primero.`,
+        });
+      }
+      const { data, error } = await supabase
+        .from("services")
+        .delete()
+        .eq("id", id)
+        .eq("business_id", req.business.id)
+        .select("id");
       if (error) throw new Error(error.message);
+      if (!data?.length) return res.status(404).json({ error: "Servicio no encontrado." });
       return res.json({ ok: true });
     }
-    await dbRun(
-      "UPDATE services SET activo = 0 WHERE id = ? AND business_id = ?",
+
+    const svc = await dbGet(
+      "SELECT id FROM services WHERE id = ? AND business_id = ? LIMIT 1",
       [id, req.business.id]
     );
+    if (!svc) return res.status(404).json({ error: "Servicio no encontrado." });
+    const futuras = await dbAll(
+      `SELECT id FROM appointments WHERE business_id = ? AND service_id = ? AND fecha >= ? AND estado != 'cancelada'`,
+      [req.business.id, id, hoy]
+    );
+    if (futuras.length) {
+      return res.status(409).json({
+        error: `Tiene ${futuras.length} turno(s) futuro(s). Cancelalos primero.`,
+      });
+    }
+    // Liberar FKs de turnos pasados/cancelados (SQLite no tiene ON DELETE SET NULL)
+    await dbRun(
+      "UPDATE appointments SET service_id = NULL WHERE business_id = ? AND service_id = ?",
+      [req.business.id, id]
+    );
+    await dbRun(
+      "DELETE FROM professional_services WHERE business_id = ? AND service_id = ?",
+      [req.business.id, id]
+    );
+    await dbRun("DELETE FROM services WHERE id = ? AND business_id = ?", [id, req.business.id]);
     return res.json({ ok: true });
   } catch (error) { next(error); }
 });
@@ -2218,13 +3777,144 @@ app.put("/api/:slug/admin/plans/:id", resolveBusiness, requireAdmin, async (req,
 app.delete("/api/:slug/admin/plans/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
   try {
     const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+
     if (USE_SUPABASE) {
-      const { error } = await supabase.from("plans").update({ activo: false })
+      const { data, error } = await supabase
+        .from("plans")
+        .delete()
+        .eq("id", id)
+        .eq("business_id", req.business.id)
+        .select("id");
+      if (error) throw new Error(error.message);
+      if (!data?.length) return res.status(404).json({ error: "Plan no encontrado." });
+      return res.json({ ok: true });
+    }
+    const row = await dbGet(
+      "SELECT id FROM plans WHERE id = ? AND business_id = ? LIMIT 1",
+      [id, req.business.id]
+    );
+    if (!row) return res.status(404).json({ error: "Plan no encontrado." });
+    await dbRun("DELETE FROM plans WHERE id = ? AND business_id = ?", [id, req.business.id]);
+    return res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+// ============================================================
+// ADMIN: MOVIMIENTOS (caja / ingresos / gastos)
+// ============================================================
+const MOVIMIENTO_TIPOS = new Set(["ingreso", "gasto"]);
+
+app.get("/api/:slug/admin/movimientos", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    const sync = await syncTurnoMovimientosForBusiness(req.business);
+    let items;
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase.from("movimientos").select("*")
+        .eq("business_id", req.business.id)
+        .order("fecha", { ascending: false })
+        .order("id", { ascending: false });
+      if (error) throw new Error(error.message);
+      items = (data || []).map(mapMovimientoRow);
+    } else {
+      const rows = await dbAll(
+        "SELECT * FROM movimientos WHERE business_id = ? ORDER BY fecha DESC, id DESC",
+        [req.business.id]
+      );
+      items = rows.map(mapMovimientoRow);
+    }
+    return res.json({ items, sync });
+  } catch (error) { next(error); }
+});
+
+app.post("/api/:slug/admin/movimientos", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    const tipo = String(req.body?.tipo || "").trim().toLowerCase();
+    const descripcion = String(req.body?.descripcion || "").trim();
+    const categoria = String(req.body?.categoria || "Otros").trim() || "Otros";
+    const monto = Number(String(req.body?.monto ?? "0").replace(",", "."));
+    const fecha = String(req.body?.fecha || "").trim() || new Date().toISOString().slice(0, 10);
+    const now = new Date().toISOString();
+
+    if (!MOVIMIENTO_TIPOS.has(tipo)) return res.status(400).json({ error: "Tipo inválido. Usá ingreso o gasto." });
+    if (!descripcion || descripcion.length < 2) return res.status(400).json({ error: "La descripción es obligatoria." });
+    if (descripcion.length > 200) return res.status(400).json({ error: "Descripción demasiado larga." });
+    if (categoria.length > 80) return res.status(400).json({ error: "Categoría inválida." });
+    if (!Number.isFinite(monto) || monto <= 0) return res.status(400).json({ error: "El monto debe ser mayor a 0." });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return res.status(400).json({ error: "Fecha inválida." });
+
+    if (USE_SUPABASE) {
+      const { data, error } = await supabase.from("movimientos").insert({
+        business_id: req.business.id, tipo, descripcion, categoria, monto, fecha, creado_en: now,
+      }).select().single();
+      if (error) {
+        const msg = error.message || "";
+        if (/row-level security/i.test(msg)) {
+          throw new Error(
+            "Supabase bloquea movimientos (RLS). Ejecutá en SQL: alter table movimientos disable row level security;"
+          );
+        }
+        throw new Error(msg);
+      }
+      return res.status(201).json(mapMovimientoRow(data));
+    }
+    const result = await dbRun(
+      `INSERT INTO movimientos (business_id, tipo, descripcion, categoria, monto, fecha, creado_en)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [req.business.id, tipo, descripcion, categoria, monto, fecha, now]
+    );
+    return res.status(201).json({
+      id: result.lastID, businessId: req.business.id, tipo, descripcion, categoria, monto, fecha,
+      appointmentId: null, creadoEn: now,
+    });
+  } catch (error) { next(error); }
+});
+
+app.put("/api/:slug/admin/movimientos/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const tipo = String(req.body?.tipo || "").trim().toLowerCase();
+    const descripcion = String(req.body?.descripcion || "").trim();
+    const categoria = String(req.body?.categoria || "Otros").trim() || "Otros";
+    const monto = Number(String(req.body?.monto ?? "0").replace(",", "."));
+    const fecha = String(req.body?.fecha || "").trim();
+
+    if (!MOVIMIENTO_TIPOS.has(tipo)) return res.status(400).json({ error: "Tipo inválido. Usá ingreso o gasto." });
+    if (!descripcion || descripcion.length < 2) return res.status(400).json({ error: "La descripción es obligatoria." });
+    if (!Number.isFinite(monto) || monto <= 0) return res.status(400).json({ error: "El monto debe ser mayor a 0." });
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(fecha)) return res.status(400).json({ error: "Fecha inválida." });
+
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from("movimientos").update({
+        tipo, descripcion, categoria, monto, fecha,
+      }).eq("id", id).eq("business_id", req.business.id);
+      if (error) throw new Error(error.message);
+      return res.json({ ok: true });
+    }
+    const existing = await dbGet(
+      "SELECT id FROM movimientos WHERE id = ? AND business_id = ? LIMIT 1",
+      [id, req.business.id]
+    );
+    if (!existing) return res.status(404).json({ error: "Movimiento no encontrado." });
+    await dbRun(
+      `UPDATE movimientos SET tipo=?, descripcion=?, categoria=?, monto=?, fecha=?
+       WHERE id=? AND business_id=?`,
+      [tipo, descripcion, categoria, monto, fecha, id, req.business.id]
+    );
+    return res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/:slug/admin/movimientos/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (USE_SUPABASE) {
+      const { error } = await supabase.from("movimientos").delete()
         .eq("id", id).eq("business_id", req.business.id);
       if (error) throw new Error(error.message);
       return res.json({ ok: true });
     }
-    await dbRun("UPDATE plans SET activo = 0 WHERE id = ? AND business_id = ?", [id, req.business.id]);
+    await dbRun("DELETE FROM movimientos WHERE id = ? AND business_id = ?", [id, req.business.id]);
     return res.json({ ok: true });
   } catch (error) { next(error); }
 });
@@ -2242,9 +3932,23 @@ app.patch("/api/:slug/admin/business", resolveBusiness, requireAdmin, async (req
     const transferTitular = (body.transferTitular || "").trim();
     const horaInicio = parseInt(body.horaInicio, 10);
     const horaFin = parseInt(body.horaFin, 10);
-    const precio = (body.precio || "0").trim();
-    const ciudad = (body.ciudad || "").trim() || null;
+    const rawInicio2 = body.horaInicio2;
+    const rawFin2 = body.horaFin2;
+    const hasFranja2 = rawInicio2 !== "" && rawInicio2 != null && rawFin2 !== "" && rawFin2 != null;
+    const horaInicio2 = hasFranja2 ? parseInt(rawInicio2, 10) : null;
+    const horaFin2 = hasFranja2 ? parseInt(rawFin2, 10) : null;
+    const diasAtencion = parseDiasAtencion(body.diasAtencion ?? body.dias_atencion);
+    const diasAtencionStr = serializeDiasAtencion(diasAtencion);
+    const precio = body.precio !== undefined && body.precio !== null
+      ? String(body.precio).trim() || "0"
+      : (req.business.precio || "0");
+    const localidadCheck = await assertLocalidadActiva(body.ciudad);
+    if (!localidadCheck.ok) return res.status(400).json({ error: localidadCheck.error });
+    const ciudad = localidadCheck.nombre;
     const barrio = (body.barrio || "").trim() || null;
+    const direccion = (body.direccion || "").trim() || null;
+    if (!direccion) return res.status(400).json({ error: "La dirección es obligatoria." });
+    if (direccion.length > 200) return res.status(400).json({ error: "La dirección es demasiado larga." });
     const colorMarca = (body.colorMarca || body.color_marca || "").trim() || null;
     let categoria = (body.categoria || "").trim();
     if (categoria && !CATEGORIAS.has(categoria)) {
@@ -2253,28 +3957,43 @@ app.patch("/api/:slug/admin/business", resolveBusiness, requireAdmin, async (req
     if (!categoria) categoria = req.business.categoria;
 
     if (!nombre) return res.status(400).json({ error: "El nombre del negocio es obligatorio." });
+    if (!diasAtencion.length) {
+      return res.status(400).json({ error: "Seleccioná al menos un día de atención." });
+    }
     if (!Number.isFinite(horaInicio) || !Number.isFinite(horaFin) || horaInicio >= horaFin) {
-      return res.status(400).json({ error: "Horario inválido: hora inicio debe ser menor a hora fin." });
+      return res.status(400).json({ error: "Franja 1 inválida: la hora de inicio debe ser menor a la de fin." });
     }
     if (horaInicio < 0 || horaFin > 24) {
-      return res.status(400).json({ error: "Horario fuera de rango (0-24)." });
+      return res.status(400).json({ error: "Franja 1 fuera de rango (0-24)." });
+    }
+    if (hasFranja2) {
+      if (!Number.isFinite(horaInicio2) || !Number.isFinite(horaFin2) || horaInicio2 >= horaFin2) {
+        return res.status(400).json({ error: "Franja 2 inválida: la hora de inicio debe ser menor a la de fin." });
+      }
+      if (horaInicio2 < 0 || horaFin2 > 24) {
+        return res.status(400).json({ error: "Franja 2 fuera de rango (0-24)." });
+      }
+      if (horaInicio2 < horaFin) {
+        return res.status(400).json({ error: "La franja 2 debe empezar después de que termine la franja 1." });
+      }
     }
 
     if (USE_SUPABASE) {
       const { error } = await supabase.from("businesses").update({
         nombre, whatsapp, transfer_alias: transferAlias, transfer_cbu: transferCbu,
-        transfer_titular: transferTitular, hora_inicio: horaInicio, hora_fin: horaFin, precio,
-        ciudad, barrio, color_marca: colorMarca, categoria,
+        transfer_titular: transferTitular, hora_inicio: horaInicio, hora_fin: horaFin,
+        hora_inicio_2: horaInicio2, hora_fin_2: horaFin2, dias_atencion: diasAtencionStr, precio,
+        ciudad, barrio, direccion, color_marca: colorMarca, categoria,
       }).eq("id", req.business.id);
       if (error) throw new Error(error.message);
       return res.json({ ok: true });
     }
     await dbRun(
       `UPDATE businesses SET nombre=?, whatsapp=?, transfer_alias=?, transfer_cbu=?, transfer_titular=?,
-       hora_inicio=?, hora_fin=?, precio=?, ciudad=?, barrio=?, color_marca=?, categoria=? WHERE id=?`,
+       hora_inicio=?, hora_fin=?, hora_inicio_2=?, hora_fin_2=?, dias_atencion=?, precio=?, ciudad=?, barrio=?, direccion=?, color_marca=?, categoria=? WHERE id=?`,
       [
         nombre, whatsapp, transferAlias, transferCbu, transferTitular,
-        horaInicio, horaFin, precio, ciudad, barrio, colorMarca, categoria, req.business.id,
+        horaInicio, horaFin, horaInicio2, horaFin2, diasAtencionStr, precio, ciudad, barrio, direccion, colorMarca, categoria, req.business.id,
       ]
     );
     return res.json({ ok: true });
@@ -2285,6 +4004,18 @@ app.patch("/api/:slug/admin/business", resolveBusiness, requireAdmin, async (req
 app.patch("/api/:slug/admin/club", resolveBusiness, requireAdmin, (req, res, next) => {
   req.url = req.url.replace("/admin/club", "/admin/business");
   return app._router.handle(req, res, next);
+});
+
+app.patch("/api/:slug/admin/logo", resolveBusiness, requireAdmin, logoUpload.single("logo"), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No se recibió imagen." });
+    const validMagic = await validateFileMagicBytes(req.file);
+    if (!validMagic) return res.status(400).json({ error: "Imagen inválida." });
+
+    const logoUrl = await uploadBusinessLogoFile(req.business.id, req.file);
+    req.business.logoUrl = logoUrl;
+    return res.json({ ok: true, logoUrl });
+  } catch (error) { next(error); }
 });
 
 app.post("/api/:slug/admin/password", resolveBusiness, requireAdmin, async (req, res, next) => {
@@ -2406,8 +4137,9 @@ app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) =
     const rawSlug = (req.body?.slug || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
     const password = (req.body?.password || "").trim();
     const categoria = CATEGORIAS.has(req.body?.categoria) ? req.body.categoria : "otro";
-    const ciudad = (req.body?.ciudad || "").trim() || null;
+    let ciudad = (req.body?.ciudad || "").trim() || null;
     const barrio = (req.body?.barrio || "").trim() || null;
+    const direccion = (req.body?.direccion || "").trim() || null;
     const plan = (await loadPlatformPlans())[req.body?.plan] ? req.body.plan : "inicial";
 
     if (!nombre || !rawSlug || !password) {
@@ -2416,6 +4148,11 @@ app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) =
     if (nombre.length > 100) return res.status(400).json({ error: "El nombre es demasiado largo." });
     if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(rawSlug) || rawSlug.length < 2) {
       return res.status(400).json({ error: "Slug inválido. Usá letras minúsculas, números y guiones." });
+    }
+    if (ciudad) {
+      const localidadCheck = await assertLocalidadActiva(ciudad);
+      if (!localidadCheck.ok) return res.status(400).json({ error: localidadCheck.error });
+      ciudad = localidadCheck.nombre;
     }
 
     const now = new Date().toISOString();
@@ -2426,11 +4163,11 @@ app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) =
       if (existing) return res.status(409).json({ error: `Ya existe un negocio con el slug "${rawSlug}".` });
       const result = await dbRun(
         `INSERT INTO businesses (
-           slug, nombre, categoria, ciudad, barrio, color_marca, whatsapp,
+           slug, nombre, categoria, ciudad, barrio, direccion, color_marca, whatsapp,
            transfer_alias, transfer_cbu, transfer_titular,
            hora_inicio, hora_fin, precio, plan, estado, creado_en
-         ) VALUES (?, ?, ?, ?, ?, '#0f766e', '', '', '', '', 9, 20, '0', ?, 'activo', ?)`,
-        [rawSlug, nombre, categoria, ciudad, barrio, plan, now]
+         ) VALUES (?, ?, ?, ?, ?, ?, '#0f766e', '', '', '', '', 9, 20, '0', ?, 'activo', ?)`,
+        [rawSlug, nombre, categoria, ciudad, barrio, direccion, plan, now]
       );
       await dbRun(
         "INSERT INTO business_admins (business_id, password_salt, password_hash, actualizado_en) VALUES (?, ?, ?, ?)",
@@ -2442,7 +4179,7 @@ app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) =
       const { data: existing } = await supabase.from("businesses").select("id").eq("slug", rawSlug).maybeSingle();
       if (existing) return res.status(409).json({ error: `Ya existe un negocio con el slug "${rawSlug}".` });
       const { data: biz, error: bizErr } = await supabase.from("businesses").insert({
-        slug: rawSlug, nombre, categoria, ciudad, barrio, color_marca: "#0f766e",
+        slug: rawSlug, nombre, categoria, ciudad, barrio, direccion, color_marca: "#0f766e",
         whatsapp: "", transfer_alias: "", transfer_cbu: "", transfer_titular: "",
         hora_inicio: 9, hora_fin: 20, precio: "0", plan, estado: "activo", creado_en: now,
       }).select().single();
@@ -2455,6 +4192,96 @@ app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) =
       return res.status(201).json({ ok: true, slug: rawSlug, nombre, id: biz.id });
     }
     return res.status(503).json({ error: "No hay backend de datos disponible." });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/superadmin/localidades", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    res.json(await listLocalidades({ soloActivas: false }));
+  } catch (error) { next(error); }
+});
+
+app.post("/api/superadmin/localidades", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const nombre = String(req.body?.nombre || "").trim().replace(/\s+/g, " ");
+    if (!nombre || nombre.length < 2) {
+      return res.status(400).json({ error: "El nombre de la localidad es requerido." });
+    }
+    if (nombre.length > 80) return res.status(400).json({ error: "El nombre es demasiado largo." });
+    const now = new Date().toISOString();
+
+    if (USE_SQLITE) {
+      const existing = await dbGet(
+        "SELECT id FROM localidades WHERE lower(nombre) = lower(?) LIMIT 1",
+        [nombre]
+      );
+      if (existing) return res.status(409).json({ error: "Esa localidad ya existe." });
+      const result = await dbRun(
+        "INSERT INTO localidades (nombre, activo, creado_en) VALUES (?, 1, ?)",
+        [nombre, now]
+      );
+      return res.status(201).json({ ok: true, id: result.lastID, nombre, activo: true });
+    }
+    if (USE_SUPABASE) {
+      const { data: existing } = await supabase
+        .from("localidades")
+        .select("id")
+        .ilike("nombre", nombre)
+        .maybeSingle();
+      if (existing) return res.status(409).json({ error: "Esa localidad ya existe." });
+      const { data, error } = await supabase
+        .from("localidades")
+        .insert({ nombre, activo: true, creado_en: now })
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return res.status(201).json({ ok: true, ...mapLocalidadRow(data) });
+    }
+    return res.status(503).json({ error: "No hay backend disponible." });
+  } catch (error) { next(error); }
+});
+
+app.patch("/api/superadmin/localidades/:id", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+    const nombreRaw = req.body?.nombre != null ? String(req.body.nombre).trim().replace(/\s+/g, " ") : null;
+    const activoRaw = req.body?.activo;
+
+    if (USE_SQLITE) {
+      const row = await dbGet("SELECT * FROM localidades WHERE id = ? LIMIT 1", [id]);
+      if (!row) return res.status(404).json({ error: "Localidad no encontrada." });
+      let nombre = row.nombre;
+      let activo = row.activo;
+      if (nombreRaw != null) {
+        if (nombreRaw.length < 2) return res.status(400).json({ error: "Nombre inválido." });
+        const clash = await dbGet(
+          "SELECT id FROM localidades WHERE lower(nombre) = lower(?) AND id != ? LIMIT 1",
+          [nombreRaw, id]
+        );
+        if (clash) return res.status(409).json({ error: "Esa localidad ya existe." });
+        nombre = nombreRaw;
+      }
+      if (activoRaw !== undefined) activo = activoRaw === false || activoRaw === 0 || activoRaw === "0" ? 0 : 1;
+      await dbRun("UPDATE localidades SET nombre = ?, activo = ? WHERE id = ?", [nombre, activo, id]);
+      return res.json({ ok: true, id, nombre, activo: Boolean(activo) });
+    }
+    if (USE_SUPABASE) {
+      const { data: row } = await supabase.from("localidades").select("*").eq("id", id).maybeSingle();
+      if (!row) return res.status(404).json({ error: "Localidad no encontrada." });
+      const patch = {};
+      if (nombreRaw != null) {
+        if (nombreRaw.length < 2) return res.status(400).json({ error: "Nombre inválido." });
+        patch.nombre = nombreRaw;
+      }
+      if (activoRaw !== undefined) {
+        patch.activo = !(activoRaw === false || activoRaw === 0 || activoRaw === "0");
+      }
+      const { data, error } = await supabase.from("localidades").update(patch).eq("id", id).select().single();
+      if (error) throw new Error(error.message);
+      return res.json({ ok: true, ...mapLocalidadRow(data) });
+    }
+    return res.status(503).json({ error: "No hay backend disponible." });
   } catch (error) { next(error); }
 });
 
@@ -2531,57 +4358,181 @@ app.patch("/api/superadmin/clubs/:id/activo", requireSuperAdmin, async (req, res
   } catch (error) { next(error); }
 });
 
+async function setBusinessAdminPassword(businessId, password) {
+  const { salt, hash } = hashAdminPassword(password);
+  const now = new Date().toISOString();
+  if (USE_SUPABASE) {
+    const { data: existing } = await supabase
+      .from("business_admins")
+      .select("id")
+      .eq("business_id", businessId)
+      .maybeSingle();
+    if (existing) {
+      const { error } = await supabase.from("business_admins").update({
+        password_salt: salt,
+        password_hash: hash,
+        password_salt_b: null,
+        password_hash_b: null,
+        actualizado_en: now,
+      }).eq("business_id", businessId);
+      if (error) throw new Error(error.message);
+    } else {
+      const { error } = await supabase.from("business_admins").insert({
+        business_id: businessId,
+        password_salt: salt,
+        password_hash: hash,
+        password_salt_b: null,
+        password_hash_b: null,
+        actualizado_en: now,
+      });
+      if (error) throw new Error(error.message);
+    }
+    return;
+  }
+  const existing = await dbGet(
+    "SELECT id FROM business_admins WHERE business_id = ? LIMIT 1",
+    [businessId]
+  );
+  if (existing) {
+    await dbRun(
+      `UPDATE business_admins SET password_salt=?, password_hash=?, password_salt_b=NULL, password_hash_b=NULL, actualizado_en=?
+       WHERE business_id=?`,
+      [salt, hash, now, businessId]
+    );
+  } else {
+    await dbRun(
+      "INSERT INTO business_admins (business_id, password_salt, password_hash, actualizado_en) VALUES (?, ?, ?, ?)",
+      [businessId, salt, hash, now]
+    );
+  }
+}
+
+async function deleteBusinessCascade(businessId) {
+  if (USE_SUPABASE) {
+    // FKs con ON DELETE CASCADE limpian tablas hijas
+    const { data, error } = await supabase
+      .from("businesses")
+      .delete()
+      .eq("id", businessId)
+      .select("id, slug, nombre");
+    if (error) throw new Error(error.message);
+    if (!data?.length) return null;
+    return data[0];
+  }
+
+  const row = await dbGet("SELECT id, slug, nombre FROM businesses WHERE id = ? LIMIT 1", [businessId]);
+  if (!row) return null;
+
+  // Orden: vínculos → turnos/caja/bloqueos → servicios/pros → admin → negocio
+  await dbRun("DELETE FROM professional_services WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM appointments WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM movimientos WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM bloqueos WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM bloqueos_recurrentes WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM platform_payments WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM plans WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM services WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM professionals WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM business_admins WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM businesses WHERE id = ?", [businessId]);
+  return row;
+}
+
+app.patch("/api/superadmin/negocios/:id/password", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    const password = (req.body?.password || "").trim();
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+    if (!password) return res.status(400).json({ error: "La contraseña es requerida." });
+    if (password.length < 6) {
+      return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
+    }
+
+    if (USE_SQLITE) {
+      const row = await dbGet("SELECT id FROM businesses WHERE id = ? LIMIT 1", [id]);
+      if (!row) return res.status(404).json({ error: "Negocio no encontrado." });
+    } else if (USE_SUPABASE) {
+      const { data } = await supabase.from("businesses").select("id").eq("id", id).maybeSingle();
+      if (!data) return res.status(404).json({ error: "Negocio no encontrado." });
+    } else {
+      return res.status(503).json({ error: "No hay backend disponible." });
+    }
+
+    await setBusinessAdminPassword(id, password);
+    return res.json({ ok: true, password });
+  } catch (error) { next(error); }
+});
+
+app.patch("/api/superadmin/clubs/:id/password", requireSuperAdmin, (req, res, next) => {
+  req.url = `/api/superadmin/negocios/${req.params.id}/password`;
+  return app._router.handle(req, res, next);
+});
+
+app.delete("/api/superadmin/negocios/:id", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+    const deleted = await deleteBusinessCascade(id);
+    if (!deleted) return res.status(404).json({ error: "Negocio no encontrado." });
+    return res.json({
+      ok: true,
+      id: deleted.id,
+      slug: deleted.slug,
+      nombre: deleted.nombre,
+    });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/superadmin/clubs/:id", requireSuperAdmin, (req, res, next) => {
+  req.url = `/api/superadmin/negocios/${req.params.id}`;
+  return app._router.handle(req, res, next);
+});
+
 app.patch("/api/superadmin/negocios/:id/logo", requireSuperAdmin, logoUpload.single("logo"), async (req, res, next) => {
   try {
     const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
     if (!req.file) return res.status(400).json({ error: "No se recibió imagen." });
     const validMagic = await validateFileMagicBytes(req.file);
     if (!validMagic) return res.status(400).json({ error: "Imagen inválida." });
 
-    const ext = path.extname(req.file.originalname) || ".jpg";
-    const filename = `${id}_${Date.now()}${ext}`;
-
-    if (USE_SQLITE) {
-      await fs.writeFile(path.join(LOGOS_DIR, filename), req.file.buffer);
-      const logoUrl = `/uploads/logos/${filename}`;
-      await dbRun("UPDATE businesses SET logo_url = ? WHERE id = ?", [logoUrl, id]);
-      return res.json({ ok: true, logoUrl });
-    }
-    if (USE_SUPABASE) {
-      const storagePath = `logos/${filename}`;
-      const { error: uploadErr } = await supabase.storage
-        .from(SUPABASE_BUCKET).upload(storagePath, req.file.buffer, {
-          contentType: req.file.mimetype, upsert: true,
-        });
-      if (uploadErr) throw new Error(uploadErr.message);
-      const { data: { publicUrl } } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
-      await supabase.from("businesses").update({ logo_url: publicUrl }).eq("id", id);
-      return res.json({ ok: true, logoUrl: publicUrl });
-    }
-    return res.status(503).json({ error: "No hay backend disponible." });
+    const logoUrl = await uploadBusinessLogoFile(id, req.file);
+    return res.json({ ok: true, logoUrl });
   } catch (error) { next(error); }
 });
 
 app.patch("/api/superadmin/clubs/:id/logo", requireSuperAdmin, logoUpload.single("logo"), async (req, res, next) => {
-  req.url = `/api/superadmin/negocios/${req.params.id}/logo`;
-  return app._router.handle(req, res, next);
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
+    if (!req.file) return res.status(400).json({ error: "No se recibió imagen." });
+    const validMagic = await validateFileMagicBytes(req.file);
+    if (!validMagic) return res.status(400).json({ error: "Imagen inválida." });
+
+    const logoUrl = await uploadBusinessLogoFile(id, req.file);
+    return res.json({ ok: true, logoUrl });
+  } catch (error) { next(error); }
 });
 
 // ============================================================
 // PLATFORM PLANS + SUSCRIPCION
 // ============================================================
-app.get("/api/suscripcion", (_req, res) => {
-  res.json({
-    precio: SUBSCRIPTION_PRECIO,
-    alias: SUBSCRIPTION_ALIAS,
-    cbu: SUBSCRIPTION_CBU,
-    titular: SUBSCRIPTION_TITULAR,
-  });
+app.get("/api/suscripcion", async (_req, res, next) => {
+  try {
+    const t = await loadPlatformTransfer();
+    res.json({
+      precio: SUBSCRIPTION_PRECIO,
+      alias: t.alias,
+      cbu: t.cbu,
+      titular: t.titular,
+    });
+  } catch (error) { next(error); }
 });
 
 app.get("/api/planes", async (_req, res, next) => {
   try {
     const plans = await loadPlatformPlans();
+    const t = await loadPlatformTransfer();
     res.json(
       Object.entries(plans).map(([id, p]) => ({
         id,
@@ -2589,9 +4540,9 @@ app.get("/api/planes", async (_req, res, next) => {
         limiteProfesionales: p.limiteProfesionales,
         maxProfessionals: p.limiteProfesionales,
         precio: p.precio,
-        alias: SUBSCRIPTION_ALIAS,
-        cbu: SUBSCRIPTION_CBU,
-        titular: SUBSCRIPTION_TITULAR,
+        alias: t.alias,
+        cbu: t.cbu,
+        titular: t.titular,
         featured: id === "profesional",
       }))
     );
@@ -2605,6 +4556,48 @@ app.get("/api/superadmin/platform-plans", requireSuperAdmin, async (_req, res, n
   } catch (error) { next(error); }
 });
 
+app.get("/api/superadmin/suscripcion", requireSuperAdmin, async (_req, res, next) => {
+  try {
+    const t = await loadPlatformTransfer();
+    res.json({
+      precio: SUBSCRIPTION_PRECIO,
+      alias: t.alias,
+      cbu: t.cbu,
+      titular: t.titular,
+    });
+  } catch (error) { next(error); }
+});
+
+app.patch("/api/superadmin/suscripcion", requireSuperAdmin, async (req, res, next) => {
+  try {
+    const alias = String(req.body?.alias ?? "").trim();
+    const cbu = String(req.body?.cbu ?? "").trim();
+    const titular = String(req.body?.titular ?? "").trim();
+    if (alias.length > 120 || cbu.length > 40 || titular.length > 120) {
+      return res.status(400).json({ error: "Datos de transferencia demasiado largos." });
+    }
+    try {
+      const saved = await savePlatformTransfer({ alias, cbu, titular });
+      return res.json({ ok: true, ...saved, precio: SUBSCRIPTION_PRECIO });
+    } catch (err) {
+      const msg = String(err.message || err);
+      if (/row-level security|42501/i.test(msg)) {
+        return res.status(503).json({
+          error:
+            "Supabase bloquea platform_settings (RLS). En SQL Editor ejecutá: alter table platform_settings disable row level security;",
+        });
+      }
+      if (/platform_settings|does not exist|relation/i.test(msg)) {
+        return res.status(503).json({
+          error:
+            "Falta crear la tabla platform_settings en Supabase. Ejecutá en el SQL Editor: create table if not exists platform_settings (key text primary key, value text not null default ''); alter table platform_settings disable row level security;",
+        });
+      }
+      throw err;
+    }
+  } catch (error) { next(error); }
+});
+
 // ============================================================
 // SOLICITUDES
 // ============================================================
@@ -2614,8 +4607,13 @@ app.post("/api/solicitudes", upload.single("comprobante"), async (req, res, next
     const categoria = CATEGORIAS.has(req.body?.categoria)
       ? req.body.categoria
       : (CATEGORIAS.has(req.body?.deporte) ? "otro" : "otro");
-    const ciudad = (req.body?.ciudad || "").trim() || null;
+    const localidadCheck = await assertLocalidadActiva(req.body?.ciudad);
+    if (!localidadCheck.ok) return res.status(400).json({ error: localidadCheck.error });
+    const ciudad = localidadCheck.nombre;
     const barrio = (req.body?.barrio || "").trim() || null;
+    const direccion = (req.body?.direccion || "").trim() || null;
+    if (!direccion) return res.status(400).json({ error: "La dirección es obligatoria." });
+    if (direccion.length > 200) return res.status(400).json({ error: "La dirección es demasiado larga." });
     const whatsapp = (req.body?.whatsapp || "").trim().replace(/\D/g, "");
     const email = (req.body?.email || "").trim().toLowerCase();
     const plans = await loadPlatformPlans();
@@ -2652,9 +4650,9 @@ app.post("/api/solicitudes", upload.single("comprobante"), async (req, res, next
       await fs.writeFile(path.join(SOLICITUDES_DIR, filename), buf);
       comprobanteUrl = `/uploads/solicitudes/${filename}`;
       const result = await dbRun(
-        `INSERT INTO solicitudes (nombre, slug, categoria, ciudad, barrio, whatsapp, email, comprobante_url, plan, estado, creado_en)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
-        [nombre, slug, categoria, ciudad, barrio, whatsapp, email, comprobanteUrl, plan, now]
+        `INSERT INTO solicitudes (nombre, slug, categoria, ciudad, barrio, direccion, whatsapp, email, comprobante_url, plan, estado, creado_en)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+        [nombre, slug, categoria, ciudad, barrio, direccion, whatsapp, email, comprobanteUrl, plan, now]
       );
       return res.status(201).json({ ok: true, id: result.lastID });
     }
@@ -2668,7 +4666,7 @@ app.post("/api/solicitudes", upload.single("comprobante"), async (req, res, next
       const { data: urlData } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(filename);
       comprobanteUrl = urlData?.publicUrl || null;
       const { data, error } = await supabase.from("solicitudes").insert({
-        nombre, slug, categoria, ciudad, barrio, whatsapp, email,
+        nombre, slug, categoria, ciudad, barrio, direccion, whatsapp, email,
         comprobante_url: comprobanteUrl, plan, estado: "pendiente", creado_en: now,
       }).select().single();
       if (error) throw new Error(error.message);
@@ -2678,13 +4676,22 @@ app.post("/api/solicitudes", upload.single("comprobante"), async (req, res, next
   } catch (error) { next(error); }
 });
 
-app.get("/api/superadmin/solicitudes", requireSuperAdmin, async (_req, res, next) => {
+app.get("/api/superadmin/solicitudes", requireSuperAdmin, async (req, res, next) => {
   try {
+    // Por defecto solo pendientes; ?estado=todas para historial completo
+    const estadoQ = (req.query.estado || "pendiente").trim().toLowerCase();
+    const all = estadoQ === "todas" || estadoQ === "all";
+
     if (USE_SQLITE) {
-      return res.json(await dbAll("SELECT * FROM solicitudes ORDER BY creado_en DESC"));
+      const rows = all
+        ? await dbAll("SELECT * FROM solicitudes ORDER BY creado_en DESC")
+        : await dbAll("SELECT * FROM solicitudes WHERE estado = ? ORDER BY creado_en DESC", [estadoQ]);
+      return res.json(rows);
     }
     if (USE_SUPABASE) {
-      const { data, error } = await supabase.from("solicitudes").select("*").order("creado_en", { ascending: false });
+      let query = supabase.from("solicitudes").select("*").order("creado_en", { ascending: false });
+      if (!all) query = query.eq("estado", estadoQ);
+      const { data, error } = await query;
       if (error) throw new Error(error.message);
       return res.json(data || []);
     }
@@ -2702,6 +4709,7 @@ app.patch("/api/superadmin/solicitudes/:id/aprobar", requireSuperAdmin, async (r
     const { salt, hash } = hashAdminPassword(password);
     const now = new Date().toISOString();
     const plans = await loadPlatformPlans();
+    const planFromBody = (req.body?.plan || "").trim();
 
     async function approveSqlite() {
       const sol = await dbGet("SELECT * FROM solicitudes WHERE id = ? LIMIT 1", [id]);
@@ -2712,15 +4720,18 @@ app.patch("/api/superadmin/solicitudes/:id/aprobar", requireSuperAdmin, async (r
       const existing = await dbGet("SELECT id FROM businesses WHERE slug = ? LIMIT 1", [slug]);
       if (existing) return res.status(409).json({ error: `Ya existe un negocio con el slug "${slug}".` });
 
-      const solPlan = plans[sol.plan] ? sol.plan : "inicial";
+      const solPlan = plans[planFromBody] ? planFromBody : (plans[sol.plan] ? sol.plan : "inicial");
       const planInfo = plans[solPlan] || PLANES_FALLBACK.inicial;
       const result = await dbRun(
         `INSERT INTO businesses (
-           slug, nombre, categoria, ciudad, barrio, color_marca, whatsapp,
+           slug, nombre, categoria, ciudad, barrio, direccion, color_marca, whatsapp,
            transfer_alias, transfer_cbu, transfer_titular,
            hora_inicio, hora_fin, precio, plan, estado, creado_en
-         ) VALUES (?, ?, ?, ?, ?, '#0f766e', ?, '', '', '', 9, 20, '0', ?, 'activo', ?)`,
-        [slug, sol.nombre, sol.categoria || "otro", sol.ciudad || null, sol.barrio || null, sol.whatsapp, solPlan, now]
+         ) VALUES (?, ?, ?, ?, ?, ?, '#0f766e', ?, '', '', '', 9, 20, '0', ?, 'activo', ?)`,
+        [
+          slug, sol.nombre, sol.categoria || "otro", sol.ciudad || null, sol.barrio || null,
+          sol.direccion || null, sol.whatsapp, solPlan, now,
+        ]
       );
       await dbRun(
         "INSERT INTO business_admins (business_id, password_salt, password_hash, actualizado_en) VALUES (?, ?, ?, ?)",
@@ -2744,11 +4755,12 @@ app.patch("/api/superadmin/solicitudes/:id/aprobar", requireSuperAdmin, async (r
       const { data: existing } = await supabase.from("businesses").select("id").eq("slug", slug).maybeSingle();
       if (existing) return res.status(409).json({ error: `Ya existe un negocio con el slug "${slug}".` });
 
-      const solPlan = plans[sol.plan] ? sol.plan : "inicial";
+      const solPlan = plans[planFromBody] ? planFromBody : (plans[sol.plan] ? sol.plan : "inicial");
       const planInfo = plans[solPlan] || PLANES_FALLBACK.inicial;
       const { data: biz, error: bizErr } = await supabase.from("businesses").insert({
         slug, nombre: sol.nombre, categoria: sol.categoria || "otro",
-        ciudad: sol.ciudad || null, barrio: sol.barrio || null, color_marca: "#0f766e",
+        ciudad: sol.ciudad || null, barrio: sol.barrio || null, direccion: sol.direccion || null,
+        color_marca: "#0f766e",
         whatsapp: sol.whatsapp, transfer_alias: "", transfer_cbu: "", transfer_titular: "",
         hora_inicio: 9, hora_fin: 20, precio: "0", plan: solPlan, estado: "activo", creado_en: now,
       }).select().single();

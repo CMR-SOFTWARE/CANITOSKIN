@@ -12,6 +12,17 @@
     .pricing-section {
       background: linear-gradient(180deg, #EEF2FF 0%, #F7F8FA 55%, #F7F8FA 100%);
     }
+    .pac-container {
+      z-index: 10000 !important;
+      border-radius: 0.75rem;
+      border: 1px solid #E4E4E7;
+      box-shadow: 0 12px 32px rgba(15, 23, 42, 0.12);
+      font-family: inherit;
+      margin-top: 4px;
+    }
+    .pac-item { padding: 0.55rem 0.85rem; cursor: pointer; }
+    .pac-item:hover { background: #EEF2FF; }
+    .pac-item-query { color: #18181B; }
     .pricing-grid {
       display: grid;
       gap: 1.25rem;
@@ -247,13 +258,16 @@
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label class="block text-sm font-semibold text-slate-600 mb-1" for="ciudad">Ciudad</label>
-          <input id="ciudad" type="text" placeholder="Ej: San Nicolás"
-                 class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+          <label class="block text-sm font-semibold text-slate-600 mb-1" for="ciudad">Localidad *</label>
+          <select id="ciudad"
+                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
+            <option value="">Cargando localidades...</option>
+          </select>
+          <p id="localidadHint" class="mt-1 text-xs text-slate-500">Solo aparecen localidades habilitadas por CMR.</p>
         </div>
         <div>
-          <label class="block text-sm font-semibold text-slate-600 mb-1" for="barrio">Barrio</label>
-          <input id="barrio" type="text" placeholder="Ej: Centro"
+          <label class="block text-sm font-semibold text-slate-600 mb-1" for="direccion">Dirección *</label>
+          <input id="direccion" type="text" placeholder="Ej: Av. Mitre 1234"
                  class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
         </div>
       </div>

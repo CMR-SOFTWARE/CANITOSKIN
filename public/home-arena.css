@@ -770,40 +770,157 @@ h1, h2, h3 { margin: 0; }
 
 .hero-arena__search {
   position: relative;
-  max-width: 520px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: stretch;
+  width: 100%;
+  max-width: min(720px, 100%);
   animation: fade-up 0.9s var(--ease-cinematic) 0.55s both;
+}
+
+.hero-arena__search-field {
+  position: relative;
+  flex: 1 1 260px;
+  min-width: min(260px, 100%);
 }
 
 .hero-arena__search-icon {
   position: absolute;
-  left: 1.25rem;
+  left: 1.15rem;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--text-faint);
+  color: #52525B;
   pointer-events: none;
+  z-index: 1;
   transition: color var(--transition-fast);
 }
 
-.hero-arena__search input {
+.hero-arena__search input,
+.hero-arena__search select {
   width: 100%;
-  padding: 0.95rem 1.15rem 0.95rem 3rem;
+  min-height: 3rem;
+  padding: 0.9rem 1.15rem;
   font-family: var(--font-body);
-  font-size: 0.875rem;
-  color: var(--text-primary);
-  --cut-fill: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(12px);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #18181B;
+  --cut-fill: #FFFFFF;
   outline: none;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
   transition: box-shadow var(--transition-fast);
 }
 
-.hero-arena__search input::placeholder { color: var(--text-faint); }
+.hero-arena__search input {
+  padding-left: 3rem;
+  min-width: 0;
+}
 
-.hero-arena__search input:focus {
-  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+.hero-arena__location {
+  display: flex;
+  align-items: stretch;
+  gap: 0.4rem;
+  flex: 1 1 280px;
+  min-width: min(280px, 100%);
+}
+
+.hero-arena__location-field {
+  flex: 1;
+  min-width: 0;
+}
+
+.hero-arena__geo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  min-height: 3rem;
+  flex-shrink: 0;
+  color: #4F46E5;
+  --cut-fill: #FFFFFF;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  transition: color 150ms ease, box-shadow 150ms ease;
+}
+
+.hero-arena__geo-btn:hover {
+  color: #3730A3;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.45), 0 8px 28px rgba(0, 0, 0, 0.28);
+}
+
+.hero-arena__geo-btn:disabled {
+  opacity: 0.55;
+  cursor: wait;
+}
+
+.hero-arena__ciudad-fallback {
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2352525B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  padding-right: 2.4rem;
+}
+
+.hero-arena__search select {
+  width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%2352525B' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  padding-right: 2.6rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+@media (min-width: 720px) {
+  .hero-arena__search {
+    flex-wrap: nowrap;
+    max-width: min(760px, 100%);
+  }
+
+  .hero-arena__search-field {
+    flex: 1.15 1 0;
+  }
+
+  .hero-arena__location {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+}
+
+.hero-arena__search input::placeholder {
+  color: #71717A;
+  opacity: 1;
+}
+
+.hero-arena__search input:focus,
+.hero-arena__search select:focus {
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.55), 0 8px 28px rgba(0, 0, 0, 0.28);
 }
 
 .hero-arena__search:focus-within .hero-arena__search-icon {
-  color: var(--accent-bright);
+  color: var(--accent);
+}
+
+.pac-container {
+  z-index: 10000 !important;
+  border-radius: 0.75rem;
+  border: 1px solid #E4E4E7;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.18);
+  font-family: inherit;
+  margin-top: 4px;
+}
+
+.hero-arena__search select option {
+  color: #18181B;
+  background: #FFFFFF;
 }
 
 .hero-arena__stats {
@@ -926,9 +1043,15 @@ h1, h2, h3 { margin: 0; }
   width: 72px;
   height: 72px;
   border-radius: 50%;
-  object-fit: cover;
+  object-fit: contain;
+  background: #FFFFFF;
+  padding: 6px;
   border: 2px solid rgba(99, 102, 241, 0.35);
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
+}
+
+.club-card__avatar.is-light-logo {
+  background: #0A0A0A;
 }
 
 .club-card__initials {
@@ -1187,15 +1310,15 @@ h1, h2, h3 { margin: 0; }
 
 .step-card-cut.is-active {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(30, 47, 28, 0.08);
+  box-shadow: 0 8px 24px rgba(99, 102, 241, 0.1);
 }
 
 .step-card-cut.is-current {
-  box-shadow: 0 10px 28px rgba(0, 123, 0, 0.12);
+  box-shadow: 0 10px 28px rgba(99, 102, 241, 0.14);
 }
 
 .step-card-cut.is-current .step-card-cut__num {
-  color: var(--light-green);
+  color: var(--accent);
 }
 
 .steps-showcase.is-hovering .step-card-cut:not(.is-active) {
@@ -1212,13 +1335,14 @@ h1, h2, h3 { margin: 0; }
   font-size: 1.75rem;
   font-weight: 700;
   line-height: 1;
-  color: rgba(0, 123, 0, 0.2);
+  /* Índigo suave (no verde legacy de canchas) */
+  color: #C7D2FE;
   display: block;
   margin-bottom: 0.5rem;
 }
 
 .step-card-cut.is-active .step-card-cut__num {
-  color: var(--light-green-mid);
+  color: var(--accent-hover);
 }
 
 .step-card-cut__icon {

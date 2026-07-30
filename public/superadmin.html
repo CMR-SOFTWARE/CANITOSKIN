@@ -41,6 +41,36 @@
     <!-- Panel (oculto hasta login) -->
     <div id="saPanel" class="hidden space-y-6">
 
+      <!-- Datos transferencia CMR (cobro de planes) -->
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+        <div>
+          <h2 class="text-lg font-semibold text-slate-700">Transferencia CMR Turnos</h2>
+          <p class="text-xs text-slate-400">Alias / CBU donde los negocios pagan la suscripción al registrarse</p>
+        </div>
+        <div class="space-y-3">
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1" for="subAlias">Alias</label>
+            <input id="subAlias" type="text" placeholder="ej: cmr.turnos"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1" for="subCbu">CBU / CVU</label>
+            <input id="subCbu" type="text" placeholder="0000000000000000000000"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-accent" />
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1" for="subTitular">Titular</label>
+            <input id="subTitular" type="text" placeholder="Nombre del titular de la cuenta"
+                   class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+          </div>
+        </div>
+        <button id="btnGuardarSuscripcion"
+                class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">
+          Guardar datos de transferencia
+        </button>
+        <p id="subMsg" class="text-sm hidden"></p>
+      </section>
+
       <!-- Clubs existentes -->
       <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
         <div class="flex items-center justify-between">
@@ -51,6 +81,27 @@
         </div>
         <div id="clubsList" class="space-y-3 text-sm text-slate-500">Cargando...</div>
         <p id="logoMsg" class="text-sm hidden"></p>
+      </section>
+
+      <!-- Localidades -->
+      <section class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-slate-700">Localidades disponibles</h2>
+            <p class="text-xs text-slate-400">Los negocios solo pueden elegir de esta lista</p>
+          </div>
+          <button id="btnRefreshLocalidades" class="text-xs text-accent hover:underline font-semibold">Actualizar</button>
+        </div>
+        <div class="flex flex-col gap-2 sm:flex-row">
+          <input id="locNombre" type="text" placeholder="Ej: San Nicolás de los Arroyos"
+                 class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
+          <button id="btnCrearLocalidad"
+                  class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90">
+            Agregar
+          </button>
+        </div>
+        <div id="localidadesList" class="space-y-2 text-sm text-slate-500">Cargando...</div>
+        <p id="localidadMsg" class="text-sm hidden"></p>
       </section>
 
       <!-- Solicitudes de registro -->
@@ -79,9 +130,9 @@
             <label class="block text-xs font-semibold text-slate-500 mb-1">Plan asignado</label>
             <select id="modalPlan"
                     class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-              <option value="inicial">Inicial — hasta 2 profesionales ($50.000/mes)</option>
-              <option value="estandar">Estándar — hasta 5 profesionales ($80.000/mes)</option>
-              <option value="max">Max — hasta 10 profesionales ($100.000/mes)</option>
+              <option value="inicial">Inicial — hasta 1 profesional</option>
+              <option value="profesional">Profesional — hasta 3 profesionales</option>
+              <option value="max">Max — profesionales ilimitados</option>
             </select>
           </div>
           <div>
@@ -137,7 +188,7 @@
     </div>
   </main>
 
-  <script src="/superadmin.js"></script>
+  <script src="/superadmin.js?v=20260730-pwd-del"></script>
 
   <!-- Footer -->
   <footer class="bg-sidebar text-on-dark/80 mt-10">

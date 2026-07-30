@@ -42,6 +42,34 @@ function initials(nombre) {
     .join("");
 }
 
+function applyLogoContrast(img) {
+  if (!img) return;
+  const run = () => {
+    try {
+      const c = document.createElement("canvas");
+      const size = 48;
+      c.width = size;
+      c.height = size;
+      const ctx = c.getContext("2d", { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0, size, size);
+      const data = ctx.getImageData(0, 0, size, size).data;
+      let sum = 0;
+      let n = 0;
+      for (let i = 0; i < data.length; i += 4) {
+        if (data[i + 3] < 40) continue;
+        sum += 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+        n += 1;
+      }
+      const avg = n ? sum / n : 128;
+      img.classList.toggle("is-light-logo", avg > 160);
+    } catch (_) {
+      /* cross-origin or tainted canvas — keep default white bg */
+    }
+  };
+  if (img.complete && img.naturalWidth) run();
+  else img.addEventListener("load", run, { once: true });
+}
+
 function gradientForSlug(slug) {
   let n = 0;
   for (const ch of slug) n = (n * 31 + ch.charCodeAt(0)) >>> 0;
@@ -178,27 +206,49 @@ function initCategories() {
   });
 }
 
-function populateCiudades() {
+function normalizePlaceText(s) {
+  return String(s || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function matchesLocation(negocio, query) {
+  const q = normalizePlaceText(query);
+  if (!q) return true;
+  const ciudad = normalizePlaceText(negocio.ciudad);
+  return Boolean(ciudad) && ciudad === q;
+}
+
+async function populateCiudades() {
   if (!ciudadFilter) return;
-  const ciudades = [...new Set(allNegocios.map((n) => n.ciudad).filter(Boolean))].sort((a, b) =>
-    a.localeCompare(b, "es")
-  );
   const current = ciudadFilter.value;
+  let localidades = [];
+  try {
+    const res = await fetch("/api/localidades");
+    const data = await res.json();
+    if (Array.isArray(data)) localidades = data.map((l) => l.nombre).filter(Boolean);
+  } catch (_) {
+    localidades = [...new Set(allNegocios.map((n) => n.ciudad).filter(Boolean))];
+  }
+  localidades.sort((a, b) => a.localeCompare(b, "es"));
   ciudadFilter.innerHTML =
-    `<option value="">Todas las ciudades</option>` +
-    ciudades.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
-  if (ciudades.includes(current)) ciudadFilter.value = current;
+    `<option value="">Todas las localidades</option>` +
+    localidades.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
+  if (localidades.includes(current)) ciudadFilter.value = current;
 }
 
 /* ─── Negocios grid ─── */
 function renderGrid() {
   const query = searchInput?.value.trim().toLowerCase() || "";
-  const ciudad = ciudadFilter?.value || "";
+  const lugar = ciudadFilter?.value || "";
 
   const filtered = allNegocios.filter((n) => {
     const matchCat = activeCategoria === "todos" || n.categoria === activeCategoria;
     const matchSearch = !query || n.nombre.toLowerCase().includes(query);
-    const matchCiudad = !ciudad || n.ciudad === ciudad;
+    const matchCiudad = matchesLocation(n, lugar);
     return matchCat && matchSearch && matchCiudad;
   });
 
@@ -208,7 +258,7 @@ function renderGrid() {
     const msg = emptyState.querySelector("p");
     if (msg) {
       msg.textContent =
-        query || activeCategoria !== "todos" || ciudad
+        query || activeCategoria !== "todos" || lugar
           ? "No se encontraron negocios con ese criterio."
           : "No hay negocios disponibles aún.";
     }
@@ -222,22 +272,23 @@ function renderGrid() {
     .map((negocio, i) => {
       const grad = gradientForSlug(negocio.slug);
       const avatar = negocio.logoUrl
-        ? `<img src="${escapeHtml(negocio.logoUrl)}" alt="${escapeHtml(negocio.nombre)}" class="club-card__avatar" loading="lazy" />`
+        ? `<img src="${escapeHtml(negocio.logoUrl)}" alt="${escapeHtml(negocio.nombre)}" class="club-card__avatar" loading="lazy" crossorigin="anonymous" />`
         : `<div class="club-card__initials" style="background:${grad}">${escapeHtml(initials(negocio.nombre))}</div>`;
 
-      const lugar = [negocio.ciudad, negocio.barrio].filter(Boolean).join(" · ");
+      const lugarTxt = [negocio.ciudad, negocio.direccion || negocio.barrio].filter(Boolean).join(" · ");
       const delay = Math.min(i, 5);
       return `
       <article class="club-card cut-corners cut-corners--sm reveal" style="transition-delay:${delay * 0.06}s">
         ${avatar}
         <h3 class="club-card__name">${escapeHtml(negocio.nombre)}</h3>
         <span class="club-card__sport cut-corners cut-corners--xs">${escapeHtml(categoriaLabel(negocio.categoria))}</span>
-        ${lugar ? `<p class="club-card__meta" style="font-size:0.8rem;opacity:0.75;margin:0.25rem 0 0">${escapeHtml(lugar)}</p>` : ""}
+        ${lugarTxt ? `<p class="club-card__meta" style="font-size:0.8rem;opacity:0.75;margin:0.25rem 0 0">${escapeHtml(lugarTxt)}</p>` : ""}
         <a href="/${escapeHtml(negocio.slug)}" class="btn-arena btn-arena--primary cut-corners">Reservar turno</a>
       </article>`;
     })
     .join("");
 
+  clubsGrid.querySelectorAll("img.club-card__avatar").forEach(applyLogoContrast);
   clubsGrid.querySelectorAll(".reveal").forEach((el) => {
     requestAnimationFrame(() => el.classList.add("is-visible"));
   });
@@ -248,12 +299,13 @@ ciudadFilter?.addEventListener("change", renderGrid);
 
 async function initNegocios() {
   try {
-    let res = await fetch("/api/negocios");
-    if (!res.ok) res = await fetch("/api/clubs");
+    let res = await fetch("/api/negocios", { cache: "no-store" });
+    if (!res.ok) res = await fetch("/api/clubs", { cache: "no-store" });
     allNegocios = await res.json();
     loading?.classList.add("hidden");
-    populateCiudades();
+    await populateCiudades();
     renderGrid();
+    startHomeLivePoll();
 
     const statNum = document.getElementById("statClubsNum");
     const statPlus = document.getElementById("statClubs");
@@ -266,6 +318,53 @@ async function initNegocios() {
       loading.innerHTML = "<p>No se pudo cargar la lista de negocios.</p>";
     }
   }
+}
+
+let homePollTimer = null;
+let homePollInFlight = false;
+let lastHomeSig = "";
+const HOME_LIVE_POLL_MS = 15000;
+
+function negociosSignature(list) {
+  return (list || [])
+    .map((n) => `${n.slug}:${n.nombre}:${n.ciudad || ""}:${n.direccion || ""}:${n.logoUrl || ""}`)
+    .sort()
+    .join("|");
+}
+
+async function pollHomeNegocios() {
+  if (homePollInFlight || document.hidden) return;
+  homePollInFlight = true;
+  try {
+    let res = await fetch("/api/negocios", { cache: "no-store" });
+    if (!res.ok) res = await fetch("/api/clubs", { cache: "no-store" });
+    const list = await res.json();
+    const sig = negociosSignature(list);
+    if (sig === lastHomeSig) return;
+    lastHomeSig = sig;
+    allNegocios = list;
+    await populateCiudades();
+    renderGrid();
+    const statNum = document.getElementById("statClubsNum");
+    const statPlus = document.getElementById("statClubs");
+    if (statNum && allNegocios.length > 0) {
+      statNum.textContent = String(allNegocios.length);
+      if (statPlus) statPlus.textContent = allNegocios.length >= 10 ? "+" : "";
+    }
+  } catch (_) {
+    /* silencioso */
+  } finally {
+    homePollInFlight = false;
+  }
+}
+
+function startHomeLivePoll() {
+  if (homePollTimer) clearInterval(homePollTimer);
+  lastHomeSig = negociosSignature(allNegocios);
+  homePollTimer = setInterval(pollHomeNegocios, HOME_LIVE_POLL_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden) pollHomeNegocios();
+  });
 }
 
 /* ─── Smooth anchor offset for fixed nav ─── */

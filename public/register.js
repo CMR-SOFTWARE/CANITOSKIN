@@ -16,7 +16,8 @@ const label3 = document.getElementById("label3");
 const nombreInput = document.getElementById("nombre");
 const categoriaInput = document.getElementById("categoria");
 const ciudadInput = document.getElementById("ciudad");
-const barrioInput = document.getElementById("barrio");
+const direccionInput = document.getElementById("direccion");
+const localidadHint = document.getElementById("localidadHint");
 const whatsappInput = document.getElementById("whatsapp");
 const emailInput = document.getElementById("email");
 const slugPreview = document.getElementById("slugPreview");
@@ -26,6 +27,35 @@ const msg2 = document.getElementById("msg2");
 
 let planesById = {};
 let datosNegocio = {};
+
+async function loadLocalidadesSelect() {
+  if (!ciudadInput) return;
+  try {
+    const res = await fetch("/api/localidades");
+    const list = await res.json();
+    if (!Array.isArray(list) || !list.length) {
+      ciudadInput.innerHTML = `<option value="">Sin localidades disponibles</option>`;
+      if (localidadHint) {
+        localidadHint.textContent = "Todavía no hay localidades. Pedile a CMR que cargue las tuyas.";
+      }
+      return;
+    }
+    const current = ciudadInput.value;
+    ciudadInput.innerHTML =
+      `<option value="">Seleccioná una localidad</option>` +
+      list.map((l) => `<option value="${escapeHtmlAttr(l.nombre)}">${escapeHtmlAttr(l.nombre)}</option>`).join("");
+    if (current && list.some((l) => l.nombre === current)) ciudadInput.value = current;
+  } catch (_) {
+    ciudadInput.innerHTML = `<option value="">No se pudieron cargar</option>`;
+  }
+}
+
+function escapeHtmlAttr(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/"/g, "&quot;");
+}
 
 const CHECK_SVG = `<svg class="price-card__check" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path fill-rule="evenodd" d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z" clip-rule="evenodd"/></svg>`;
 
@@ -153,13 +183,15 @@ document.getElementById("btnSiguiente").addEventListener("click", async () => {
   const email = emailInput.value.trim();
   const plan = planHidden.value || "inicial";
   const ciudad = ciudadInput?.value.trim() || "";
-  const barrio = barrioInput?.value.trim() || "";
+  const direccion = direccionInput?.value.trim() || "";
 
   if (!nombre) return showMsg(msg1, "El nombre del negocio es requerido.");
+  if (!ciudad) return showMsg(msg1, "Seleccioná una localidad.");
+  if (!direccion) return showMsg(msg1, "Ingresá la dirección del local.");
   if (!whatsapp || whatsapp.length < 8) return showMsg(msg1, "Ingresá un número de WhatsApp válido.");
   if (!email || !email.includes("@")) return showMsg(msg1, "Ingresá un email válido.");
 
-  datosNegocio = { nombre, categoria, whatsapp: "549" + whatsapp, email, plan, ciudad, barrio };
+  datosNegocio = { nombre, categoria, whatsapp: "549" + whatsapp, email, plan, ciudad, direccion };
 
   const planInfo = planesById[plan];
   document.getElementById("precioSub").textContent = formatMoney(planInfo?.precio || 0);
@@ -198,7 +230,7 @@ document.getElementById("btnEnviar").addEventListener("click", async () => {
   formData.append("nombre", datosNegocio.nombre);
   formData.append("categoria", datosNegocio.categoria);
   formData.append("ciudad", datosNegocio.ciudad || "");
-  formData.append("barrio", datosNegocio.barrio || "");
+  formData.append("direccion", datosNegocio.direccion || "");
   formData.append("whatsapp", datosNegocio.whatsapp);
   formData.append("email", datosNegocio.email);
   formData.append("plan", datosNegocio.plan);
@@ -237,6 +269,8 @@ async function init() {
   } catch (_) {
     pricingGrid.innerHTML = `<p class="pricing-loading col-span-full">No se pudieron cargar los planes. Recargá la página.</p>`;
   }
+
+  await loadLocalidadesSelect();
 }
 
 init();

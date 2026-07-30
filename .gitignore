@@ -8,3 +8,5 @@ reservas.sqlite-wal
 turnos.sqlite
 turnos.sqlite-shm
 turnos.sqlite-wal
+.vercel
+.env*

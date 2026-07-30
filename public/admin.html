@@ -8,225 +8,1051 @@
     <link rel="stylesheet" href="/globals.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/tailwind-theme.js"></script>
+    <style>
+      .admin-shell { min-height: 100dvh; }
+      @media (min-width: 1024px) {
+        .admin-sidebar {
+          position: sticky;
+          top: 0;
+          height: 100dvh;
+        }
+      }
+      .nav-item.is-active { opacity: 1; background: var(--business-accent); color: #fff; }
+      .view { display: none; }
+      .view.is-active { display: block; }
+      .kpi-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 1rem;
+        box-shadow: var(--shadow-card-soft);
+      }
+      .kpi-value { font-size: var(--text-metric); font-weight: 700; letter-spacing: -0.02em; line-height: 1.15; }
+      .kpi-sub { font-size: var(--text-meta-sm); color: var(--text-secondary); margin-top: 0.35rem; }
+      .appt-row {
+        background: #fff;
+        border: 1px solid var(--border-color);
+        border-left: 4px solid var(--business-accent);
+        border-radius: 0.75rem;
+        padding: 0.875rem 1rem;
+        box-shadow: var(--shadow-card);
+      }
+      .appt-row.is-confirmada { border-left-color: var(--success); }
+      .appt-row.is-pendiente { border-left-color: var(--warning); }
+      .appt-row.is-cancelada { border-left-color: var(--danger); }
+      .pill-group {
+        display: inline-flex;
+        padding: 0.2rem;
+        border-radius: 999px;
+        background: var(--neutral-bg);
+        border: 1px solid var(--border-color);
+        gap: 0.15rem;
+      }
+      .pill-group button {
+        border: none;
+        background: transparent;
+        border-radius: 999px;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: background 150ms ease, color 150ms ease;
+      }
+      .pill-group button.is-active {
+        background: var(--business-accent);
+        color: #fff;
+      }
+      .stat-bar { height: 8px; border-radius: 999px; background: var(--border-color); overflow: hidden; }
+      .stat-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--business-accent); }
+      .day-chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 999px;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: var(--text-secondary);
+        background: var(--neutral-bg);
+      }
+      .day-chip.is-on {
+        color: #fff;
+        background: var(--business-accent);
+      }
+      .bloqueo-card {
+        background: var(--warning-bg);
+        border: 1px solid color-mix(in srgb, var(--warning) 28%, white);
+        border-radius: 0.75rem;
+        padding: 0.75rem 1rem;
+      }
+      .cal-week {
+        display: grid;
+        grid-template-columns: 56px repeat(7, minmax(110px, 1fr));
+        min-width: 900px;
+        background: var(--card-bg);
+      }
+      .cal-head, .cal-time, .cal-cell {
+        border-bottom: 1px solid var(--border-color);
+        border-right: 1px solid var(--border-color);
+      }
+      .cal-head { padding: 0.65rem 0.4rem; text-align: center; background: var(--content-bg); }
+      .cal-time {
+        padding: 0.35rem 0.35rem 0;
+        font-size: 0.7rem;
+        color: var(--text-secondary);
+        text-align: right;
+        background: var(--content-bg);
+      }
+      .cal-cell { min-height: 42px; padding: 2px; position: relative; }
+      .cal-block {
+        border-radius: 6px;
+        padding: 0.2rem 0.35rem;
+        font-size: 0.65rem;
+        line-height: 1.25;
+        color: #fff;
+        margin-bottom: 2px;
+        overflow: hidden;
+      }
+      .cal-block-meta {
+        display: block;
+        opacity: 0.9;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .cal-cell.is-fuera {
+        background: color-mix(in srgb, #a8a29e 12%, transparent);
+      }
+      .cal-head.is-cerrado {
+        opacity: 0.55;
+      }
+      .cal-block.is-bloqueo {
+        background: repeating-linear-gradient(
+          -45deg,
+          #78716c,
+          #78716c 4px,
+          #57534e 4px,
+          #57534e 8px
+        );
+        color: #fff;
+        opacity: 0.92;
+      }
+      .cal-block.is-bloqueo-full {
+        background: #57534e;
+      }
+      .cal-head.is-blocked {
+        background: color-mix(in srgb, #78716c 18%, var(--content-bg));
+      }
+      .cal-head-blocked {
+        margin-top: 0.2rem;
+        font-size: 0.65rem;
+        font-weight: 700;
+        color: #57534e;
+        text-transform: none;
+        letter-spacing: 0;
+      }
+      .cal-cell.is-blocked {
+        background: color-mix(in srgb, #a8a29e 14%, white);
+      }
+      .mov-badge {
+        display: inline-flex;
+        align-items: center;
+        border-radius: 9999px;
+        padding: 0.15rem 0.55rem;
+        font-size: 0.7rem;
+        font-weight: 700;
+      }
+      .mov-badge.is-ingreso { background: #dcfce7; color: #15803d; }
+      .mov-badge.is-gasto { background: #fee2e2; color: #b91c1c; }
+      .mov-kpi-ingreso .kpi-value { color: #15803d; }
+      .mov-kpi-gasto .kpi-value { color: #b91c1c; }
+      .mov-kpi-balance .kpi-value { color: var(--business-accent); }
+      .admin-table th {
+        font-size: var(--text-meta-sm);
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--text-secondary);
+      }
+      .plan-create-card {
+        border: 2px dashed var(--border-color);
+        border-radius: var(--radius-card);
+        background: transparent;
+        min-height: 180px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.5rem;
+        color: var(--text-secondary);
+        cursor: pointer;
+        transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+      }
+      .plan-create-card:hover {
+        border-color: var(--business-accent);
+        color: var(--business-accent);
+        background: var(--business-accent-light);
+      }
+      .dia-chip {
+        min-width: 2.75rem;
+        border-radius: 9999px;
+        border: 1px solid var(--border-color);
+        background: #fff;
+        padding: 0.4rem 0.75rem;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+      }
+      .dia-chip.is-active {
+        background: var(--business-accent);
+        border-color: var(--business-accent);
+        color: #fff;
+      }
+      .trend-up { color: var(--success); }
+      .trend-down { color: var(--danger); }
+      .trend-flat { color: var(--text-secondary); }
+      .search-input {
+        width: 100%;
+        max-width: 28rem;
+        border: 1px solid var(--border-color);
+        border-radius: 0.75rem;
+        padding: 0.65rem 0.9rem 0.65rem 2.5rem;
+        background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2371717A'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M21 21l-4.35-4.35M11 18a7 7 0 100-14 7 7 0 000 14z'/%3E%3C/svg%3E") 0.75rem center / 1.1rem no-repeat;
+      }
+      .search-input:focus {
+        outline: none;
+        box-shadow: 0 0 0 2px color-mix(in srgb, var(--business-accent) 35%, transparent);
+        border-color: var(--business-accent);
+      }
+    </style>
   </head>
-  <body class="scope-business min-h-screen bg-content text-primary flex flex-col font-sans">
+  <body class="scope-business min-h-screen bg-content text-primary font-sans">
 
-    <nav class="bg-sidebar shadow-sm">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 md:px-6">
-        <a href="/" class="flex items-center gap-3">
-          <img src="/images/logo-cmr.png" alt="CMR Turnos" class="h-9 w-9 rounded-lg object-contain" />
-          <span class="text-on-dark font-bold text-base tracking-tight">CMR Turnos</span>
-        </a>
-        <span class="text-accent text-xs font-semibold uppercase tracking-wider">Panel Admin</span>
+    <!-- LOGIN -->
+    <section id="loginCard" class="min-h-screen flex items-center justify-center p-4">
+      <div class="w-full max-w-md rounded-card bg-card shadow-card border border-border overflow-hidden">
+        <div class="h-1" style="background: var(--business-accent)"></div>
+        <div class="p-6 sm:p-8">
+          <div class="mb-6 text-center">
+            <div id="loginAvatar" class="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-xl text-xl font-bold text-white"
+                 style="background: var(--business-accent)">A</div>
+            <h1 class="text-h1">Panel de gestión</h1>
+            <p id="loginBusinessName" class="text-meta mt-1">Ingresá tu clave de administrador</p>
+          </div>
+          <div class="mb-3 flex flex-col gap-1">
+            <label class="label" for="adminPassword">Clave de administrador</label>
+            <input id="adminPassword" type="password" autocomplete="current-password"
+                   class="rounded-lg border border-border px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+          </div>
+          <button id="btnLogin" type="button" class="btn-primary w-full">Ingresar</button>
+          <p id="loginMessage" class="mt-3 min-h-5 text-sm font-semibold text-danger"></p>
+          <p class="mt-4 text-center text-meta-sm">
+            <a id="linkMenuLogin" href="/" class="text-secondary hover:text-primary underline-offset-2 hover:underline">Volver al sitio</a>
+          </p>
+        </div>
       </div>
-    </nav>
+    </section>
 
-    <main class="mx-auto max-w-5xl p-4 md:p-6 flex-1 w-full">
-      <header class="mb-4">
-        <h1 class="text-2xl font-bold md:text-3xl">Panel Administrador</h1>
-        <p class="text-slate-600">Gestión de turnos, bloqueos, servicios y equipo.</p>
+    <!-- APP SHELL -->
+    <div id="adminPanel" class="admin-shell hidden lg:flex">
+      <!-- Mobile top bar -->
+      <header class="lg:hidden sticky top-0 z-40 flex items-center justify-between gap-3 bg-sidebar px-4 py-3 text-on-dark">
+        <div class="flex items-center gap-3 min-w-0">
+          <div id="mobileAvatar" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white overflow-hidden"
+               style="background: var(--business-accent)">A</div>
+          <div class="min-w-0">
+            <p id="mobileBusinessName" class="truncate text-sm font-semibold text-white">Negocio</p>
+            <p class="text-meta-sm text-on-dark/60">Panel de gestión</p>
+          </div>
+        </div>
+        <button id="btnMobileNav" type="button" class="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-on-dark"
+                aria-label="Abrir menú">Menú</button>
       </header>
 
-      <section id="loginCard" class="mb-4 rounded-xl bg-white shadow-sm overflow-hidden">
-        <div class="h-1 bg-accent"></div>
-        <div class="p-4">
-          <h2 class="mb-3 text-xl font-semibold">Acceso admin</h2>
-          <div class="mb-3 flex flex-col gap-1">
-            <label class="font-medium" for="adminPassword">Clave de administrador</label>
-            <input id="adminPassword" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+      <!-- Sidebar -->
+      <aside id="sidebar" class="admin-sidebar ds-sidebar w-full lg:w-64 shrink-0 border-b lg:border-b-0 lg:border-r border-white/10 hidden lg:flex lg:flex-col">
+        <div class="px-5 py-5 border-b border-white/10">
+          <div class="flex items-center gap-3">
+            <div id="sidebarAvatar" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white overflow-hidden"
+                 style="background: var(--business-accent)">A</div>
+            <div class="min-w-0">
+              <p id="sidebarBusinessName" class="truncate text-sm font-semibold text-white">Negocio</p>
+              <p class="text-meta-sm text-on-dark/60">Panel de gestión</p>
+            </div>
           </div>
-          <button id="btnLogin" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Ingresar</button>
-          <p id="loginMessage" class="mt-2 min-h-5 text-sm font-semibold text-red-700"></p>
         </div>
-      </section>
+        <nav id="sideNav" class="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          <button type="button" data-view="dashboard" class="nav-item ds-sidebar__item is-active flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l9-9 9 9M5 10v10a1 1 0 001 1h3a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1h3a1 1 0 001-1V10"/></svg>
+            Dashboard
+          </button>
+          <button type="button" data-view="agenda" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3M3 11h18M5 5h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2z"/></svg>
+            Agenda
+          </button>
+          <button type="button" data-view="servicios" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/></svg>
+            Servicios
+          </button>
+          <button type="button" data-view="equipo" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+            Equipo
+          </button>
+          <button type="button" data-view="clientes" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+            Clientes
+          </button>
+          <button type="button" data-view="planes" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
+            Planes
+          </button>
+          <button type="button" data-view="movimientos" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            Movimientos
+          </button>
+          <button type="button" data-view="estadisticas" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            Estadísticas
+          </button>
+          <button type="button" data-view="configuracion" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            Configuración
+          </button>
+        </nav>
+        <div class="mt-auto border-t border-white/10 px-3 py-4 space-y-1">
+          <a id="linkMenu" href="/" class="ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18"/></svg>
+            Ver sitio público
+          </a>
+          <button id="btnLogout" type="button" class="ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+            Cerrar sesión
+          </button>
+        </div>
+      </aside>
 
-      <section id="adminPanel" class="hidden">
-        <section class="mb-4 rounded-xl bg-white shadow-sm overflow-hidden">
-          <div class="h-1 bg-accent"></div>
-          <div class="p-4">
-            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 class="text-xl font-semibold">Bloquear horarios</h2>
-              <div class="flex flex-wrap items-center gap-2">
-                <a id="linkMenu" href="#" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover">
-                  Volver al menú principal
-                </a>
-                <button id="btnLogout" class="rounded-lg border border-white/10 px-4 py-2 font-semibold text-accent-hover hover:bg-accent-light" type="button">Cerrar sesión</button>
-              </div>
+      <!-- Content -->
+      <main class="flex-1 min-w-0 p-4 sm:p-6 lg:p-8">
+
+        <!-- DASHBOARD -->
+        <section id="view-dashboard" class="view is-active">
+          <header class="mb-6 md:mb-8">
+            <h1 class="text-h1"><span id="dashGreeting">Buenos días</span>, <span id="dashGreetingName">equipo</span></h1>
+            <p id="dashSubtitle" class="text-meta mt-1">0 turnos para hoy</p>
+          </header>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6 md:mb-8">
+            <div class="kpi-card p-4 md:p-5">
+              <p class="text-meta">Turnos hoy</p>
+              <p id="kpiHoy" class="kpi-value mt-1">0</p>
+              <p id="kpiHoySub" class="kpi-sub">confirmados</p>
             </div>
-            <div class="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-              <div class="flex flex-col gap-1" id="bloqProWrap">
-                <label class="font-medium" for="bloqProfesional" id="bloqProLabel">Profesional</label>
-                <select id="bloqProfesional" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"></select>
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="font-medium" for="bloqFecha">Fecha</label>
-                <input id="bloqFecha" type="date" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="font-medium" for="bloqHorarioDesde">Horario desde</label>
-                <select id="bloqHorarioDesde" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"></select>
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="font-medium" for="bloqHorarioHasta">Horario hasta</label>
-                <select id="bloqHorarioHasta" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent"></select>
-              </div>
+            <div class="kpi-card p-4 md:p-5">
+              <p class="text-meta">Esta semana</p>
+              <p id="kpiSemana" class="kpi-value mt-1">0</p>
+              <p id="kpiSemanaSub" class="kpi-sub">vs semana anterior</p>
             </div>
-            <div class="mb-3 flex items-center gap-2">
-              <input id="bloqDiaCompleto" type="checkbox" class="h-4 w-4 accent-accent" />
-              <label for="bloqDiaCompleto" class="font-medium">Día completo</label>
+            <div class="kpi-card p-4 md:p-5">
+              <p class="text-meta">Ingresos estimados</p>
+              <p id="kpiIngresos" class="kpi-value mt-1 text-lg sm:text-metric">$ 0</p>
+              <p id="kpiIngresosSub" class="kpi-sub">esta semana</p>
             </div>
-            <div class="mb-3 flex flex-col gap-1">
-              <label class="font-medium" for="bloqMotivo">Motivo</label>
-              <input id="bloqMotivo" type="text" placeholder="Ej: feriado" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+            <div class="kpi-card p-4 md:p-5">
+              <p class="text-meta">Sin cobrar</p>
+              <p id="kpiPendientes" class="kpi-value mt-1">0</p>
+              <p id="kpiPendientesSub" class="kpi-sub">sin cobrar</p>
             </div>
-            <button id="btnCrearBloqueo" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Crear bloqueo</button>
-            <p id="adminMessage" class="mt-2 min-h-5 text-sm font-semibold text-red-700"></p>
           </div>
-        </section>
-
-        <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-          <h2 class="mb-3 text-xl font-semibold text-accent-hover">Bloqueos activos</h2>
-          <div id="bloqueosList" class="grid gap-3"></div>
-        </section>
-
-        <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-          <div class="flex items-start justify-between gap-2">
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             <div>
-              <h2 class="text-xl font-semibold text-accent-hover">Bloqueos recurrentes</h2>
-              <p class="text-xs text-slate-400 mt-0.5">Se aplican automáticamente cada semana</p>
+              <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-h2">Turnos de hoy</h2>
+                <button type="button" data-goto="agenda" class="text-sm font-semibold text-business-accent hover:text-business-accent-hover">Ver agenda</button>
+              </div>
+              <div id="dashHoyList" class="space-y-2.5"></div>
             </div>
-            <button id="btnToggleBloqRec" type="button"
-              class="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-hover shrink-0">
-              + Nuevo
-            </button>
+            <div>
+              <div class="mb-3 flex items-center justify-between">
+                <h2 class="text-h2">Próximos turnos</h2>
+                <button type="button" data-goto="agenda" class="text-sm font-semibold text-business-accent hover:text-business-accent-hover">Ver agenda</button>
+              </div>
+              <div id="dashProximosList" class="space-y-2.5"></div>
+            </div>
           </div>
+        </section>
 
-          <div id="formBloqRecContainer" class="hidden mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+        <!-- AGENDA -->
+        <section id="view-agenda" class="view">
+          <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 class="text-h1">Agenda</h1>
+              <p class="text-meta mt-1">Horario de atención, turnos, calendario y bloqueos.</p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <button id="btnToggleAgendar" type="button" class="btn-primary px-4 py-2 text-sm">+ Agendar turno</button>
+              <div class="pill-group" role="group" aria-label="Vista de agenda">
+                <button id="btnVistaLista" type="button" class="is-active">Lista</button>
+                <button id="btnVistaCalendario" type="button">Calendario</button>
+              </div>
+            </div>
+          </header>
+
+          <div class="ds-card p-4 md:p-5 mb-4 space-y-4">
+            <div>
+              <h2 class="text-h2">Horario de atención</h2>
+              <p class="text-meta-sm mt-0.5">Definí los días y la franja horaria. Podés sumar una segunda franja si cortás al mediodía.</p>
+            </div>
+
+            <div>
+              <p class="label mb-2">Días que trabaja</p>
+              <div id="cfgDiasAtencion" class="flex flex-wrap gap-2" role="group" aria-label="Días de atención">
+                <button type="button" data-dia="1" class="dia-chip">Lun</button>
+                <button type="button" data-dia="2" class="dia-chip">Mar</button>
+                <button type="button" data-dia="3" class="dia-chip">Mié</button>
+                <button type="button" data-dia="4" class="dia-chip">Jue</button>
+                <button type="button" data-dia="5" class="dia-chip">Vie</button>
+                <button type="button" data-dia="6" class="dia-chip">Sáb</button>
+                <button type="button" data-dia="0" class="dia-chip">Dom</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 max-w-md">
               <div class="flex flex-col gap-1">
-                <label class="text-sm font-medium" for="recProfesional" id="recProLabel">Profesional</label>
-                <select id="recProfesional" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
+                <label class="label" for="cfgHoraInicio">Desde</label>
+                <input id="cfgHoraInicio" type="number" min="0" max="23" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-sm font-medium" for="recDiaSemana">Día de la semana</label>
-                <select id="recDiaSemana" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent">
-                  <option value="1">Lunes</option>
-                  <option value="2">Martes</option>
-                  <option value="3">Miércoles</option>
-                  <option value="4">Jueves</option>
-                  <option value="5">Viernes</option>
-                  <option value="6">Sábado</option>
-                  <option value="0">Domingo</option>
+                <label class="label" for="cfgHoraFin">Hasta</label>
+                <input id="cfgHoraFin" type="number" min="1" max="24" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+            </div>
+
+            <div id="franja2Block" class="hidden space-y-3 max-w-md">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-semibold text-primary">Franja 2</p>
+                <button id="btnQuitarFranja2" type="button" class="text-xs font-semibold text-danger hover:underline">Quitar franja 2</button>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="cfgHoraInicio2">Desde</label>
+                  <input id="cfgHoraInicio2" type="number" min="0" max="23" placeholder="—" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="cfgHoraFin2">Hasta</label>
+                  <input id="cfgHoraFin2" type="number" min="1" max="24" placeholder="—" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                </div>
+              </div>
+            </div>
+
+            <button id="btnAgregarFranja2" type="button"
+                    class="rounded-lg border border-dashed border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-white/70">
+              + Agregar franja horaria 2
+            </button>
+
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <button id="btnGuardarHorario" type="button" class="btn-primary px-4 py-2 text-sm">Guardar horario</button>
+              <p id="horarioMsg" class="min-h-5 text-sm font-semibold"></p>
+            </div>
+          </div>
+
+          <div id="formAgendarManual" class="ds-card p-4 md:p-5 mb-4 hidden">
+            <h2 class="text-h2 mb-1">Agendar turno manual</h2>
+            <p class="text-meta mb-4">Sin comprobante. Ideal para reservas por teléfono o presencial.</p>
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div class="flex flex-col gap-1">
+                <label class="label" for="manNombre">Nombre</label>
+                <input id="manNombre" type="text" autocomplete="name" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" placeholder="Cliente" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="manTelefono">Teléfono</label>
+                <input id="manTelefono" type="tel" inputmode="numeric" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" placeholder="3364578599" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="manServicio">Servicio</label>
+                <select id="manServicio" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+              </div>
+              <div id="manProWrap" class="flex flex-col gap-1 hidden">
+                <label class="label" for="manProfesional">Profesional</label>
+                <select id="manProfesional" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="manFecha">Fecha</label>
+                <input id="manFecha" type="date" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="manHorario">Horario</label>
+                <select id="manHorario" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
+                  <option value="">Elegí fecha y servicio</option>
                 </select>
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-sm font-medium" for="recHorarioDesde">Horario desde</label>
-                <select id="recHorarioDesde" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
+                <label class="label" for="manEstado">Estado</label>
+                <select id="manEstado" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
+                  <option value="confirmada">Pagado / agendado</option>
+                  <option value="pendiente">Sin cobrar</option>
+                </select>
+              </div>
+            </div>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <button id="btnGuardarAgendar" type="button" class="btn-primary px-4 py-2 text-sm">Guardar turno</button>
+              <button id="btnCancelarAgendar" type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
+              <p id="manMsg" class="min-h-5 text-sm font-semibold"></p>
+            </div>
+          </div>
+
+          <div id="formModificarHorario" class="ds-card p-4 md:p-5 mb-4 hidden">
+            <h2 class="text-h2 mb-1">Modificar horario</h2>
+            <p id="modReservaInfo" class="text-meta mb-4">—</p>
+            <input type="hidden" id="modReservaId" value="" />
+            <input type="hidden" id="modServiceId" value="" />
+            <input type="hidden" id="modProfessionalId" value="" />
+            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="flex flex-col gap-1">
+                <label class="label" for="modFecha">Nueva fecha</label>
+                <input id="modFecha" type="date" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
               </div>
               <div class="flex flex-col gap-1">
-                <label class="text-sm font-medium" for="recHorarioHasta">Horario hasta</label>
-                <select id="recHorarioHasta" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
+                <label class="label" for="modHorario">Nuevo horario</label>
+                <select id="modHorario" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
+                  <option value="">Elegí fecha</option>
+                </select>
               </div>
             </div>
-            <div class="mt-3 flex items-center gap-2">
-              <input id="recDiaCompleto" type="checkbox" class="h-4 w-4 accent-accent" />
-              <label for="recDiaCompleto" class="text-sm font-medium">Día completo</label>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <button id="btnGuardarModHorario" type="button" class="btn-primary px-4 py-2 text-sm">Guardar cambio</button>
+              <button id="btnCancelarModHorario" type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
+              <p id="modMsg" class="min-h-5 text-sm font-semibold"></p>
             </div>
-            <div class="mt-3 flex flex-col gap-1">
-              <label class="text-sm font-medium" for="recMotivo">Motivo</label>
-              <input id="recMotivo" type="text" placeholder="Ej: Capacitación"
-                class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            </div>
-            <div class="mt-3 flex gap-2">
-              <button id="btnGuardarBloqRec" type="button"
-                class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">
-                Guardar bloqueo
-              </button>
-              <button id="btnCancelarBloqRec" type="button"
-                class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
-                Cancelar
-              </button>
-            </div>
-            <p id="recMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
           </div>
 
-          <div id="bloqueosRecurrentesList" class="mt-4 grid gap-3"></div>
+          <div class="ds-card p-4 md:p-5 mb-4">
+            <div id="filtrosLista" class="mb-4 flex flex-wrap items-center gap-2">
+              <label class="text-meta" for="filtroFecha">Fecha</label>
+              <input id="filtroFecha" type="date" class="rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <label class="text-meta" for="filtroEstado">Estado</label>
+              <select id="filtroEstado" class="rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent">
+                <option value="">Todos</option>
+                <option value="confirmada">Pagado</option>
+                <option value="pendiente">Sin cobrar</option>
+                <option value="cancelada">Cancelada</option>
+              </select>
+              <button id="btnFiltrarReservas" type="button" class="btn-primary px-3 py-1.5 text-sm">Filtrar</button>
+              <button id="btnLimpiarFiltro" type="button" class="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold hover:bg-neutral-bg">Todas</button>
+              <button id="btnExportarCSV" type="button" class="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold hover:bg-neutral-bg">Exportar CSV</button>
+            </div>
+
+            <div id="vistaLista">
+              <div id="reservasList" class="grid gap-3"></div>
+            </div>
+            <div id="vistaCalendario" class="hidden">
+              <div class="mb-3 flex flex-wrap items-center gap-3">
+                <label class="text-meta" id="calProLabel" for="calProfesional">Profesional</label>
+                <select id="calProfesional" class="rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+                <div class="flex items-center gap-2">
+                  <button id="btnCalPrev" type="button" class="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold hover:bg-neutral-bg">← Anterior</button>
+                  <span id="calSemanaLabel" class="min-w-[150px] text-center text-sm font-semibold"></span>
+                  <button id="btnCalNext" type="button" class="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold hover:bg-neutral-bg">Siguiente →</button>
+                </div>
+              </div>
+              <div id="calGrid" class="overflow-x-auto rounded-xl border border-border"></div>
+            </div>
+          </div>
+
+          <!-- Bloqueos -->
+          <div class="ds-card p-4 md:p-5 mb-4">
+            <h2 class="text-h2 mb-3">Bloquear horarios</h2>
+            <div class="mb-3 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div class="flex flex-col gap-1" id="bloqProWrap">
+                <label class="label" for="bloqProfesional" id="bloqProLabel">Profesional</label>
+                <select id="bloqProfesional" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="bloqFecha">Fecha</label>
+                <input id="bloqFecha" type="date" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="bloqHorarioDesde">Horario desde</label>
+                <select id="bloqHorarioDesde" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="bloqHorarioHasta">Horario hasta</label>
+                <select id="bloqHorarioHasta" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+              </div>
+            </div>
+            <div class="mb-3 flex items-center gap-2">
+              <input id="bloqDiaCompleto" type="checkbox" class="h-4 w-4" style="accent-color: var(--business-accent)" />
+              <label for="bloqDiaCompleto" class="label">Día completo</label>
+            </div>
+            <div class="mb-3 flex flex-col gap-1">
+              <label class="label" for="bloqMotivo">Motivo</label>
+              <input id="bloqMotivo" type="text" placeholder="Ej: feriado" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+            </div>
+            <button id="btnCrearBloqueo" type="button" class="btn-primary">Crear bloqueo</button>
+            <p id="adminMessage" class="mt-2 min-h-5 text-sm font-semibold"></p>
+            <h3 class="text-h3 mt-6 mb-3">Bloqueos activos</h3>
+            <div id="bloqueosList" class="grid gap-2.5"></div>
+          </div>
+
+          <div class="ds-card p-4 md:p-5">
+            <div class="flex items-start justify-between gap-2">
+              <div>
+                <h2 class="text-h2">Bloqueos recurrentes</h2>
+                <p class="text-meta-sm mt-0.5">Se aplican automáticamente cada semana</p>
+              </div>
+              <button id="btnToggleBloqRec" type="button" class="btn-primary shrink-0 text-sm px-3 py-1.5">+ Nuevo</button>
+            </div>
+            <div id="formBloqRecContainer" class="hidden mt-4 rounded-xl border border-border bg-content p-4">
+              <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="recProfesional" id="recProLabel">Profesional</label>
+                  <select id="recProfesional" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="recDiaSemana">Día de la semana</label>
+                  <select id="recDiaSemana" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent">
+                    <option value="1">Lunes</option>
+                    <option value="2">Martes</option>
+                    <option value="3">Miércoles</option>
+                    <option value="4">Jueves</option>
+                    <option value="5">Viernes</option>
+                    <option value="6">Sábado</option>
+                    <option value="0">Domingo</option>
+                  </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="recHorarioDesde">Horario desde</label>
+                  <select id="recHorarioDesde" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="recHorarioHasta">Horario hasta</label>
+                  <select id="recHorarioHasta" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+                </div>
+              </div>
+              <div class="mt-3 flex items-center gap-2">
+                <input id="recDiaCompleto" type="checkbox" class="h-4 w-4" style="accent-color: var(--business-accent)" />
+                <label for="recDiaCompleto" class="label">Día completo</label>
+              </div>
+              <div class="mt-3 flex flex-col gap-1">
+                <label class="label" for="recMotivo">Motivo</label>
+                <input id="recMotivo" type="text" placeholder="Ej: Capacitación" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="mt-3 flex gap-2">
+                <button id="btnGuardarBloqRec" type="button" class="btn-primary text-sm">Guardar bloqueo</button>
+                <button id="btnCancelarBloqRec" type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
+              </div>
+              <p id="recMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+            </div>
+            <div id="bloqueosRecurrentesList" class="mt-4 grid gap-2.5"></div>
+          </div>
         </section>
 
-        <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-xl font-semibold text-accent-hover">Turnos reservados</h2>
-            <div class="flex flex-wrap items-center gap-2">
-              <div class="flex overflow-hidden rounded-lg border border-slate-200 text-sm font-semibold">
-                <button id="btnVistaLista" type="button" class="px-3 py-1.5 bg-accent text-white">Lista</button>
-                <button id="btnVistaCalendario" type="button" class="px-3 py-1.5 text-accent-hover hover:bg-accent-light">Calendario</button>
-              </div>
-              <button id="btnExportarCSV" type="button"
-                class="rounded-lg border border-accent px-3 py-1.5 text-sm font-semibold text-accent-hover hover:bg-accent-light">
-                Exportar CSV
-              </button>
-            </div>
-          </div>
-          <div id="filtrosLista" class="mb-3 flex flex-wrap items-center gap-2">
-            <label class="text-sm font-medium text-slate-600" for="filtroFecha">Fecha</label>
-            <input id="filtroFecha" type="date" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-            <button id="btnFiltrarReservas" class="rounded-lg bg-accent px-3 py-1.5 text-sm font-semibold text-white hover:bg-accent-hover" type="button">Filtrar</button>
-            <button id="btnLimpiarFiltro" class="rounded-lg border border-accent px-3 py-1.5 text-sm font-semibold text-accent-hover hover:bg-accent-light" type="button">Todas</button>
-          </div>
-          <div id="vistaLista">
-            <div id="reservasList" class="grid gap-3"></div>
-          </div>
-          <div id="vistaCalendario" class="hidden">
-            <div class="mb-3 flex flex-wrap items-center gap-3">
-              <label class="text-sm font-medium text-slate-600" id="calProLabel">Profesional:</label>
-              <select id="calProfesional"
-                class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent"></select>
-              <div class="flex items-center gap-2">
-                <button id="btnCalPrev" type="button"
-                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">&#8592; Anterior</button>
-                <span id="calSemanaLabel" class="min-w-[150px] text-center text-sm font-semibold text-slate-700"></span>
-                <button id="btnCalNext" type="button"
-                  class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-600 hover:bg-slate-50">Siguiente &#8594;</button>
-              </div>
-            </div>
-            <div id="calGrid" class="overflow-x-auto rounded-lg border border-slate-200"></div>
-          </div>
-        </section>
-
-        <section class="mb-4 rounded-xl bg-white shadow-sm overflow-hidden">
-          <button id="btnToggleConfig" class="flex w-full items-center justify-between text-left p-4" type="button">
-            <h2 class="text-xl font-semibold text-accent-hover">Configuración del negocio</h2>
-            <span id="configChevron" class="text-accent transition-transform">&#9660;</span>
-          </button>
-
-          <div id="configPanel" class="hidden border-t border-slate-100 p-4 space-y-6">
-
+        <!-- SERVICIOS -->
+        <section id="view-servicios" class="view">
+          <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
             <div>
-              <h3 class="mb-3 font-semibold text-accent-hover">Datos generales</h3>
+              <h1 class="text-h1">Servicios</h1>
+              <p id="serviciosMeta" class="text-meta mt-1">0 activos · 0 total</p>
+            </div>
+            <button id="btnToggleServForm" type="button" class="btn-primary">+ Agregar servicio</button>
+          </header>
+          <div id="formServicio" class="ds-card p-4 md:p-5 mb-4 hidden">
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+              <input id="nuevoServNombre" type="text" placeholder="Nombre" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="nuevoServDesc" type="text" placeholder="Descripción" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="nuevoServDuracion" type="number" min="15" step="15" placeholder="Duración (min)" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="nuevoServPrecio" type="text" placeholder="Precio del servicio" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="nuevoServSena" type="text" placeholder="Seña a transferir" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="nuevoServCat" type="text" placeholder="Categoría (opcional)" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <select id="nuevoServProfesional" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" title="Profesional que atiende este servicio">
+                <option value="">Profesional (opcional)</option>
+              </select>
+              <button id="btnAgregarServicio" type="button" class="btn-primary">Guardar servicio</button>
+            </div>
+            <p class="mt-2 text-meta-sm">La seña es el monto que el cliente debe transferir para confirmar el turno.</p>
+            <p id="cfgServMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+          </div>
+          <div class="ds-card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="admin-table w-full text-left text-sm">
+                <thead class="bg-content border-b border-border">
+                  <tr>
+                    <th class="px-4 py-3">Servicio</th>
+                    <th class="px-4 py-3">Categoría</th>
+                    <th class="px-4 py-3">Duración</th>
+                    <th class="px-4 py-3">Precio</th>
+                    <th class="px-4 py-3">Seña</th>
+                    <th class="px-4 py-3">Estado</th>
+                    <th class="px-4 py-3 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="serviciosAdminList"></tbody>
+              </table>
+            </div>
+            <p id="serviciosEmpty" class="hidden p-6 text-meta text-center">Todavía no hay servicios. Agregá el primero.</p>
+          </div>
+        </section>
+
+        <!-- EQUIPO -->
+        <section id="view-equipo" class="view">
+          <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 class="text-h1">Equipo</h1>
+              <p class="text-meta mt-1">Profesionales que atienden turnos.</p>
+              <p id="planLimitHint" class="text-meta-sm mt-1 hidden"></p>
+            </div>
+            <button id="btnAgregarPro" type="button" class="btn-primary">+ Agregar profesional</button>
+          </header>
+          <div id="formPro" class="ds-card p-4 md:p-5 mb-4 hidden">
+            <input type="hidden" id="editingProId" value="" />
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div class="sm:col-span-2 flex flex-col gap-1">
+                <label class="label" for="nuevoProNombre">Nombre *</label>
+                <input id="nuevoProNombre" type="text" placeholder="Ej: Genaro Pérez" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="nuevoProEspecialidad">Especialidad / rol</label>
+                <input id="nuevoProEspecialidad" type="text" placeholder="Ej: Psicólogo, Colorista, Abogado..." class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="nuevoProMatricula">Matrícula / credencial</label>
+                <input id="nuevoProMatricula" type="text" placeholder="Ej: MP 12345" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="sm:col-span-2 flex flex-col gap-1">
+                <label class="label" for="nuevoProBio">Perfil / bio</label>
+                <textarea id="nuevoProBio" rows="2" placeholder="Breve descripción del profesional" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></textarea>
+              </div>
+              <div class="sm:col-span-2 flex flex-col gap-1">
+                <label class="label">Servicios que atiende *</label>
+                <div id="nuevoProServicios" class="rounded-lg border border-border p-3 max-h-40 overflow-y-auto space-y-2 bg-white">
+                  <p class="text-meta-sm">Cargá servicios primero en la sección Servicios.</p>
+                </div>
+              </div>
+              <div class="sm:col-span-2 rounded-xl border border-border bg-content/60 p-4 space-y-3">
+                <label class="flex items-center gap-2 text-sm font-semibold cursor-pointer">
+                  <input id="proHorarioPropio" type="checkbox" class="accent-[var(--business-accent)]" />
+                  Horario propio (distinto al del negocio)
+                </label>
+                <p class="text-meta-sm">Si no lo activás, usa el horario general de Configuración. Se refleja en la agenda y al pedir turno.</p>
+                <div id="proHorarioBlock" class="hidden space-y-3">
+                  <div>
+                    <p class="label mb-2">Días que atiende</p>
+                    <div id="proDiasAtencion" class="flex flex-wrap gap-2" role="group" aria-label="Días del profesional">
+                      <button type="button" data-dia="1" class="dia-chip">Lun</button>
+                      <button type="button" data-dia="2" class="dia-chip">Mar</button>
+                      <button type="button" data-dia="3" class="dia-chip">Mié</button>
+                      <button type="button" data-dia="4" class="dia-chip">Jue</button>
+                      <button type="button" data-dia="5" class="dia-chip">Vie</button>
+                      <button type="button" data-dia="6" class="dia-chip">Sáb</button>
+                      <button type="button" data-dia="0" class="dia-chip">Dom</button>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1">
+                      <label class="label" for="proHoraInicio">Desde</label>
+                      <input id="proHoraInicio" type="number" min="0" max="23" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                    </div>
+                    <div class="flex flex-col gap-1">
+                      <label class="label" for="proHoraFin">Hasta</label>
+                      <input id="proHoraFin" type="number" min="1" max="24" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                    </div>
+                  </div>
+                  <div id="proFranja2Block" class="hidden space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                      <p class="text-sm font-semibold text-primary">Franja 2</p>
+                      <button id="btnProQuitarFranja2" type="button" class="text-xs font-semibold text-danger hover:underline">Quitar franja 2</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                      <div class="flex flex-col gap-1">
+                        <label class="label" for="proHoraInicio2">Desde</label>
+                        <input id="proHoraInicio2" type="number" min="0" max="23" placeholder="—" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                      </div>
+                      <div class="flex flex-col gap-1">
+                        <label class="label" for="proHoraFin2">Hasta</label>
+                        <input id="proHoraFin2" type="number" min="1" max="24" placeholder="—" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                      </div>
+                    </div>
+                  </div>
+                  <button id="btnProAgregarFranja2" type="button"
+                          class="rounded-lg border border-dashed border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-white/70">
+                    + Agregar franja horaria 2
+                  </button>
+                </div>
+              </div>
+              <div class="sm:col-span-2 flex flex-col gap-1" id="proFotoBlock">
+                <label class="label" for="nuevoProFoto">Foto</label>
+                <div class="flex flex-wrap items-center gap-3">
+                  <img id="nuevoProFotoPreview" src="" alt="" class="hidden h-14 w-14 rounded-full object-cover ring-1 ring-border" />
+                  <input id="nuevoProFoto" type="file" accept="image/*" class="text-sm" />
+                </div>
+                <p class="text-meta-sm">JPG/PNG hasta 2 MB. Si estás creando uno nuevo, guardá primero y después podés subir la foto al editar.</p>
+              </div>
+            </div>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button id="btnGuardarPro" type="button" class="btn-primary">Guardar</button>
+              <button id="btnCancelarPro" type="button" class="rounded-lg border border-border px-3 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
+            </div>
+            <p id="cfgProMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+          </div>
+          <div id="prosAdminList" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+        </section>
+
+        <!-- CLIENTES -->
+        <section id="view-clientes" class="view">
+          <header class="mb-6">
+            <h1 class="text-h1">Clientes</h1>
+            <p class="text-meta mt-1">Derivados de los turnos por teléfono.</p>
+            <div class="mt-4">
+              <input id="clientesSearch" type="search" class="search-input" placeholder="Buscar por nombre o teléfono..." autocomplete="off" />
+            </div>
+          </header>
+          <div class="ds-card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="admin-table w-full text-left text-sm">
+                <thead class="bg-content border-b border-border">
+                  <tr>
+                    <th class="px-4 py-3">Cliente</th>
+                    <th class="px-4 py-3">Teléfono</th>
+                    <th class="px-4 py-3">Turnos</th>
+                    <th class="px-4 py-3">Última visita</th>
+                    <th class="px-4 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody id="clientesTableBody"></tbody>
+              </table>
+            </div>
+            <p id="clientesEmpty" class="hidden p-6 text-meta text-center">Todavía no hay clientes con turnos.</p>
+          </div>
+        </section>
+
+        <!-- PLANES -->
+        <section id="view-planes" class="view">
+          <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 class="text-h1">Planes</h1>
+              <p class="text-meta mt-1">Packs de sesiones para tus clientes.</p>
+            </div>
+            <button id="btnTogglePlanForm" type="button" class="btn-primary">+ Agregar</button>
+          </header>
+          <div id="formPlan" class="ds-card p-4 md:p-5 mb-4 hidden">
+            <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
+              <input id="nuevoPlanNombre" type="text" placeholder="Nombre del plan" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="nuevoPlanSesiones" type="number" min="1" placeholder="Sesiones" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="nuevoPlanPrecio" type="text" placeholder="Precio" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="nuevoPlanDesc" type="text" placeholder="Descripción" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+            </div>
+            <button id="btnAgregarPlanCliente" type="button" class="btn-primary mt-3">Guardar plan</button>
+            <p id="cfgPlanClienteMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+          </div>
+          <div id="planesClienteList" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+        </section>
+
+        <!-- MOVIMIENTOS -->
+        <section id="view-movimientos" class="view">
+          <header class="mb-6">
+            <h1 class="text-h1">Movimientos</h1>
+            <p class="text-meta mt-1">Registrá ingresos, gastos y seguí el balance de tu caja.</p>
+          </header>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+            <div class="kpi-card mov-kpi-ingreso p-4 md:p-5">
+              <p class="text-meta">Ingresos</p>
+              <p id="movKpiIngresos" class="kpi-value mt-1 text-lg sm:text-metric">$ 0</p>
+            </div>
+            <div class="kpi-card mov-kpi-gasto p-4 md:p-5">
+              <p class="text-meta">Gastos</p>
+              <p id="movKpiGastos" class="kpi-value mt-1 text-lg sm:text-metric">$ 0</p>
+            </div>
+            <div class="kpi-card mov-kpi-balance p-4 md:p-5">
+              <p class="text-meta">Balance</p>
+              <p id="movKpiBalance" class="kpi-value mt-1 text-lg sm:text-metric">$ 0</p>
+            </div>
+          </div>
+
+          <div class="ds-card p-4 md:p-5 mb-4">
+            <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <span class="inline-flex rounded-full bg-business-accent-light px-3 py-1 text-xs font-bold uppercase tracking-wide text-business-accent">Nuevo movimiento</span>
+              <p id="movFormMsg" class="min-h-5 text-sm font-semibold"></p>
+            </div>
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-5">
+              <div class="flex flex-col gap-1">
+                <label class="label" for="movTipo">Tipo</label>
+                <select id="movTipo" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent">
+                  <option value="ingreso">Ingreso</option>
+                  <option value="gasto">Gasto</option>
+                </select>
+              </div>
+              <div class="flex flex-col gap-1 md:col-span-2">
+                <label class="label" for="movDescripcion">Descripción</label>
+                <input id="movDescripcion" type="text" placeholder="Ej: Seña turno, alquiler, insumos…" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="movCategoria">Categoría</label>
+                <select id="movCategoria" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="movMonto">Monto ($)</label>
+                <input id="movMonto" type="number" min="0" step="0.01" placeholder="0" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="movFecha">Fecha</label>
+                <input id="movFecha" type="date" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex items-end lg:col-span-4">
+                <button id="btnGuardarMovimiento" type="button" class="btn-primary">+ Agregar movimiento</button>
+                <button id="btnCancelarEditMov" type="button" class="ml-2 hidden rounded-lg border border-border px-3 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar edición</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card overflow-hidden">
+            <div class="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3">
+              <h2 class="text-h2">Historial de movimientos</h2>
+              <div class="flex flex-wrap gap-2">
+                <select id="movFiltroMes" class="rounded-lg border border-border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-business-accent">
+                  <option value="">Todos los meses</option>
+                </select>
+                <select id="movFiltroTipo" class="rounded-lg border border-border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-business-accent">
+                  <option value="">Todo</option>
+                  <option value="ingreso">Ingresos</option>
+                  <option value="gasto">Gastos</option>
+                </select>
+                <input id="movBuscar" type="search" placeholder="Buscar…" class="rounded-lg border border-border px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="admin-table w-full text-left text-sm">
+                <thead class="bg-content border-b border-border">
+                  <tr>
+                    <th class="px-4 py-3">Fecha</th>
+                    <th class="px-4 py-3">Tipo</th>
+                    <th class="px-4 py-3">Descripción</th>
+                    <th class="px-4 py-3">Categoría</th>
+                    <th class="px-4 py-3">Monto</th>
+                    <th class="px-4 py-3 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="movimientosList"></tbody>
+              </table>
+            </div>
+            <p id="movimientosEmpty" class="hidden p-6 text-meta text-center">Todavía no hay movimientos. Agregá el primero.</p>
+          </div>
+        </section>
+
+        <!-- ESTADÍSTICAS -->
+        <section id="view-estadisticas" class="view">
+          <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 class="text-h1">Estadísticas</h1>
+              <p class="text-meta mt-1">Turnos y caja del negocio.</p>
+            </div>
+            <div class="pill-group" role="group" aria-label="Período de estadísticas">
+              <button id="btnStatsSemana" type="button" class="is-active">Semanas</button>
+              <button id="btnStatsMes" type="button">Meses</button>
+            </div>
+          </header>
+          <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+            <div class="kpi-card p-4 md:p-5">
+              <p class="text-meta">Total turnos</p>
+              <p id="statTotal" class="kpi-value mt-1">0</p>
+              <p id="statTotalTrend" class="kpi-sub">vs período anterior</p>
+            </div>
+            <div class="kpi-card p-4 md:p-5">
+              <p class="text-meta">Pagados</p>
+              <p id="statConfirmados" class="kpi-value mt-1">0</p>
+              <p id="statConfirmadosTrend" class="kpi-sub">vs período anterior</p>
+            </div>
+            <div class="kpi-card p-4 md:p-5">
+              <p class="text-meta">Cancelados</p>
+              <p id="statCancelados" class="kpi-value mt-1">0</p>
+              <p id="statCanceladosTrend" class="kpi-sub">vs período anterior</p>
+            </div>
+            <div class="kpi-card p-4 md:p-5">
+              <p class="text-meta">Ingresos est. turnos</p>
+              <p id="statIngresos" class="kpi-value mt-1 text-lg sm:text-metric">$ 0</p>
+              <p id="statIngresosTrend" class="kpi-sub">vs período anterior</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-6">
+            <div class="kpi-card mov-kpi-ingreso p-4 md:p-5">
+              <p class="text-meta">Caja · Ingresos</p>
+              <p id="statCajaIngresos" class="kpi-value mt-1 text-lg sm:text-metric">$ 0</p>
+              <p id="statCajaIngresosTrend" class="kpi-sub">período actual</p>
+            </div>
+            <div class="kpi-card mov-kpi-gasto p-4 md:p-5">
+              <p class="text-meta">Caja · Gastos</p>
+              <p id="statCajaGastos" class="kpi-value mt-1 text-lg sm:text-metric">$ 0</p>
+              <p id="statCajaGastosTrend" class="kpi-sub">período actual</p>
+            </div>
+            <div class="kpi-card mov-kpi-balance p-4 md:p-5">
+              <p class="text-meta">Caja · Balance</p>
+              <p id="statCajaBalance" class="kpi-value mt-1 text-lg sm:text-metric">$ 0</p>
+              <p id="statCajaBalanceTrend" class="kpi-sub">ingresos − gastos</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+            <div class="ds-card p-4 md:p-5">
+              <h2 class="text-h2 mb-4">Turnos por período</h2>
+              <div id="statsBars" class="min-h-[180px]"></div>
+            </div>
+            <div class="ds-card p-4 md:p-5">
+              <h2 class="text-h2 mb-4">Servicios más pedidos</h2>
+              <div id="statsServicios" class="space-y-3 mb-6"></div>
+              <h2 class="text-h2 mb-3">Ingresos por período</h2>
+              <div id="statsIngresos" class="min-h-[140px]"></div>
+              <h2 class="text-h2 mb-3 mt-6">Por estado</h2>
+              <div id="statsPie" class="flex flex-col sm:flex-row items-center gap-6"></div>
+            </div>
+            <div class="ds-card p-4 md:p-5 lg:col-span-2">
+              <h2 class="text-h2 mb-4">Caja por período</h2>
+              <div id="statsCaja" class="min-h-[160px]"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- CONFIGURACIÓN -->
+        <section id="view-configuracion" class="view">
+          <header class="mb-6">
+            <h1 class="text-h1">Configuración</h1>
+            <p class="text-meta mt-1">Datos del negocio, transferencia y contraseña.</p>
+          </header>
+
+          <div class="ds-card p-4 md:p-6 mb-4">
+            <h2 class="text-h2 mb-3">Foto de perfil</h2>
+            <div class="flex flex-wrap items-center gap-4">
+              <div id="cfgLogoPreview" class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-business-accent text-2xl font-bold text-white ring-1 ring-border">
+                —
+              </div>
+              <div class="min-w-0 flex-1 space-y-2">
+                <p class="text-meta">Se muestra en tu sitio público y en el panel.</p>
+                <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-border bg-white px-4 py-2 text-sm font-semibold text-primary hover:bg-slate-50">
+                  Cambiar foto
+                  <input id="cfgLogoInput" type="file" accept="image/jpeg,image/png,image/webp,image/gif" class="hidden" />
+                </label>
+                <p class="text-meta-sm">JPG, PNG, WEBP o GIF · máx. 2 MB</p>
+                <p id="cfgLogoMsg" class="min-h-5 text-sm font-semibold"></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="ds-card p-4 md:p-6 mb-4 space-y-6">
+            <div>
+              <h2 class="text-h2 mb-3">Datos generales</h2>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgNombre">Nombre del negocio</label>
-                  <input id="cfgNombre" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                  <label class="label" for="cfgNombre">Nombre del negocio</label>
+                  <input id="cfgNombre" type="text" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgWhatsapp">WhatsApp (solo números)</label>
-                  <input id="cfgWhatsapp" type="text" placeholder="5491112345678" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                  <label class="label" for="cfgWhatsapp">WhatsApp (solo números)</label>
+                  <input id="cfgWhatsapp" type="text" placeholder="5491112345678" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgHoraInicio">Hora apertura</label>
-                  <input id="cfgHoraInicio" type="number" min="0" max="22" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgHoraFin">Hora cierre</label>
-                  <input id="cfgHoraFin" type="number" min="1" max="23" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgPrecio">Precio de la seña</label>
-                  <input id="cfgPrecio" type="text" placeholder="12000" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgCategoria">Categoría</label>
-                  <select id="cfgCategoria" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent">
+                  <label class="label" for="cfgCategoria">Categoría</label>
+                  <select id="cfgCategoria" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
                     <option value="peluqueria">Peluquería</option>
                     <option value="estetica">Estética</option>
                     <option value="masajes">Masajes</option>
@@ -236,144 +1062,69 @@
                   </select>
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgCiudad">Ciudad</label>
-                  <input id="cfgCiudad" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                  <label class="label" for="cfgCiudad">Localidad</label>
+                  <select id="cfgCiudad" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
+                    <option value="">Cargando...</option>
+                  </select>
+                </div>
+                <div class="flex flex-col gap-1 md:col-span-2">
+                  <label class="label" for="cfgDireccion">Dirección</label>
+                  <input id="cfgDireccion" type="text" placeholder="Calle y número" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgBarrio">Barrio</label>
-                  <input id="cfgBarrio" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgColor">Color de marca</label>
-                  <input id="cfgColor" type="color" value="#6366F1" class="h-10 w-full rounded-lg border border-slate-300 px-1 py-1 focus:outline-none focus:ring-2 focus:ring-accent" />
+                  <label class="label" for="cfgColor">Color de marca</label>
+                  <input id="cfgColor" type="color" value="#6366F1" class="h-10 w-full rounded-lg border border-border px-1 py-1 focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
               </div>
             </div>
 
             <div>
-              <h3 class="mb-3 font-semibold text-accent-hover">Datos de transferencia</h3>
+              <h2 class="text-h2 mb-3">Datos de transferencia</h2>
               <div class="grid grid-cols-1 gap-3 md:grid-cols-3">
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgAlias">Alias</label>
-                  <input id="cfgAlias" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                  <label class="label" for="cfgAlias">Alias</label>
+                  <input id="cfgAlias" type="text" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgCbu">CBU</label>
-                  <input id="cfgCbu" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                  <label class="label" for="cfgCbu">CBU</label>
+                  <input id="cfgCbu" type="text" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgTitular">Titular</label>
-                  <input id="cfgTitular" type="text" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
+                  <label class="label" for="cfgTitular">Titular</label>
+                  <input id="cfgTitular" type="text" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
               </div>
-              <button id="btnGuardarNegocio" class="mt-3 rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Guardar cambios</button>
+              <button id="btnGuardarNegocio" type="button" class="btn-primary mt-3">Guardar cambios</button>
               <p id="cfgNegocioMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
             </div>
+          </div>
 
-            <!-- Servicios -->
-            <div>
-              <h3 class="mb-3 font-semibold text-accent-hover">Servicios</h3>
-              <div id="serviciosAdminList" class="mb-3 space-y-2"></div>
-              <div class="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
-                <input id="nuevoServNombre" type="text" placeholder="Nombre" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                <input id="nuevoServDesc" type="text" placeholder="Descripción" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                <input id="nuevoServDuracion" type="number" min="5" step="5" placeholder="Duración (min)" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                <input id="nuevoServPrecio" type="text" placeholder="Precio" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                <input id="nuevoServCat" type="text" placeholder="Categoría (opcional)" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                <button id="btnAgregarServicio" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Agregar servicio</button>
+          <div class="ds-card p-4 md:p-6 mb-4">
+            <h2 class="text-h2 mb-1">Tu plan CMR</h2>
+            <p id="cfgPlanInfo" class="text-meta">—</p>
+            <p class="text-meta-sm mt-2">Para mejorar tu plan contactá a CMR Software.</p>
+          </div>
+
+          <div class="ds-card p-4 md:p-6">
+            <h2 class="text-h2 mb-3">Cambiar contraseña</h2>
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div class="flex flex-col gap-1">
+                <label class="label" for="cfgPassActual">Contraseña actual</label>
+                <input id="cfgPassActual" type="password" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
               </div>
-              <p id="cfgServMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
-            </div>
-
-            <!-- Profesionales -->
-            <div>
-              <h3 class="mb-3 font-semibold text-accent-hover">Equipo / Profesionales</h3>
-              <div id="prosAdminList" class="mb-3 space-y-2"></div>
-              <div class="flex flex-wrap gap-2">
-                <input id="nuevoProNombre" type="text" placeholder="Nombre del profesional" class="rounded-lg border border-slate-300 px-3 py-2 flex-1 focus:outline-none focus:ring-2 focus:ring-accent" />
-                <button id="btnAgregarPro" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Agregar</button>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="cfgPassNuevo">Nueva contraseña</label>
+                <input id="cfgPassNuevo" type="password" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
               </div>
-              <p id="cfgProMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
             </div>
-
-            <!-- Planes cliente -->
-            <div>
-              <h3 class="mb-3 font-semibold text-accent-hover">Planes para clientes</h3>
-              <p class="text-xs text-slate-400 mb-2">Packs de sesiones que ofrecés a tus clientes (opcional).</p>
-              <div id="planesClienteList" class="mb-3 space-y-2"></div>
-              <div class="grid grid-cols-1 gap-2 md:grid-cols-2">
-                <input id="nuevoPlanNombre" type="text" placeholder="Nombre del plan" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                <input id="nuevoPlanSesiones" type="number" min="1" placeholder="Sesiones" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                <input id="nuevoPlanPrecio" type="text" placeholder="Precio" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-                <input id="nuevoPlanDesc" type="text" placeholder="Descripción" class="rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-              </div>
-              <button id="btnAgregarPlanCliente" class="mt-2 rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">Agregar plan</button>
-              <p id="cfgPlanClienteMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
-            </div>
-
-            <div>
-              <h3 class="mb-3 font-semibold text-accent-hover">Cambiar contraseña</h3>
-              <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
-                <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgPassActual">Contraseña actual</label>
-                  <input id="cfgPassActual" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="text-sm font-medium" for="cfgPassNuevo">Nueva contraseña</label>
-                  <input id="cfgPassNuevo" type="password" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-accent" />
-                </div>
-              </div>
-              <button id="btnCambiarPass" class="mt-3 rounded-lg bg-accent-hover px-4 py-2 font-semibold text-white hover:bg-sidebar" type="button">Cambiar contraseña</button>
-              <p id="cfgPassMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
-            </div>
-
+            <button id="btnCambiarPass" type="button" class="mt-3 rounded-lg bg-sidebar px-4 py-2 font-semibold text-white hover:opacity-90">Cambiar contraseña</button>
+            <p id="cfgPassMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
           </div>
         </section>
-      </section>
-    </main>
 
-    <script src="/admin.js"></script>
+      </main>
+    </div>
 
-    <footer class="bg-sidebar text-on-dark/80 mt-10">
-      <div class="mx-auto max-w-5xl px-6 py-10">
-        <div class="flex flex-col items-center gap-8 sm:flex-row sm:justify-between">
-          <div class="flex items-center gap-3">
-            <img src="/images/logo-cmr.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
-            <div>
-              <p class="font-bold text-white text-base leading-tight">CMR Turnos</p>
-              <p class="text-xs text-secondary">by CMR Software Solutions</p>
-            </div>
-          </div>
-          <div class="flex flex-col gap-3 text-sm text-center sm:text-right">
-            <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer"
-               class="flex items-center justify-center sm:justify-end gap-2 hover:text-accent transition-colors">
-              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.861 0-3.607-.505-5.106-1.386l-.363-.215-3.773.989.999-3.681-.236-.373A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-              </svg>
-              <span>+54 9 336 457-8599</span>
-            </a>
-            <a href="https://www.instagram.com/cmrsoftware.sn?igsh=MWFnOGpwa3M3aHV2Zw==" target="_blank" rel="noopener noreferrer"
-               class="flex items-center justify-center sm:justify-end gap-2 hover:text-pink-400 transition-colors">
-              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-              </svg>
-              <span>@cmrsoftware.sn</span>
-            </a>
-            <a href="mailto:cmrsoftware.sn@gmail.com"
-               class="flex items-center justify-center sm:justify-end gap-2 hover:text-blue-400 transition-colors">
-              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                <path d="m22 7-10 7L2 7"/>
-              </svg>
-              <span>cmrsoftware.sn@gmail.com</span>
-            </a>
-          </div>
-        </div>
-        <div class="mt-8 border-t border-white/10 pt-6 text-center text-xs text-secondary">
-          © 2026 CMR Software Solutions. Todos los derechos reservados.
-        </div>
-      </div>
-    </footer>
+    <script src="/admin.js?v=20260730-horario-agenda"></script>
   </body>
 </html>

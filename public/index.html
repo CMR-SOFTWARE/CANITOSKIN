@@ -6,131 +6,150 @@
     <title>CMR Turnos</title>
     <link rel="icon" type="image/png" href="/favicon.png" />
     <link rel="stylesheet" href="/globals.css" />
+    <link rel="stylesheet" href="/booking.css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/tailwind-theme.js"></script>
-    <style>
-      .btn-brand { background-color: var(--business-accent); }
-      .btn-brand:hover { background-color: var(--business-accent-hover); }
-      .text-brand { color: var(--business-accent); }
-      .ring-brand:focus { --tw-ring-color: var(--business-accent); }
-      .service-card.is-selected {
-        border-color: var(--business-accent);
-        background: var(--business-accent-light);
-      }
-      .slot-btn.is-selected { background-color: var(--business-accent); color: white; }
-    </style>
   </head>
-  <body class="scope-business min-h-screen bg-content text-primary flex flex-col font-sans">
-    <nav class="bg-sidebar shadow-sm" aria-label="Principal">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3 md:px-6">
-        <a href="/" class="flex shrink-0 items-center gap-3" id="navLogoLink" aria-label="Inicio">
-          <div id="navLogo" class="h-12 w-12 md:h-14 md:w-14 rounded-full bg-accent flex items-center justify-center text-white font-bold text-lg select-none ring-1 ring-white/10"></div>
-        </a>
-        <a
-          id="linkAdmin"
-          href="#"
-          class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-on-dark shadow-sm transition hover:bg-white/20"
-          aria-label="Entrar como administrador"
-          title="Entrar como administrador"
-        >
-          <svg viewBox="0 0 24 24" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="8" r="4"></circle>
-            <path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"></path>
-          </svg>
-        </a>
-      </div>
-    </nav>
-
-    <main class="mx-auto max-w-5xl p-4 md:p-6 flex-1 w-full">
-      <header class="mb-4">
-        <h1 class="text-2xl font-bold md:text-3xl">Reservá tu turno</h1>
-        <p class="text-slate-600">Elegí servicio, fecha y horario para confirmar tu turno.</p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          <button id="btnSolicitarCancelacion" class="rounded-lg bg-accent px-4 py-2 font-semibold text-white hover:bg-accent-hover" type="button">
-            Solicitar cancelación
-          </button>
-        </div>
-      </header>
-
-      <!-- 1. Servicio -->
-      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-        <h2 class="text-lg font-semibold">1. Elegí el servicio</h2>
-        <div id="serviciosList" class="mt-3 grid gap-2 sm:grid-cols-2"></div>
-      </section>
-
-      <!-- 2. Profesional (condicional) -->
-      <section id="profesionalSection" class="mb-4 hidden rounded-xl bg-white p-4 shadow-sm">
-        <h2 class="text-lg font-semibold">2. Elegí el profesional</h2>
-        <div class="mt-3 flex flex-col gap-1">
-          <label class="font-medium" for="profesional">Profesional</label>
-          <select id="profesional" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 ring-brand"></select>
-        </div>
-      </section>
-
-      <!-- 3. Fecha + slots -->
-      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-        <h2 class="text-lg font-semibold" id="fechaSectionTitle">2. Elegí fecha y horario</h2>
-        <div class="mt-3 flex flex-wrap items-end gap-3">
-          <div class="flex flex-col gap-1">
-            <label class="font-medium" for="fecha">Fecha</label>
-            <input id="fecha" type="date" class="rounded-lg border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 ring-brand" />
-          </div>
-          <button id="btnBuscar" class="rounded-lg btn-brand px-4 py-2 font-semibold text-white" type="button">
-            Ver horarios
-          </button>
-        </div>
-        <p id="slotsHint" class="mt-2 text-sm text-slate-500">Seleccioná un servicio para ver los horarios disponibles.</p>
-        <div id="horarios" class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5"></div>
-      </section>
-
-      <!-- Mis turnos -->
-      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-        <h2 class="text-xl font-semibold">Mis turnos</h2>
-        <p class="mt-1 text-sm text-slate-500">Ingresá tu número de teléfono para ver tus turnos activos.</p>
-        <div class="mt-3 flex gap-2">
-          <input id="misTelefono" type="tel" inputmode="numeric" placeholder="Ej: 3364578599"
-            class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-          <button id="btnMisReservas" type="button"
-            class="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-white hover:bg-accent-hover">
-            Consultar
-          </button>
-        </div>
-        <div id="misTurnosList" class="mt-3 space-y-2"></div>
-      </section>
-
-      <!-- Cancelar por token -->
-      <section class="mb-4 rounded-xl bg-white p-4 shadow-sm">
-        <h2 class="text-lg font-semibold">Cancelar con código</h2>
-        <p class="mt-1 text-sm text-slate-500">Si tenés el código de cancelación de tu reserva, podés usarlo acá.</p>
-        <div class="mt-3 flex gap-2">
-          <input id="cancelToken" type="text" placeholder="Código de cancelación"
-            class="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-accent" />
-          <button id="btnCancelarToken" type="button"
-            class="rounded-lg bg-red-700 px-4 py-2 text-sm font-semibold text-white hover:bg-red-800">
-            Cancelar turno
-          </button>
-        </div>
-        <p id="cancelTokenMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
-      </section>
-    </main>
-
-    <div id="modal" class="hidden fixed inset-0 z-10 flex items-center justify-center bg-black/55 p-4" role="dialog" aria-modal="true">
-      <div class="relative w-full max-w-xl rounded-xl bg-white p-4 shadow-md max-h-[90vh] overflow-y-auto">
-        <button id="btnCerrarModal" class="absolute right-3 top-3 text-lg font-bold text-slate-600" type="button" aria-label="Cerrar">
-          x
+  <body class="scope-business booking-page font-sans text-primary">
+    <!-- Compact header -->
+    <header class="booking-header">
+      <div class="mx-auto flex max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <button type="button" id="btnHome" class="flex min-w-0 items-center gap-3 text-left" aria-label="Volver al inicio">
+          <div id="navLogo" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-business-accent text-sm font-bold text-white select-none"></div>
+          <span id="navBusinessName" class="truncate text-sm font-semibold text-primary sm:text-base"></span>
         </button>
-        <h3 class="text-xl font-semibold">Completá tu reserva</h3>
-        <p id="reservaSeleccion" class="mt-1 font-semibold text-brand"></p>
+        <button type="button" id="btnWizardBack" class="btn-ghost hidden" aria-label="Volver">
+          <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Volver
+        </button>
+      </div>
+    </header>
 
-        <form id="formReserva" enctype="multipart/form-data">
-          <div id="paso1" class="step">
-            <h4 class="mb-2 mt-3 font-semibold">Paso 1 — Datos personales</h4>
-            <div class="mb-2 flex flex-col gap-1">
-              <label class="font-medium" for="nombre">Nombre y apellido</label>
-              <input id="nombre" name="nombre" type="text" required class="rounded-lg border border-slate-300 px-3 py-2" />
+    <main class="mx-auto w-full max-w-3xl flex-1">
+      <!-- ════════ Screen A — Business page ════════ -->
+      <div id="screenBusiness">
+        <section class="booking-hero relative" aria-labelledby="heroNombre">
+          <div class="relative z-[1] mx-auto max-w-3xl">
+            <p id="heroCategoria" class="mb-2 text-xs font-semibold uppercase tracking-wider text-business-accent"></p>
+            <h1 id="heroNombre" class="text-3xl font-bold tracking-tight text-primary sm:text-4xl"></h1>
+            <p id="heroTagline" class="mt-2 max-w-md text-sm text-secondary"></p>
+          </div>
+        </section>
+
+        <div class="px-4 pb-8 sm:px-6">
+          <div id="businessMeta" class="booking-meta-row mt-5 mb-2"></div>
+
+          <section aria-labelledby="serviciosTitle" class="mt-6">
+            <h2 id="serviciosTitle" class="text-lg font-semibold text-primary">Servicios</h2>
+            <div id="serviciosList" class="svc-grid mt-3"></div>
+          </section>
+
+          <section id="planesSection" class="mt-10 hidden" aria-labelledby="planesTitle">
+            <h2 id="planesTitle" class="text-lg font-semibold text-primary">Planes</h2>
+            <p class="mt-1 text-sm text-secondary">Packs de sesiones con mejor precio.</p>
+            <div id="planesList" class="svc-grid mt-3"></div>
+          </section>
+
+          <section id="equipoSection" class="mt-10 hidden" aria-labelledby="equipoTitle">
+            <h2 id="equipoTitle" class="text-lg font-semibold text-primary">Nuestro equipo</h2>
+            <div id="equipoList" class="mt-4 flex flex-wrap gap-6"></div>
+          </section>
+
+          <!-- Mis turnos / cancelación (collapsed) -->
+          <details class="help-drawer" id="helpDrawer">
+            <summary>
+              <span>Mis turnos</span>
+              <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M6 9l6 6 6-6" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </summary>
+            <div class="space-y-4 pb-4">
+              <div>
+                <p class="text-meta text-secondary">Ingresá el teléfono con el que reservaste para ver y cancelar turnos.</p>
+                <div class="mt-3 flex gap-2">
+                  <input
+                    id="misTelefono"
+                    type="tel"
+                    inputmode="numeric"
+                    placeholder="Ej: 3364578599"
+                    class="field-input flex-1"
+                  />
+                  <button id="btnMisReservas" type="button" class="btn-accent !w-auto shrink-0 px-4">
+                    Consultar
+                  </button>
+                </div>
+                <div id="misTurnosList" class="mt-3 space-y-2"></div>
+                <p id="misTurnosMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
+              </div>
+
+              <div>
+                <button id="btnSolicitarCancelacion" type="button" class="btn-ghost text-business-accent">
+                  Pedir ayuda por WhatsApp
+                </button>
+              </div>
             </div>
-            <div class="mb-3 flex flex-col gap-1">
-              <label class="font-medium" for="telefono">Teléfono</label>
+          </details>
+        </div>
+      </div>
+
+      <!-- ════════ Screen B — Booking wizard ════════ -->
+      <div id="screenWizard" class="wizard-shell hidden">
+        <div class="mb-1 flex items-center justify-between gap-2">
+          <p id="wizardStepLabel" class="text-meta font-medium text-secondary"></p>
+          <p id="wizardServiceChip" class="truncate text-meta-sm font-semibold text-business-accent"></p>
+        </div>
+        <div class="wizard-progress" aria-hidden="true">
+          <div id="wizardProgressBar" class="wizard-progress__bar" style="width: 0%"></div>
+        </div>
+
+        <!-- Step: professional -->
+        <section id="stepProfessional" class="wizard-step hidden">
+          <h2 class="text-xl font-bold text-primary">Elegí profesional</h2>
+          <p class="mt-1 text-sm text-secondary">Seleccioná con quién querés tu turno.</p>
+          <div id="profesionalesList" class="mt-5 space-y-2.5"></div>
+        </section>
+
+        <!-- Step: date + slots -->
+        <section id="stepFecha" class="wizard-step hidden">
+          <h2 class="text-xl font-bold text-primary">Elegí una fecha</h2>
+          <p class="mt-1 text-sm text-secondary">Después elegí el horario disponible.</p>
+
+          <div class="mt-5 rounded-2xl border border-border bg-white p-4 shadow-card">
+            <div class="cal-nav">
+              <button type="button" id="calPrev" aria-label="Mes anterior">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+              <p id="calMonthLabel" class="text-sm font-semibold capitalize"></p>
+              <button type="button" id="calNext" aria-label="Mes siguiente">
+                <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+            <div id="calGrid" class="cal-grid" role="grid" aria-label="Calendario"></div>
+          </div>
+
+          <div class="mt-6">
+            <h3 class="text-sm font-semibold text-primary">Horarios disponibles</h3>
+            <p id="slotsHint" class="mt-1 text-meta text-secondary">Seleccioná un día en el calendario.</p>
+            <div id="horarios" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4"></div>
+          </div>
+        </section>
+
+        <!-- Step: personal data -->
+        <section id="stepDatos" class="wizard-step hidden">
+          <h2 class="text-xl font-bold text-primary">Tus datos</h2>
+          <p class="mt-1 text-sm text-secondary">Completá para continuar con la reserva.</p>
+
+          <div id="reservaSummary" class="summary-card mt-5"></div>
+
+          <form id="formDatos" class="mt-5 space-y-4" autocomplete="on">
+            <div>
+              <label class="field-label" for="nombre">Nombre y apellido</label>
+              <input id="nombre" name="nombre" type="text" required class="field-input" placeholder="Ej: Ana Pérez" />
+            </div>
+            <div>
+              <label class="field-label" for="telefono">Teléfono</label>
               <input
                 id="telefono"
                 name="telefono"
@@ -139,104 +158,107 @@
                 pattern="[0-9]+"
                 maxlength="15"
                 required
-                class="rounded-lg border border-slate-300 px-3 py-2"
+                class="field-input"
+                placeholder="Ej: 3364578599"
               />
             </div>
-            <button id="btnPaso2" class="rounded-lg btn-brand px-4 py-2 font-semibold text-white" type="button">Continuar</button>
-          </div>
-
-          <div id="paso2" class="step hidden">
-            <h4 class="mb-2 mt-3 font-semibold">Paso 2 — Transferencia y comprobante</h4>
-            <p id="senaAviso" class="mb-3 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm font-medium leading-snug text-amber-950">
-              Para reservar, la seña es de <strong id="senaMonto">$0</strong>. Si no se transfiere ese monto, el turno se cancela automáticamente.
+            <p class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-meta leading-snug text-amber-950">
+              Podés cancelar hasta 24 h antes desde “Mis turnos”, con el mismo teléfono de la reserva.
             </p>
-            <div class="mb-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-              <p><strong>Alias:</strong> <span id="aliasTransferencia"></span></p>
-              <p><strong>CBU:</strong> <span id="cbuTransferencia"></span></p>
-              <p><strong>Titular:</strong> <span id="titularTransferencia"></span></p>
+            <button id="btnContinuarPago" type="submit" class="btn-accent">Continuar</button>
+          </form>
+        </section>
+
+        <!-- Step: payment / comprobante -->
+        <section id="stepPago" class="wizard-step hidden">
+          <h2 class="text-xl font-bold text-primary">Transferencia y comprobante</h2>
+          <p class="mt-1 text-sm text-secondary">Transferí la seña y subí el comprobante para confirmar.</p>
+
+          <p class="mt-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm font-medium leading-snug text-amber-950">
+            La seña es de <strong id="senaMonto">$0</strong>. Si no se transfiere ese monto, el turno se cancela automáticamente.
+          </p>
+
+          <dl class="pay-box mt-4">
+            <dt>Alias</dt>
+            <dd id="aliasTransferencia">—</dd>
+            <dt>CBU</dt>
+            <dd id="cbuTransferencia">—</dd>
+            <dt>Titular</dt>
+            <dd id="titularTransferencia">—</dd>
+          </dl>
+
+          <form id="formReserva" class="mt-5 space-y-4" enctype="multipart/form-data">
+            <div>
+              <label class="field-label" for="comprobante">Comprobante (JPG, PNG, WEBP o PDF)</label>
+              <input
+                id="comprobante"
+                name="comprobante"
+                type="file"
+                accept=".jpg,.jpeg,.png,.webp,.pdf"
+                required
+                class="field-input file:mr-3 file:rounded-lg file:border-0 file:bg-business-accent-light file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-business-accent"
+              />
             </div>
-            <div class="mb-3 flex flex-col gap-1">
-              <label class="font-medium" for="comprobante">Comprobante (JPG, PNG, WEBP o PDF)</label>
-              <input id="comprobante" name="comprobante" type="file" accept=".jpg,.jpeg,.png,.webp,.pdf" required class="rounded-lg border border-slate-300 px-3 py-2" />
-            </div>
-            <div class="flex flex-wrap gap-2">
-              <button id="btnVolverPaso1" class="rounded-lg bg-slate-600 px-4 py-2 font-semibold text-white hover:bg-slate-700" type="button">
+            <p id="mensaje" class="min-h-5 text-sm font-semibold text-danger"></p>
+            <div class="flex flex-col gap-2 sm:flex-row">
+              <button id="btnVolverDatos" type="button" class="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-neutral-bg sm:w-auto sm:flex-1">
                 Volver
               </button>
-              <button id="btnReservar" class="rounded-lg btn-brand px-4 py-2 font-semibold text-white" type="submit">Reservar</button>
+              <button id="btnReservar" type="submit" class="btn-accent sm:flex-[2]">Confirmar reserva</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Step: confirmation -->
+        <section id="stepConfirmacion" class="wizard-step hidden">
+          <div class="flex flex-col items-center gap-3 py-4 text-center">
+            <div class="flex h-16 w-16 items-center justify-center rounded-full bg-success-bg">
+              <svg class="h-9 w-9 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </div>
+            <h2 class="text-xl font-bold text-success">Turno reservado</h2>
+            <div id="confirmacionDetalle" class="w-full space-y-1 rounded-2xl border border-border bg-neutral-bg px-4 py-3 text-left text-sm text-primary"></div>
+            <p class="text-sm text-secondary">Enviá el comprobante por WhatsApp para confirmar tu pago.</p>
+            <div class="flex w-full flex-col gap-2">
+              <a
+                id="btnWhatsAppConfirm"
+                href="#"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn-accent"
+              >
+                Enviar comprobante por WhatsApp
+              </a>
+              <button id="btnOtraReserva" type="button" class="rounded-xl border border-border px-4 py-3 text-sm font-semibold text-primary hover:bg-neutral-bg">
+                Reservar otro turno
+              </button>
             </div>
           </div>
-
-          <div id="paso3" class="step hidden">
-            <div class="flex flex-col items-center gap-3 py-4 text-center">
-              <div class="flex h-16 w-16 items-center justify-center rounded-full bg-success-bg">
-                <svg class="h-9 w-9 text-success" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                  <polyline points="20 6 9 17 4 12"></polyline>
-                </svg>
-              </div>
-              <h4 class="text-lg font-bold text-success">Turno reservado</h4>
-              <div id="confirmacionDetalle" class="w-full space-y-1 rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-left text-sm text-slate-700"></div>
-              <p class="text-sm text-slate-500">Enviá el comprobante por WhatsApp para confirmar tu pago.</p>
-              <div class="flex w-full flex-col gap-2">
-                <a id="btnWhatsAppConfirm" href="#" target="_blank" rel="noopener noreferrer"
-                  class="rounded-lg btn-brand px-4 py-2.5 text-center font-semibold text-white">
-                  Enviar comprobante por WhatsApp
-                </a>
-                <button id="btnOtraReserva" type="button"
-                  class="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50">
-                  Reservar otro turno
-                </button>
-              </div>
-            </div>
-          </div>
-        </form>
-
-        <p id="mensaje" class="mt-3 min-h-5 font-semibold text-red-700"></p>
+        </section>
       </div>
-    </div>
+    </main>
 
-    <script src="/app.js"></script>
+    <a id="linkAdmin" href="#" class="admin-fab" aria-label="Entrar como administrador" title="Admin">
+      <svg viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="8" r="4"></circle>
+        <path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"></path>
+      </svg>
+    </a>
 
-    <footer class="bg-sidebar text-on-dark/80 mt-10">
-      <div class="mx-auto max-w-5xl px-6 py-10">
-        <div class="flex flex-col items-center gap-8 sm:flex-row sm:justify-between">
-          <div class="flex items-center gap-3">
-            <img src="/images/logo-cmr.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
-            <div>
-              <p class="font-bold text-white text-base leading-tight">CMR Turnos</p>
-              <p class="text-xs text-secondary">by CMR Software Solutions</p>
-            </div>
-          </div>
-          <div class="flex flex-col gap-3 text-sm text-center sm:text-right">
-            <a href="https://wa.me/5493364578599" target="_blank" rel="noopener noreferrer"
-               class="flex items-center justify-center sm:justify-end gap-2 hover:text-accent transition-colors">
-              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
-                <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.121 1.532 5.851L.057 23.446a.75.75 0 0 0 .916.972l5.762-1.51A11.943 11.943 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.861 0-3.607-.505-5.106-1.386l-.363-.215-3.773.989.999-3.681-.236-.373A9.944 9.944 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
-              </svg>
-              <span>+54 9 336 457-8599</span>
-            </a>
-            <a href="https://www.instagram.com/cmrsoftware.sn?igsh=MWFnOGpwa3M3aHV2Zw==" target="_blank" rel="noopener noreferrer"
-               class="flex items-center justify-center sm:justify-end gap-2 hover:text-pink-400 transition-colors">
-              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
-              </svg>
-              <span>@cmrsoftware.sn</span>
-            </a>
-            <a href="mailto:cmrsoftware.sn@gmail.com"
-               class="flex items-center justify-center sm:justify-end gap-2 hover:text-blue-400 transition-colors">
-              <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="2" y="4" width="20" height="16" rx="2"/>
-                <path d="m22 7-10 7L2 7"/>
-              </svg>
-              <span>cmrsoftware.sn@gmail.com</span>
-            </a>
+    <footer class="mt-auto border-t border-border bg-white">
+      <div class="mx-auto flex max-w-3xl flex-col items-center justify-between gap-4 px-4 py-8 text-center sm:flex-row sm:text-left sm:px-6">
+        <div class="flex items-center gap-2.5">
+          <img src="/images/logo-cmr.png" alt="" class="h-8 w-8 rounded-lg object-contain" />
+          <div>
+            <p class="text-sm font-semibold text-primary">CMR Turnos</p>
+            <p class="text-meta-sm text-secondary">by CMR Software Solutions</p>
           </div>
         </div>
-        <div class="mt-8 border-t border-white/10 pt-6 text-center text-xs text-secondary">
-          © 2026 CMR Software Solutions. Todos los derechos reservados.
-        </div>
+        <p class="text-meta-sm text-secondary">© 2026 CMR Software Solutions</p>
       </div>
     </footer>
+
+    <script src="/app.js"></script>
   </body>
 </html>
