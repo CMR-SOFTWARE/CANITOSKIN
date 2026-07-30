@@ -56,11 +56,43 @@
         font-weight: 600;
         color: var(--text-secondary);
         cursor: pointer;
-        transition: background 150ms ease, color 150ms ease;
+        transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease, transform 120ms ease;
       }
       .pill-group button.is-active {
         background: var(--business-accent);
         color: #fff;
+      }
+      .pill-group--vista {
+        padding: 0.3rem;
+        gap: 0.25rem;
+        background: #fff;
+        border: 1px solid var(--border-color);
+        box-shadow: var(--shadow-card-soft, 0 1px 3px rgba(15, 23, 42, 0.08));
+      }
+      .pill-group--vista button {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.45rem;
+        padding: 0.65rem 1.1rem;
+        font-size: 0.875rem;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      .pill-group--vista button svg {
+        width: 1.05rem;
+        height: 1.05rem;
+        flex-shrink: 0;
+        opacity: 0.85;
+      }
+      .pill-group--vista button.is-active {
+        background: var(--business-accent);
+        color: #fff;
+        box-shadow: 0 6px 16px color-mix(in srgb, var(--business-accent) 35%, transparent);
+      }
+      .pill-group--vista button.is-active svg { opacity: 1; }
+      .pill-group--vista button:not(.is-active):hover {
+        background: var(--neutral-bg);
+        color: var(--text-primary);
       }
       .stat-bar { height: 8px; border-radius: 999px; background: var(--border-color); overflow: hidden; }
       .stat-bar > span { display: block; height: 100%; border-radius: inherit; background: var(--business-accent); }
@@ -385,81 +417,30 @@
 
         <!-- AGENDA -->
         <section id="view-agenda" class="view">
-          <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+          <header class="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 class="text-h1">Agenda</h1>
-              <p class="text-meta mt-1">Horario de atención, turnos, calendario y bloqueos.</p>
+              <p class="text-meta mt-1">Calendario, turnos, horario y bloqueos.</p>
             </div>
             <div class="flex flex-wrap items-center gap-2">
               <button id="btnToggleAgendar" type="button" class="btn-primary px-4 py-2 text-sm">+ Agendar turno</button>
-              <div class="pill-group" role="group" aria-label="Vista de agenda">
-                <button id="btnVistaLista" type="button" class="is-active">Lista</button>
-                <button id="btnVistaCalendario" type="button">Calendario</button>
+              <div class="pill-group pill-group--vista" role="group" aria-label="Vista de agenda">
+                <button id="btnVistaLista" type="button">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                  </svg>
+                  Lista
+                </button>
+                <button id="btnVistaCalendario" type="button" class="is-active">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <rect x="3" y="5" width="18" height="16" rx="2" />
+                    <path d="M16 3v4M8 3v4M3 11h18" />
+                  </svg>
+                  Calendario
+                </button>
               </div>
             </div>
           </header>
-
-          <div class="ds-card p-4 md:p-5 mb-4 space-y-4">
-            <div>
-              <h2 class="text-h2">Horario de atención</h2>
-              <p class="text-meta-sm mt-0.5">Definí los días y la franja horaria. Podés sumar una segunda franja si cortás al mediodía.</p>
-            </div>
-
-            <div>
-              <p class="label mb-2">Días que trabaja</p>
-              <div id="cfgDiasAtencion" class="flex flex-wrap gap-2" role="group" aria-label="Días de atención">
-                <button type="button" data-dia="1" class="dia-chip">Lun</button>
-                <button type="button" data-dia="2" class="dia-chip">Mar</button>
-                <button type="button" data-dia="3" class="dia-chip">Mié</button>
-                <button type="button" data-dia="4" class="dia-chip">Jue</button>
-                <button type="button" data-dia="5" class="dia-chip">Vie</button>
-                <button type="button" data-dia="6" class="dia-chip">Sáb</button>
-                <button type="button" data-dia="0" class="dia-chip">Dom</button>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 max-w-md">
-              <div class="flex flex-col gap-1">
-                <label class="label" for="cfgHoraInicio">Desde</label>
-                <input id="cfgHoraInicio" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="09:00" autocomplete="off"
-                       class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="label" for="cfgHoraFin">Hasta</label>
-                <input id="cfgHoraFin" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="20:00" autocomplete="off"
-                       class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
-              </div>
-            </div>
-
-            <div id="franja2Block" class="hidden space-y-3 max-w-md">
-              <div class="flex items-center justify-between gap-2">
-                <p class="text-sm font-semibold text-primary">Franja 2</p>
-                <button id="btnQuitarFranja2" type="button" class="text-xs font-semibold text-danger hover:underline">Quitar franja 2</button>
-              </div>
-              <div class="grid grid-cols-2 gap-3">
-                <div class="flex flex-col gap-1">
-                  <label class="label" for="cfgHoraInicio2">Desde</label>
-                  <input id="cfgHoraInicio2" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="—" autocomplete="off"
-                         class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
-                </div>
-                <div class="flex flex-col gap-1">
-                  <label class="label" for="cfgHoraFin2">Hasta</label>
-                  <input id="cfgHoraFin2" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="—" autocomplete="off"
-                         class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
-                </div>
-              </div>
-            </div>
-
-            <button id="btnAgregarFranja2" type="button"
-                    class="rounded-lg border border-dashed border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-white/70">
-              + Agregar franja horaria 2
-            </button>
-
-            <div class="flex flex-wrap items-center gap-2 pt-1">
-              <button id="btnGuardarHorario" type="button" class="btn-primary px-4 py-2 text-sm">Guardar horario</button>
-              <p id="horarioMsg" class="min-h-5 text-sm font-semibold"></p>
-            </div>
-          </div>
 
           <div id="formAgendarManual" class="ds-card p-4 md:p-5 mb-4 hidden">
             <h2 class="text-h2 mb-1">Agendar turno manual</h2>
@@ -532,7 +513,7 @@
           </div>
 
           <div class="ds-card p-4 md:p-5 mb-4">
-            <div id="filtrosLista" class="mb-4 flex flex-wrap items-center gap-2">
+            <div id="filtrosLista" class="mb-4 flex flex-wrap items-center gap-2 hidden">
               <label class="text-meta" for="filtroFecha">Fecha</label>
               <input id="filtroFecha" type="date" class="rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
               <label class="text-meta" for="filtroEstado">Estado</label>
@@ -547,10 +528,10 @@
               <button id="btnExportarCSV" type="button" class="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold hover:bg-neutral-bg">Exportar CSV</button>
             </div>
 
-            <div id="vistaLista">
+            <div id="vistaLista" class="hidden">
               <div id="reservasList" class="grid gap-3"></div>
             </div>
-            <div id="vistaCalendario" class="hidden">
+            <div id="vistaCalendario">
               <div class="mb-3 flex flex-wrap items-center gap-3">
                 <label class="text-meta" id="calProLabel" for="calProfesional">Profesional</label>
                 <select id="calProfesional" class="rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
@@ -561,6 +542,68 @@
                 </div>
               </div>
               <div id="calGrid" class="overflow-x-auto rounded-xl border border-border"></div>
+            </div>
+          </div>
+
+          <div class="ds-card p-4 md:p-5 mb-4 space-y-4">
+            <div>
+              <h2 class="text-h2">Horario de atención</h2>
+              <p class="text-meta-sm mt-0.5">Definí los días y la franja horaria. Podés sumar una segunda franja si cortás al mediodía.</p>
+            </div>
+
+            <div>
+              <p class="label mb-2">Días que trabaja</p>
+              <div id="cfgDiasAtencion" class="flex flex-wrap gap-2" role="group" aria-label="Días de atención">
+                <button type="button" data-dia="1" class="dia-chip">Lun</button>
+                <button type="button" data-dia="2" class="dia-chip">Mar</button>
+                <button type="button" data-dia="3" class="dia-chip">Mié</button>
+                <button type="button" data-dia="4" class="dia-chip">Jue</button>
+                <button type="button" data-dia="5" class="dia-chip">Vie</button>
+                <button type="button" data-dia="6" class="dia-chip">Sáb</button>
+                <button type="button" data-dia="0" class="dia-chip">Dom</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 max-w-md">
+              <div class="flex flex-col gap-1">
+                <label class="label" for="cfgHoraInicio">Desde</label>
+                <input id="cfgHoraInicio" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="09:00" autocomplete="off"
+                       class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="cfgHoraFin">Hasta</label>
+                <input id="cfgHoraFin" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="20:00" autocomplete="off"
+                       class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+            </div>
+
+            <div id="franja2Block" class="hidden space-y-3 max-w-md">
+              <div class="flex items-center justify-between gap-2">
+                <p class="text-sm font-semibold text-primary">Franja 2</p>
+                <button id="btnQuitarFranja2" type="button" class="text-xs font-semibold text-danger hover:underline">Quitar franja 2</button>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="cfgHoraInicio2">Desde</label>
+                  <input id="cfgHoraInicio2" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="—" autocomplete="off"
+                         class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="cfgHoraFin2">Hasta</label>
+                  <input id="cfgHoraFin2" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="—" autocomplete="off"
+                         class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                </div>
+              </div>
+            </div>
+
+            <button id="btnAgregarFranja2" type="button"
+                    class="rounded-lg border border-dashed border-border px-3 py-2 text-sm font-semibold text-primary hover:bg-white/70">
+              + Agregar franja horaria 2
+            </button>
+
+            <div class="flex flex-wrap items-center gap-2 pt-1">
+              <button id="btnGuardarHorario" type="button" class="btn-primary px-4 py-2 text-sm">Guardar horario</button>
+              <p id="horarioMsg" class="min-h-5 text-sm font-semibold"></p>
             </div>
           </div>
 
@@ -1134,6 +1177,6 @@
     </div>
 
     <datalist id="listaHorariosDia"></datalist>
-    <script src="/admin.js?v=20260730-horario-fix"></script>
+    <script src="/admin.js?v=20260730-cal-top"></script>
   </body>
 </html>

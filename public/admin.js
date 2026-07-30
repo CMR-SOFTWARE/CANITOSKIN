@@ -335,7 +335,7 @@
   let lastBloqueosSig = "";
   let lastMovimientosSig = "";
   const LIVE_POLL_MS = 2500;
-  let agendaMode = "lista";
+  let agendaMode = "calendario";
   let calWeekStart = null;
   let bloqueosCache = [];
   let bloqueosRecCache = [];
