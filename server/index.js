@@ -232,8 +232,8 @@ function parseProfessionalSchedule(body = {}) {
       diasAtencionCsv: null,
     };
   }
-  const horaInicio = Number(body.horaInicio);
-  const horaFin = Number(body.horaFin);
+  const horaInicio = scheduleValueToMinutes(body.horaInicio);
+  const horaFin = scheduleValueToMinutes(body.horaFin);
   if (!Number.isFinite(horaInicio) || !Number.isFinite(horaFin) || horaInicio >= horaFin) {
     const err = new Error("Horario inválido: Desde debe ser menor que Hasta.");
     err.status = 400;
@@ -244,8 +244,8 @@ function parseProfessionalSchedule(body = {}) {
   const rawI2 = body.horaInicio2;
   const rawF2 = body.horaFin2;
   if (rawI2 !== "" && rawI2 != null && rawF2 !== "" && rawF2 != null) {
-    horaInicio2 = Number(rawI2);
-    horaFin2 = Number(rawF2);
+    horaInicio2 = scheduleValueToMinutes(rawI2);
+    horaFin2 = scheduleValueToMinutes(rawF2);
     if (!Number.isFinite(horaInicio2) || !Number.isFinite(horaFin2) || horaInicio2 >= horaFin2) {
       const err = new Error("Franja 2 inválida.");
       err.status = 400;
@@ -271,14 +271,9 @@ function findProfessional(business, professionalId) {
 
 function professionalHasOwnSchedule(pro) {
   if (!pro) return false;
-  return (
-    pro.horaInicio != null &&
-    pro.horaInicio !== "" &&
-    Number.isFinite(Number(pro.horaInicio)) &&
-    pro.horaFin != null &&
-    pro.horaFin !== "" &&
-    Number.isFinite(Number(pro.horaFin))
-  );
+  const a = scheduleValueToMinutes(pro.horaInicio);
+  const b = scheduleValueToMinutes(pro.horaFin);
+  return Number.isFinite(a) && Number.isFinite(b) && a < b;
 }
 
 /** Horario efectivo: propio del profesional o, si no tiene, el del negocio. */
@@ -307,11 +302,10 @@ function effectiveSchedule(business, pro) {
   }
 
   return {
-    horaInicio: Number(pro.horaInicio),
-    horaFin: Number(pro.horaFin),
-    horaInicio2:
-      pro.horaInicio2 != null && pro.horaInicio2 !== "" ? Number(pro.horaInicio2) : null,
-    horaFin2: pro.horaFin2 != null && pro.horaFin2 !== "" ? Number(pro.horaFin2) : null,
+    horaInicio: pro.horaInicio,
+    horaFin: pro.horaFin,
+    horaInicio2: pro.horaInicio2 != null && pro.horaInicio2 !== "" ? pro.horaInicio2 : null,
+    horaFin2: pro.horaFin2 != null && pro.horaFin2 !== "" ? pro.horaFin2 : null,
     diasAtencion: hasDays ? parseDiasAtencion(pro.diasAtencion) : baseDays,
   };
 }
@@ -664,10 +658,17 @@ async function initDb() {
       password_hash TEXT NOT NULL,
       password_salt_b TEXT,
       password_hash_b TEXT,
+      password_vault TEXT,
       actualizado_en TEXT NOT NULL,
       FOREIGN KEY (business_id) REFERENCES businesses(id)
     )
   `);
+  try {
+    const adminCols = await dbAll("PRAGMA table_info(business_admins)");
+    if (!adminCols.some((c) => c.name === "password_vault")) {
+      await dbRun("ALTER TABLE business_admins ADD COLUMN password_vault TEXT");
+    }
+  } catch (_) { /* ignore */ }
 
   await dbRun(`
     CREATE TABLE IF NOT EXISTS admin_users (
@@ -797,6 +798,46 @@ function hashAdminPassword(plain) {
   return { salt, hash };
 }
 
+/** Copia reversible solo para que el superadmin pueda ver la clave actual. */
+function encryptAdminPasswordVault(plain) {
+  const key = crypto.createHash("sha256").update(String(ADMIN_SESSION_SECRET)).digest();
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
+  const enc = Buffer.concat([cipher.update(String(plain), "utf8"), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return Buffer.concat([iv, tag, enc]).toString("base64");
+}
+
+function decryptAdminPasswordVault(blob) {
+  if (!blob) return null;
+  try {
+    const buf = Buffer.from(String(blob), "base64");
+    if (buf.length < 29) return null;
+    const iv = buf.subarray(0, 12);
+    const tag = buf.subarray(12, 28);
+    const data = buf.subarray(28);
+    const key = crypto.createHash("sha256").update(String(ADMIN_SESSION_SECRET)).digest();
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(tag);
+    return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
+  } catch (_) {
+    return null;
+  }
+}
+
+function resolveAdminPasswordFromRow(row) {
+  if (!row) return null;
+  const fromVault = decryptAdminPasswordVault(row.password_vault);
+  if (fromVault) return fromVault;
+  if (DEFAULT_ADMIN_PASSWORD && verifyAdminRowPasswords(DEFAULT_ADMIN_PASSWORD, row)) {
+    return DEFAULT_ADMIN_PASSWORD;
+  }
+  if (DEFAULT_ADMIN_PASSWORD_SECOND && verifyAdminRowPasswords(DEFAULT_ADMIN_PASSWORD_SECOND, row)) {
+    return DEFAULT_ADMIN_PASSWORD_SECOND;
+  }
+  return null;
+}
+
 function verifyAdminPasswordScrypt(plain, salt, hashHex) {
   try {
     const expected = Buffer.from(hashHex, "hex");
@@ -896,7 +937,9 @@ function requireSuperAdmin(req, res, next) {
 // ============================================================
 function timeToMinutes(hhmm) {
   if (!hhmm) return null;
-  const parts = String(hhmm).split(":");
+  const s = String(hhmm).trim();
+  if (s === "24:00") return 24 * 60;
+  const parts = s.split(":");
   const h = Number(parts[0]);
   const m = Number(parts[1] || 0);
   if (!Number.isFinite(h) || !Number.isFinite(m)) return null;
@@ -904,9 +947,54 @@ function timeToMinutes(hhmm) {
 }
 
 function minutesToTime(mins) {
+  if (!Number.isFinite(mins)) return null;
+  if (mins >= 24 * 60) return "24:00";
   const h = Math.floor(mins / 60);
   const m = mins % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** Acepta "09:15", 9 (hora legacy), "20.30" / "20,30" o minutos. */
+function scheduleValueToMinutes(raw) {
+  if (raw == null || raw === "") return null;
+  let s = String(raw).trim().replace(/\s+/g, "").replace(",", ".");
+  if (!s || s.includes("-")) return null;
+
+  if (/^\d{1,2}:\d{1,2}$/.test(s)) {
+    const [hs, ms] = s.split(":");
+    const h = Number(hs);
+    const m = Number(ms);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 24 || m < 0 || m > 59) return null;
+    if (h === 24 && m !== 0) return null;
+    return h * 60 + m;
+  }
+
+  // 20.30 → 20:30 (no interpretar como horas decimales)
+  const dec = /^(\d{1,2})\.(\d{1,2})$/.exec(s);
+  if (dec) {
+    const h = Number(dec[1]);
+    let m = Number(dec[2]);
+    if (dec[2].length === 1) m *= 10;
+    if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 24 || m < 0 || m > 59) return null;
+    if (h === 24 && m !== 0) return null;
+    return h * 60 + m;
+  }
+
+  if (/^\d{1,2}$/.test(s)) {
+    const h = Number(s);
+    if (!Number.isFinite(h) || h < 0 || h > 24) return null;
+    return h * 60;
+  }
+
+  const n = Number(s);
+  if (!Number.isFinite(n)) return null;
+  if (Number.isInteger(n) && n >= 0 && n <= 24) return n * 60;
+  if (n > 24 && n <= 24 * 60) return Math.round(n);
+  return null;
+}
+
+function scheduleMinutesToClock(mins) {
+  return minutesToTime(mins);
 }
 
 function rangesOverlap(start, end, otherStart, otherEnd) {
@@ -928,19 +1016,15 @@ function isAppointmentExpired(appt, nowMs = Date.now()) {
 
 function getBusinessOpenRanges(business) {
   const ranges = [];
-  const a1 = Number(business.horaInicio);
-  const b1 = Number(business.horaFin);
+  const a1 = scheduleValueToMinutes(business.horaInicio);
+  const b1 = scheduleValueToMinutes(business.horaFin);
   if (Number.isFinite(a1) && Number.isFinite(b1) && a1 < b1) {
-    ranges.push({ start: a1 * 60, end: b1 * 60 });
+    ranges.push({ start: a1, end: b1 });
   }
-  const a2 = business.horaInicio2 != null && business.horaInicio2 !== ""
-    ? Number(business.horaInicio2)
-    : NaN;
-  const b2 = business.horaFin2 != null && business.horaFin2 !== ""
-    ? Number(business.horaFin2)
-    : NaN;
+  const a2 = scheduleValueToMinutes(business.horaInicio2);
+  const b2 = scheduleValueToMinutes(business.horaFin2);
   if (Number.isFinite(a2) && Number.isFinite(b2) && a2 < b2) {
-    ranges.push({ start: a2 * 60, end: b2 * 60 });
+    ranges.push({ start: a2, end: b2 });
   }
   return ranges.sort((x, y) => x.start - y.start);
 }
@@ -1125,10 +1209,16 @@ function mapBusinessRow(row, professionals = [], services = [], clientPlans = []
       cbu: row.transfer_cbu || "",
       titular: row.transfer_titular || "",
     },
-    horaInicio: Number(row.hora_inicio),
-    horaFin: Number(row.hora_fin),
-    horaInicio2: row.hora_inicio_2 == null || row.hora_inicio_2 === "" ? null : Number(row.hora_inicio_2),
-    horaFin2: row.hora_fin_2 == null || row.hora_fin_2 === "" ? null : Number(row.hora_fin_2),
+    horaInicio: scheduleMinutesToClock(scheduleValueToMinutes(row.hora_inicio)) || "09:00",
+    horaFin: scheduleMinutesToClock(scheduleValueToMinutes(row.hora_fin)) || "20:00",
+    horaInicio2: (() => {
+      const m = scheduleValueToMinutes(row.hora_inicio_2);
+      return Number.isFinite(m) ? scheduleMinutesToClock(m) : null;
+    })(),
+    horaFin2: (() => {
+      const m = scheduleValueToMinutes(row.hora_fin_2);
+      return Number.isFinite(m) ? scheduleMinutesToClock(m) : null;
+    })(),
     diasAtencion: parseDiasAtencion(row.dias_atencion),
     precio: row.precio || "0",
     plan,
@@ -1447,9 +1537,9 @@ function mapClientPlanRow(row) {
 }
 
 function mapProfessionalRow(row) {
-  const horaInicio = row.hora_inicio != null ? Number(row.hora_inicio) : null;
-  const horaFin = row.hora_fin != null ? Number(row.hora_fin) : null;
-  const horarioPropio = Number.isFinite(horaInicio) && Number.isFinite(horaFin);
+  const horaInicioMin = scheduleValueToMinutes(row.hora_inicio);
+  const horaFinMin = scheduleValueToMinutes(row.hora_fin);
+  const horarioPropio = Number.isFinite(horaInicioMin) && Number.isFinite(horaFinMin) && horaInicioMin < horaFinMin;
   return {
     id: row.id,
     businessId: row.business_id,
@@ -1460,10 +1550,16 @@ function mapProfessionalRow(row) {
     fotoUrl: row.foto_url || null,
     activo: Boolean(row.activo),
     horarioPropio,
-    horaInicio: horarioPropio ? horaInicio : null,
-    horaFin: horarioPropio ? horaFin : null,
-    horaInicio2: row.hora_inicio_2 != null ? Number(row.hora_inicio_2) : null,
-    horaFin2: row.hora_fin_2 != null ? Number(row.hora_fin_2) : null,
+    horaInicio: horarioPropio ? scheduleMinutesToClock(horaInicioMin) : null,
+    horaFin: horarioPropio ? scheduleMinutesToClock(horaFinMin) : null,
+    horaInicio2: (() => {
+      const m = scheduleValueToMinutes(row.hora_inicio_2);
+      return Number.isFinite(m) ? scheduleMinutesToClock(m) : null;
+    })(),
+    horaFin2: (() => {
+      const m = scheduleValueToMinutes(row.hora_fin_2);
+      return Number.isFinite(m) ? scheduleMinutesToClock(m) : null;
+    })(),
     diasAtencion:
       row.dias_atencion != null && String(row.dias_atencion).trim() !== ""
         ? parseDiasAtencion(row.dias_atencion)
@@ -1830,38 +1926,19 @@ async function listPublicBusinesses() {
 async function ensureAdminForBusiness(businessId, now) {
   if (USE_SQLITE) {
     const existing = await dbGet("SELECT id FROM business_admins WHERE business_id = ? LIMIT 1", [businessId]);
-    const h1 = hashAdminPassword(DEFAULT_ADMIN_PASSWORD);
-    const h2 = DEFAULT_ADMIN_PASSWORD_SECOND ? hashAdminPassword(DEFAULT_ADMIN_PASSWORD_SECOND) : null;
-    if (existing) {
-      await dbRun(
-        `UPDATE business_admins SET password_salt=?, password_hash=?, password_salt_b=?, password_hash_b=?, actualizado_en=?
-         WHERE business_id=?`,
-        [h1.salt, h1.hash, h2 ? h2.salt : null, h2 ? h2.hash : null, now, businessId]
-      );
-      return;
-    }
-    await dbRun(
-      `INSERT INTO business_admins (business_id, password_salt, password_hash, password_salt_b, password_hash_b, actualizado_en)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [businessId, h1.salt, h1.hash, h2 ? h2.salt : null, h2 ? h2.hash : null, now]
-    );
+    if (existing) return;
+    await setBusinessAdminPassword(businessId, DEFAULT_ADMIN_PASSWORD);
     return;
   }
   if (USE_SUPABASE) {
     const { data: existing } = await supabase
       .from("business_admins").select("id").eq("business_id", businessId).maybeSingle();
     if (existing) return;
-    const h1 = hashAdminPassword(DEFAULT_ADMIN_PASSWORD);
-    const h2 = DEFAULT_ADMIN_PASSWORD_SECOND ? hashAdminPassword(DEFAULT_ADMIN_PASSWORD_SECOND) : null;
-    const { error } = await supabase.from("business_admins").insert({
-      business_id: businessId,
-      password_salt: h1.salt,
-      password_hash: h1.hash,
-      password_salt_b: h2 ? h2.salt : null,
-      password_hash_b: h2 ? h2.hash : null,
-      actualizado_en: now,
-    });
-    if (error) console.warn("[seed] No se pudo crear business_admin:", error.message);
+    try {
+      await setBusinessAdminPassword(businessId, DEFAULT_ADMIN_PASSWORD);
+    } catch (error) {
+      console.warn("[seed] No se pudo crear business_admin:", error.message);
+    }
   }
 }
 
@@ -3930,13 +4007,13 @@ app.patch("/api/:slug/admin/business", resolveBusiness, requireAdmin, async (req
     const transferAlias = (body.transferAlias || "").trim();
     const transferCbu = (body.transferCbu || "").trim();
     const transferTitular = (body.transferTitular || "").trim();
-    const horaInicio = parseInt(body.horaInicio, 10);
-    const horaFin = parseInt(body.horaFin, 10);
+    const horaInicio = scheduleValueToMinutes(body.horaInicio);
+    const horaFin = scheduleValueToMinutes(body.horaFin);
     const rawInicio2 = body.horaInicio2;
     const rawFin2 = body.horaFin2;
     const hasFranja2 = rawInicio2 !== "" && rawInicio2 != null && rawFin2 !== "" && rawFin2 != null;
-    const horaInicio2 = hasFranja2 ? parseInt(rawInicio2, 10) : null;
-    const horaFin2 = hasFranja2 ? parseInt(rawFin2, 10) : null;
+    const horaInicio2 = hasFranja2 ? scheduleValueToMinutes(rawInicio2) : null;
+    const horaFin2 = hasFranja2 ? scheduleValueToMinutes(rawFin2) : null;
     const diasAtencion = parseDiasAtencion(body.diasAtencion ?? body.dias_atencion);
     const diasAtencionStr = serializeDiasAtencion(diasAtencion);
     const precio = body.precio !== undefined && body.precio !== null
@@ -3963,15 +4040,15 @@ app.patch("/api/:slug/admin/business", resolveBusiness, requireAdmin, async (req
     if (!Number.isFinite(horaInicio) || !Number.isFinite(horaFin) || horaInicio >= horaFin) {
       return res.status(400).json({ error: "Franja 1 inválida: la hora de inicio debe ser menor a la de fin." });
     }
-    if (horaInicio < 0 || horaFin > 24) {
-      return res.status(400).json({ error: "Franja 1 fuera de rango (0-24)." });
+    if (horaInicio < 0 || horaFin > 24 * 60) {
+      return res.status(400).json({ error: "Franja 1 fuera de rango (00:00–24:00)." });
     }
     if (hasFranja2) {
       if (!Number.isFinite(horaInicio2) || !Number.isFinite(horaFin2) || horaInicio2 >= horaFin2) {
         return res.status(400).json({ error: "Franja 2 inválida: la hora de inicio debe ser menor a la de fin." });
       }
-      if (horaInicio2 < 0 || horaFin2 > 24) {
-        return res.status(400).json({ error: "Franja 2 fuera de rango (0-24)." });
+      if (horaInicio2 < 0 || horaFin2 > 24 * 60) {
+        return res.status(400).json({ error: "Franja 2 fuera de rango (00:00–24:00)." });
       }
       if (horaInicio2 < horaFin) {
         return res.status(400).json({ error: "La franja 2 debe empezar después de que termine la franja 1." });
@@ -4031,22 +4108,7 @@ app.post("/api/:slug/admin/password", resolveBusiness, requireAdmin, async (req,
     const ok = await verifyAdminPasswordForBusiness(passwordActual, req.business.id);
     if (!ok) return res.status(401).json({ error: "La contraseña actual es incorrecta." });
 
-    const { salt, hash } = hashAdminPassword(passwordNuevo);
-    const now = new Date().toISOString();
-
-    if (USE_SUPABASE) {
-      const { error } = await supabase.from("business_admins").update({
-        password_salt: salt, password_hash: hash,
-        password_salt_b: null, password_hash_b: null, actualizado_en: now,
-      }).eq("business_id", req.business.id);
-      if (error) throw new Error(error.message);
-      return res.json({ ok: true });
-    }
-    await dbRun(
-      `UPDATE business_admins SET password_salt=?, password_hash=?, password_salt_b=NULL, password_hash_b=NULL, actualizado_en=?
-       WHERE business_id=?`,
-      [salt, hash, now, req.business.id]
-    );
+    await setBusinessAdminPassword(req.business.id, passwordNuevo);
     return res.json({ ok: true });
   } catch (error) { next(error); }
 });
@@ -4083,28 +4145,44 @@ app.post("/api/superadmin/login", async (req, res, next) => {
 app.get("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) => {
   try {
     const estado = (req.query.estado || "").trim();
+    const vaultMap = await loadAdminPasswordVaultMap();
     if (USE_SQLITE) {
       const rows = estado && ESTADOS_NEGOCIO.has(estado)
         ? await dbAll("SELECT * FROM businesses WHERE estado = ? ORDER BY id ASC", [estado])
         : await dbAll("SELECT * FROM businesses ORDER BY id ASC");
-      return res.json(rows.map((r) => ({
-        id: r.id, slug: r.slug, nombre: r.nombre, categoria: r.categoria,
-        ciudad: r.ciudad, barrio: r.barrio, colorMarca: r.color_marca,
-        logoUrl: r.logo_url, plan: r.plan || "inicial", estado: r.estado,
-        estadoMotivo: r.estado_motivo, creadoEn: r.creado_en,
-      })));
+      const admins = await dbAll("SELECT * FROM business_admins");
+      const byBiz = new Map(admins.map((a) => [Number(a.business_id), a]));
+      return res.json(rows.map((r) => {
+        const id = Number(r.id);
+        return {
+          id: r.id, slug: r.slug, nombre: r.nombre, categoria: r.categoria,
+          ciudad: r.ciudad, barrio: r.barrio, colorMarca: r.color_marca,
+          logoUrl: r.logo_url, plan: r.plan || "inicial", estado: r.estado,
+          estadoMotivo: r.estado_motivo, creadoEn: r.creado_en,
+          adminPassword: vaultMap.get(id) || resolveAdminPasswordFromRow(byBiz.get(id)) || "",
+        };
+      }));
     }
     if (USE_SUPABASE) {
       let query = supabase.from("businesses").select("*").order("id");
       if (estado && ESTADOS_NEGOCIO.has(estado)) query = query.eq("estado", estado);
       const { data, error } = await query;
       if (error) throw new Error(error.message);
-      return res.json((data || []).map((r) => ({
-        id: r.id, slug: r.slug, nombre: r.nombre, categoria: r.categoria,
-        ciudad: r.ciudad, barrio: r.barrio, colorMarca: r.color_marca,
-        logoUrl: r.logo_url, plan: r.plan || "inicial", estado: r.estado,
-        estadoMotivo: r.estado_motivo, creadoEn: r.creado_en,
-      })));
+      const { data: admins, error: adminErr } = await supabase
+        .from("business_admins")
+        .select("business_id, password_salt, password_hash, password_salt_b, password_hash_b");
+      if (adminErr) throw new Error(adminErr.message);
+      const byBiz = new Map((admins || []).map((a) => [Number(a.business_id), a]));
+      return res.json((data || []).map((r) => {
+        const id = Number(r.id);
+        return {
+          id: r.id, slug: r.slug, nombre: r.nombre, categoria: r.categoria,
+          ciudad: r.ciudad, barrio: r.barrio, colorMarca: r.color_marca,
+          logoUrl: r.logo_url, plan: r.plan || "inicial", estado: r.estado,
+          estadoMotivo: r.estado_motivo, creadoEn: r.creado_en,
+          adminPassword: vaultMap.get(id) || resolveAdminPasswordFromRow(byBiz.get(id)) || "",
+        };
+      }));
     }
     return res.json([]);
   } catch (error) { next(error); }
@@ -4156,7 +4234,6 @@ app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) =
     }
 
     const now = new Date().toISOString();
-    const { salt, hash } = hashAdminPassword(password);
 
     if (USE_SQLITE) {
       const existing = await dbGet("SELECT id FROM businesses WHERE slug = ? LIMIT 1", [rawSlug]);
@@ -4169,10 +4246,7 @@ app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) =
          ) VALUES (?, ?, ?, ?, ?, ?, '#0f766e', '', '', '', '', 9, 20, '0', ?, 'activo', ?)`,
         [rawSlug, nombre, categoria, ciudad, barrio, direccion, plan, now]
       );
-      await dbRun(
-        "INSERT INTO business_admins (business_id, password_salt, password_hash, actualizado_en) VALUES (?, ?, ?, ?)",
-        [result.lastID, salt, hash, now]
-      );
+      await setBusinessAdminPassword(result.lastID, password);
       return res.status(201).json({ ok: true, slug: rawSlug, nombre, id: result.lastID });
     }
     if (USE_SUPABASE) {
@@ -4184,11 +4258,7 @@ app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) =
         hora_inicio: 9, hora_fin: 20, precio: "0", plan, estado: "activo", creado_en: now,
       }).select().single();
       if (bizErr) throw new Error(bizErr.message);
-      const { error: adminErr } = await supabase.from("business_admins").insert({
-        business_id: biz.id, password_salt: salt, password_hash: hash,
-        password_salt_b: null, password_hash_b: null, actualizado_en: now,
-      });
-      if (adminErr) throw new Error(adminErr.message);
+      await setBusinessAdminPassword(biz.id, password);
       return res.status(201).json({ ok: true, slug: rawSlug, nombre, id: biz.id });
     }
     return res.status(503).json({ error: "No hay backend de datos disponible." });
@@ -4367,26 +4437,24 @@ async function setBusinessAdminPassword(businessId, password) {
       .select("id")
       .eq("business_id", businessId)
       .maybeSingle();
+    const payload = {
+      password_salt: salt,
+      password_hash: hash,
+      password_salt_b: null,
+      password_hash_b: null,
+      actualizado_en: now,
+    };
     if (existing) {
-      const { error } = await supabase.from("business_admins").update({
-        password_salt: salt,
-        password_hash: hash,
-        password_salt_b: null,
-        password_hash_b: null,
-        actualizado_en: now,
-      }).eq("business_id", businessId);
+      const { error } = await supabase.from("business_admins").update(payload).eq("business_id", businessId);
       if (error) throw new Error(error.message);
     } else {
       const { error } = await supabase.from("business_admins").insert({
         business_id: businessId,
-        password_salt: salt,
-        password_hash: hash,
-        password_salt_b: null,
-        password_hash_b: null,
-        actualizado_en: now,
+        ...payload,
       });
       if (error) throw new Error(error.message);
     }
+    await saveAdminPasswordVault(businessId, password);
     return;
   }
   const existing = await dbGet(
@@ -4405,6 +4473,58 @@ async function setBusinessAdminPassword(businessId, password) {
       [businessId, salt, hash, now]
     );
   }
+  await saveAdminPasswordVault(businessId, password);
+}
+
+function adminPasswordVaultKey(businessId) {
+  return `admin_pwd_vault:${businessId}`;
+}
+
+async function saveAdminPasswordVault(businessId, password) {
+  const key = adminPasswordVaultKey(businessId);
+  const value = encryptAdminPasswordVault(password);
+  if (USE_SQLITE) {
+    await dbRun(
+      "INSERT INTO platform_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+      [key, value]
+    );
+    return;
+  }
+  if (USE_SUPABASE) {
+    const { error } = await supabase.from("platform_settings").upsert({ key, value }, { onConflict: "key" });
+    if (error) console.warn("[admin-vault] No se pudo guardar clave visible:", error.message);
+  }
+}
+
+async function loadAdminPasswordVaultMap() {
+  const prefix = "admin_pwd_vault:";
+  const map = new Map();
+  if (USE_SQLITE) {
+    const rows = await dbAll(
+      "SELECT key, value FROM platform_settings WHERE key LIKE ?",
+      [`${prefix}%`]
+    );
+    for (const r of rows || []) {
+      const id = Number(String(r.key).slice(prefix.length));
+      const plain = decryptAdminPasswordVault(r.value);
+      if (Number.isFinite(id) && plain) map.set(id, plain);
+    }
+    return map;
+  }
+  if (USE_SUPABASE) {
+    const { data, error } = await supabase.from("platform_settings").select("key, value");
+    if (error) {
+      console.warn("[admin-vault] No se pudieron leer claves:", error.message);
+      return map;
+    }
+    for (const r of data || []) {
+      if (!String(r.key || "").startsWith(prefix)) continue;
+      const id = Number(String(r.key).slice(prefix.length));
+      const plain = decryptAdminPasswordVault(r.value);
+      if (Number.isFinite(id) && plain) map.set(id, plain);
+    }
+  }
+  return map;
 }
 
 async function deleteBusinessCascade(businessId) {
@@ -4417,6 +4537,7 @@ async function deleteBusinessCascade(businessId) {
       .select("id, slug, nombre");
     if (error) throw new Error(error.message);
     if (!data?.length) return null;
+    await supabase.from("platform_settings").delete().eq("key", adminPasswordVaultKey(businessId));
     return data[0];
   }
 
@@ -4434,6 +4555,7 @@ async function deleteBusinessCascade(businessId) {
   await dbRun("DELETE FROM services WHERE business_id = ?", [businessId]);
   await dbRun("DELETE FROM professionals WHERE business_id = ?", [businessId]);
   await dbRun("DELETE FROM business_admins WHERE business_id = ?", [businessId]);
+  await dbRun("DELETE FROM platform_settings WHERE key = ?", [adminPasswordVaultKey(businessId)]);
   await dbRun("DELETE FROM businesses WHERE id = ?", [businessId]);
   return row;
 }
@@ -4706,7 +4828,6 @@ app.patch("/api/superadmin/solicitudes/:id/aprobar", requireSuperAdmin, async (r
     const slugOverride = (req.body?.slug || "").trim();
     if (!password) return res.status(400).json({ error: "La clave admin del negocio es requerida." });
 
-    const { salt, hash } = hashAdminPassword(password);
     const now = new Date().toISOString();
     const plans = await loadPlatformPlans();
     const planFromBody = (req.body?.plan || "").trim();
@@ -4733,10 +4854,7 @@ app.patch("/api/superadmin/solicitudes/:id/aprobar", requireSuperAdmin, async (r
           sol.direccion || null, sol.whatsapp, solPlan, now,
         ]
       );
-      await dbRun(
-        "INSERT INTO business_admins (business_id, password_salt, password_hash, actualizado_en) VALUES (?, ?, ?, ?)",
-        [result.lastID, salt, hash, now]
-      );
+      await setBusinessAdminPassword(result.lastID, password);
       await dbRun(
         `INSERT INTO platform_payments (business_id, plan_id, monto, comprobante_url, creado_en)
          VALUES (?, ?, ?, ?, ?)`,
@@ -4766,11 +4884,7 @@ app.patch("/api/superadmin/solicitudes/:id/aprobar", requireSuperAdmin, async (r
       }).select().single();
       if (bizErr) throw new Error(bizErr.message);
 
-      const { error: adminErr } = await supabase.from("business_admins").insert({
-        business_id: biz.id, password_salt: salt, password_hash: hash,
-        password_salt_b: null, password_hash_b: null, actualizado_en: now,
-      });
-      if (adminErr) throw new Error(adminErr.message);
+      await setBusinessAdminPassword(biz.id, password);
 
       await supabase.from("platform_payments").insert({
         business_id: biz.id, plan_id: solPlan, monto: planInfo.precio,

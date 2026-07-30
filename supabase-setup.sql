@@ -178,8 +178,11 @@ create table if not exists business_admins (
   password_hash text not null,
   password_salt_b text,
   password_hash_b text,
+  password_vault text,
   actualizado_en text not null
 );
+
+alter table business_admins add column if not exists password_vault text;
 
 create table if not exists admin_users (
   id bigserial primary key,

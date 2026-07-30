@@ -114,18 +114,132 @@
   }
 
   function minutesToHHMM(mins) {
+    if (!Number.isFinite(mins)) return "";
+    if (mins >= 24 * 60) return "24:00";
     return `${pad2(Math.floor(mins / 60))}:${pad2(mins % 60)}`;
+  }
+
+  function hhmmToMinutes(hhmm) {
+    if (hhmm == null || hhmm === "") return NaN;
+    const s = String(hhmm).trim();
+    if (s === "24:00") return 24 * 60;
+    const m = /^(\d{1,2}):(\d{2})$/.exec(s);
+    if (m) return Number(m[1]) * 60 + Number(m[2]);
+    return NaN;
+  }
+
+  /**
+   * Normaliza lo que escribe el usuario a HH:MM.
+   * Acepta: 9, 09:00, 9:00, 20.30, 20,30, 20.5 (→ 20:50 si un dígito de minutos).
+   * Rechaza: "-", textos inválidos.
+   */
+  function normalizeClockInput(raw) {
+    if (raw == null) return "";
+    let s = String(raw).trim();
+    if (!s) return "";
+    s = s.replace(/\s+/g, "").replace(",", ".");
+    if (s.includes("-") || /[^\d:.]/.test(s)) return "";
+
+    if (/^\d{1,2}:\d{1,2}$/.test(s)) {
+      const [hs, ms] = s.split(":");
+      const h = Number(hs);
+      const m = Number(ms);
+      if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 24 || m < 0 || m > 59) return "";
+      if (h === 24 && m !== 0) return "";
+      return h === 24 ? "24:00" : `${pad2(h)}:${pad2(m)}`;
+    }
+
+    // 20.30 / 20.5 → hora.minuto
+    const dec = /^(\d{1,2})\.(\d{1,2})$/.exec(s);
+    if (dec) {
+      const h = Number(dec[1]);
+      let m = Number(dec[2]);
+      if (dec[2].length === 1) m *= 10; // 20.3 → 20:30
+      if (!Number.isFinite(h) || !Number.isFinite(m) || h < 0 || h > 24 || m < 0 || m > 59) return "";
+      if (h === 24 && m !== 0) return "";
+      return h === 24 ? "24:00" : `${pad2(h)}:${pad2(m)}`;
+    }
+
+    // Solo hora entera: 9 / 20
+    if (/^\d{1,2}$/.test(s)) {
+      const h = Number(s);
+      if (!Number.isFinite(h) || h < 0 || h > 24) return "";
+      return h === 24 ? "24:00" : `${pad2(h)}:00`;
+    }
+
+    return "";
+  }
+
+  /** Acepta "09:15", 9 (hora legacy), 20.30 o minutos. */
+  function scheduleToMinutes(raw) {
+    if (raw == null || raw === "") return NaN;
+    const normalized = normalizeClockInput(raw);
+    if (normalized) return hhmmToMinutes(normalized);
+    const s = String(raw).trim();
+    if (/^\d{1,2}:\d{2}$/.test(s)) return hhmmToMinutes(s);
+    const n = Number(s.replace(",", "."));
+    if (!Number.isFinite(n)) return NaN;
+    // Solo enteros 0-24 como hora legacy; NO decimales (20.30 no es 20.3 horas)
+    if (Number.isInteger(n) && n >= 0 && n <= 24) return n * 60;
+    if (n > 24 && n <= 24 * 60) return Math.round(n);
+    return NaN;
+  }
+
+  function scheduleToClock(raw, fallback = "") {
+    const normalized = normalizeClockInput(raw);
+    if (normalized) return normalized;
+    const mins = scheduleToMinutes(raw);
+    return Number.isFinite(mins) ? minutesToHHMM(mins) : fallback;
+  }
+
+  function readAndNormalizeClockField(id) {
+    const el = $(id);
+    if (!el) return "";
+    const normalized = normalizeClockInput(el.value);
+    if (normalized) el.value = normalized;
+    return normalized;
+  }
+
+  function bindClockInputNormalize(id) {
+    const el = $(id);
+    if (!el || el.dataset.clockBound === "1") return;
+    el.dataset.clockBound = "1";
+    el.addEventListener("blur", () => {
+      const n = normalizeClockInput(el.value);
+      if (n) el.value = n;
+      else if (String(el.value || "").trim()) {
+        // deja el valor para que el usuario corrija, pero avisa en placeholder
+        el.setCustomValidity("Usá HH:MM (ej. 09:00 o 20:30)");
+      } else {
+        el.setCustomValidity("");
+      }
+    });
+    el.addEventListener("input", () => el.setCustomValidity(""));
+  }
+
+  function buildDaySlots(stepMin = 15) {
+    const step = stepMin || 15;
+    const out = [];
+    for (let m = 0; m <= 24 * 60; m += step) out.push(minutesToHHMM(m));
+    return out;
+  }
+
+  function ensureHorariosDatalist() {
+    const list = $("listaHorariosDia");
+    if (!list || list.dataset.ready === "1") return;
+    list.innerHTML = buildDaySlots(15).map((h) => `<option value="${h}"></option>`).join("");
+    list.dataset.ready = "1";
   }
 
   function generateHorariosFromConfig(cfg, stepMin) {
     const step = stepMin || 15;
     const ranges = [];
-    const a1 = Number(cfg?.horaInicio ?? 9);
-    const b1 = Number(cfg?.horaFin ?? 20);
-    if (Number.isFinite(a1) && Number.isFinite(b1) && a1 < b1) ranges.push([a1 * 60, b1 * 60]);
-    const a2 = cfg?.horaInicio2 != null && cfg?.horaInicio2 !== "" ? Number(cfg.horaInicio2) : NaN;
-    const b2 = cfg?.horaFin2 != null && cfg?.horaFin2 !== "" ? Number(cfg.horaFin2) : NaN;
-    if (Number.isFinite(a2) && Number.isFinite(b2) && a2 < b2) ranges.push([a2 * 60, b2 * 60]);
+    const a1 = scheduleToMinutes(cfg?.horaInicio ?? "09:00");
+    const b1 = scheduleToMinutes(cfg?.horaFin ?? "20:00");
+    if (Number.isFinite(a1) && Number.isFinite(b1) && a1 < b1) ranges.push([a1, b1]);
+    const a2 = scheduleToMinutes(cfg?.horaInicio2);
+    const b2 = scheduleToMinutes(cfg?.horaFin2);
+    if (Number.isFinite(a2) && Number.isFinite(b2) && a2 < b2) ranges.push([a2, b2]);
     const out = [];
     for (const [start, end] of ranges) {
       for (let m = start; m <= end; m += step) out.push(minutesToHHMM(m));
@@ -135,41 +249,39 @@
 
   function effectiveScheduleForPro(pro) {
     const base = {
-      horaInicio: config?.horaInicio ?? 9,
-      horaFin: config?.horaFin ?? 20,
-      horaInicio2: config?.horaInicio2 ?? null,
-      horaFin2: config?.horaFin2 ?? null,
+      horaInicio: scheduleToClock(config?.horaInicio, "09:00"),
+      horaFin: scheduleToClock(config?.horaFin, "20:00"),
+      horaInicio2: config?.horaInicio2 != null ? scheduleToClock(config.horaInicio2) : null,
+      horaFin2: config?.horaFin2 != null ? scheduleToClock(config.horaFin2) : null,
       diasAtencion: Array.isArray(config?.diasAtencion) && config.diasAtencion.length
         ? config.diasAtencion.map(Number)
         : [1, 2, 3, 4, 5],
     };
     if (!pro) return base;
     const hasHours =
-      pro.horaInicio != null &&
-      pro.horaFin != null &&
-      Number.isFinite(Number(pro.horaInicio)) &&
-      Number.isFinite(Number(pro.horaFin));
+      Number.isFinite(scheduleToMinutes(pro.horaInicio)) &&
+      Number.isFinite(scheduleToMinutes(pro.horaFin));
     const hasDays = Array.isArray(pro.diasAtencion) && pro.diasAtencion.length;
     if (!hasHours) {
       return hasDays ? { ...base, diasAtencion: pro.diasAtencion.map(Number) } : base;
     }
     return {
-      horaInicio: Number(pro.horaInicio),
-      horaFin: Number(pro.horaFin),
-      horaInicio2: pro.horaInicio2 != null && pro.horaInicio2 !== "" ? Number(pro.horaInicio2) : null,
-      horaFin2: pro.horaFin2 != null && pro.horaFin2 !== "" ? Number(pro.horaFin2) : null,
+      horaInicio: scheduleToClock(pro.horaInicio),
+      horaFin: scheduleToClock(pro.horaFin),
+      horaInicio2: pro.horaInicio2 != null && pro.horaInicio2 !== "" ? scheduleToClock(pro.horaInicio2) : null,
+      horaFin2: pro.horaFin2 != null && pro.horaFin2 !== "" ? scheduleToClock(pro.horaFin2) : null,
       diasAtencion: hasDays ? pro.diasAtencion.map(Number) : base.diasAtencion,
     };
   }
 
   function scheduleOpenRanges(sched) {
     const ranges = [];
-    const a1 = Number(sched?.horaInicio);
-    const b1 = Number(sched?.horaFin);
-    if (Number.isFinite(a1) && Number.isFinite(b1) && a1 < b1) ranges.push({ start: a1 * 60, end: b1 * 60 });
-    const a2 = sched?.horaInicio2 != null && sched?.horaInicio2 !== "" ? Number(sched.horaInicio2) : NaN;
-    const b2 = sched?.horaFin2 != null && sched?.horaFin2 !== "" ? Number(sched.horaFin2) : NaN;
-    if (Number.isFinite(a2) && Number.isFinite(b2) && a2 < b2) ranges.push({ start: a2 * 60, end: b2 * 60 });
+    const a1 = scheduleToMinutes(sched?.horaInicio);
+    const b1 = scheduleToMinutes(sched?.horaFin);
+    if (Number.isFinite(a1) && Number.isFinite(b1) && a1 < b1) ranges.push({ start: a1, end: b1 });
+    const a2 = scheduleToMinutes(sched?.horaInicio2);
+    const b2 = scheduleToMinutes(sched?.horaFin2);
+    if (Number.isFinite(a2) && Number.isFinite(b2) && a2 < b2) ranges.push({ start: a2, end: b2 });
     return ranges;
   }
 
@@ -351,6 +463,7 @@
   }
 
   function fillHorarioSelects() {
+    ensureHorariosDatalist();
     const step = config?.slotStepMin || 15;
     const horarios = generateHorariosFromConfig(config, step);
     const opts = horarios.map((h) => `<option value="${h}">${h}</option>`).join("");
@@ -1127,17 +1240,17 @@
     };
 
     const sched = scheduleOverride || {
-      horaInicio: config?.horaInicio ?? 9,
-      horaFin: config?.horaFin ?? 20,
+      horaInicio: config?.horaInicio ?? "09:00",
+      horaFin: config?.horaFin ?? "20:00",
       horaInicio2: config?.horaInicio2,
       horaFin2: config?.horaFin2,
     };
-    const a1 = Number(sched.horaInicio ?? 9);
-    const b1 = Number(sched.horaFin ?? 20);
-    pushRange(a1 * 60, b1 * 60);
-    const a2 = sched.horaInicio2 != null && sched.horaInicio2 !== "" ? Number(sched.horaInicio2) : NaN;
-    const b2 = sched.horaFin2 != null && sched.horaFin2 !== "" ? Number(sched.horaFin2) : NaN;
-    pushRange(a2 * 60, b2 * 60);
+    const a1 = scheduleToMinutes(sched.horaInicio ?? "09:00");
+    const b1 = scheduleToMinutes(sched.horaFin ?? "20:00");
+    pushRange(a1, b1);
+    const a2 = scheduleToMinutes(sched.horaInicio2);
+    const b2 = scheduleToMinutes(sched.horaFin2);
+    pushRange(a2, b2);
 
     for (const r of weekReservas) {
       const start = hhmmToMinutes(r.horaInicio || r.horario);
@@ -1188,12 +1301,6 @@
     } else {
       renderReservas();
     }
-  }
-
-  function hhmmToMinutes(hhmm) {
-    const [h, m] = String(hhmm || "0:0").split(":").map(Number);
-    if (!Number.isFinite(h)) return NaN;
-    return h * 60 + (Number.isFinite(m) ? m : 0);
   }
 
   function renderCalendario() {
@@ -1645,12 +1752,13 @@
       return { horarioPropio: false };
     }
     const franja2 = !$("proFranja2Block")?.classList.contains("hidden");
+    ["proHoraInicio", "proHoraFin", "proHoraInicio2", "proHoraFin2"].forEach(bindClockInputNormalize);
     return {
       horarioPropio: true,
-      horaInicio: Number($("proHoraInicio")?.value),
-      horaFin: Number($("proHoraFin")?.value),
-      horaInicio2: franja2 ? ($("proHoraInicio2")?.value?.trim() ?? "") : "",
-      horaFin2: franja2 ? ($("proHoraFin2")?.value?.trim() ?? "") : "",
+      horaInicio: readAndNormalizeClockField("proHoraInicio"),
+      horaFin: readAndNormalizeClockField("proHoraFin"),
+      horaInicio2: franja2 ? readAndNormalizeClockField("proHoraInicio2") : "",
+      horaFin2: franja2 ? readAndNormalizeClockField("proHoraFin2") : "",
       diasAtencion: getSelectedProDiasAtencion(),
     };
   }
@@ -1660,9 +1768,9 @@
       return "Horario del negocio";
     }
     const sched = effectiveScheduleForPro(p);
-    let label = `${sched.horaInicio}:00–${sched.horaFin}:00`;
+    let label = `${sched.horaInicio}–${sched.horaFin}`;
     if (sched.horaInicio2 != null && sched.horaFin2 != null) {
-      label += ` · ${sched.horaInicio2}:00–${sched.horaFin2}:00`;
+      label += ` · ${sched.horaInicio2}–${sched.horaFin2}`;
     }
     return label;
   }
@@ -1683,8 +1791,8 @@
     renderProServiciosCheckboxes([]);
     setProHorarioPropio(false);
     setProFranja2Visible(false);
-    if ($("proHoraInicio")) $("proHoraInicio").value = config?.horaInicio ?? 9;
-    if ($("proHoraFin")) $("proHoraFin").value = config?.horaFin ?? 20;
+    if ($("proHoraInicio")) $("proHoraInicio").value = scheduleToClock(config?.horaInicio, "09:00");
+    if ($("proHoraFin")) $("proHoraFin").value = scheduleToClock(config?.horaFin, "20:00");
     setSelectedProDiasAtencion(config?.diasAtencion);
     const btn = $("btnGuardarPro");
     if (btn) btn.textContent = "Guardar";
@@ -1718,19 +1826,19 @@
     const propio = Boolean(p.horarioPropio) || (p.horaInicio != null && p.horaFin != null);
     setProHorarioPropio(propio);
     if (propio) {
-      if ($("proHoraInicio")) $("proHoraInicio").value = p.horaInicio;
-      if ($("proHoraFin")) $("proHoraFin").value = p.horaFin;
+      if ($("proHoraInicio")) $("proHoraInicio").value = scheduleToClock(p.horaInicio);
+      if ($("proHoraFin")) $("proHoraFin").value = scheduleToClock(p.horaFin);
       const has2 = p.horaInicio2 != null && p.horaFin2 != null;
       setProFranja2Visible(has2);
       if (has2) {
-        if ($("proHoraInicio2")) $("proHoraInicio2").value = p.horaInicio2;
-        if ($("proHoraFin2")) $("proHoraFin2").value = p.horaFin2;
+        if ($("proHoraInicio2")) $("proHoraInicio2").value = scheduleToClock(p.horaInicio2);
+        if ($("proHoraFin2")) $("proHoraFin2").value = scheduleToClock(p.horaFin2);
       }
       setSelectedProDiasAtencion(p.diasAtencion);
     } else {
       setProFranja2Visible(false);
-      if ($("proHoraInicio")) $("proHoraInicio").value = config?.horaInicio ?? 9;
-      if ($("proHoraFin")) $("proHoraFin").value = config?.horaFin ?? 20;
+      if ($("proHoraInicio")) $("proHoraInicio").value = scheduleToClock(config?.horaInicio, "09:00");
+      if ($("proHoraFin")) $("proHoraFin").value = scheduleToClock(config?.horaFin, "20:00");
       setSelectedProDiasAtencion(config?.diasAtencion);
     }
 
@@ -1836,8 +1944,10 @@
     }
     const schedule = readProScheduleFromForm();
     if (schedule.horarioPropio) {
-      if (!Number.isFinite(schedule.horaInicio) || !Number.isFinite(schedule.horaFin) || schedule.horaInicio >= schedule.horaFin) {
-        setMessage($("cfgProMsg"), "Horario inválido: Desde debe ser menor que Hasta.", true);
+      const a = scheduleToMinutes(schedule.horaInicio);
+      const b = scheduleToMinutes(schedule.horaFin);
+      if (!Number.isFinite(a) || !Number.isFinite(b) || a >= b) {
+        setMessage($("cfgProMsg"), "Horario inválido: usá formato HH:MM (ej. 09:00) y Desde menor que Hasta.", true);
         return;
       }
       if (!schedule.diasAtencion.length) {
@@ -2510,6 +2620,13 @@
     }
   }
 
+  function clearHorarioSuccessMsg() {
+    const msg = $("horarioMsg");
+    if (msg && /guardado|guardando/i.test(msg.textContent || "")) {
+      msg.textContent = "";
+    }
+  }
+
   function getSelectedDiasAtencion() {
     return [...document.querySelectorAll("#cfgDiasAtencion .dia-chip.is-active")]
       .map((btn) => Number(btn.dataset.dia))
@@ -2529,15 +2646,17 @@
 
   function fillConfigForm() {
     if (!config) return;
+    ensureHorariosDatalist();
+    ["cfgHoraInicio", "cfgHoraFin", "cfgHoraInicio2", "cfgHoraFin2"].forEach(bindClockInputNormalize);
     if ($("cfgNombre")) $("cfgNombre").value = config.nombre || "";
     if ($("cfgWhatsapp")) $("cfgWhatsapp").value = config.whatsappNumero || "";
-    if ($("cfgHoraInicio")) $("cfgHoraInicio").value = config.horaInicio ?? 9;
-    if ($("cfgHoraFin")) $("cfgHoraFin").value = config.horaFin ?? 20;
+    if ($("cfgHoraInicio")) $("cfgHoraInicio").value = scheduleToClock(config.horaInicio, "09:00");
+    if ($("cfgHoraFin")) $("cfgHoraFin").value = scheduleToClock(config.horaFin, "20:00");
     const hasFranja2 = config.horaInicio2 != null && config.horaFin2 != null;
     setFranja2Visible(hasFranja2);
     if (hasFranja2) {
-      if ($("cfgHoraInicio2")) $("cfgHoraInicio2").value = config.horaInicio2;
-      if ($("cfgHoraFin2")) $("cfgHoraFin2").value = config.horaFin2;
+      if ($("cfgHoraInicio2")) $("cfgHoraInicio2").value = scheduleToClock(config.horaInicio2);
+      if ($("cfgHoraFin2")) $("cfgHoraFin2").value = scheduleToClock(config.horaFin2);
     }
     setSelectedDiasAtencion(config.diasAtencion);
     if ($("cfgCategoria")) $("cfgCategoria").value = config.categoria || "otro";
@@ -2624,17 +2743,44 @@
       return { error: "Seleccioná al menos un día de atención." };
     }
     const franja2Visible = !$("franja2Block")?.classList.contains("hidden");
+    const horaInicio = readAndNormalizeClockField("cfgHoraInicio");
+    const horaFin = readAndNormalizeClockField("cfgHoraFin");
+    const a = scheduleToMinutes(horaInicio);
+    const b = scheduleToMinutes(horaFin);
+    if (!horaInicio || !horaFin || !Number.isFinite(a) || !Number.isFinite(b) || a >= b) {
+      return { error: "Horario inválido: usá HH:MM (ej. 09:00 o 20:30). También sirve 9 o 20.30." };
+    }
+    let horaInicio2 = "";
+    let horaFin2 = "";
+    if (franja2Visible) {
+      horaInicio2 = readAndNormalizeClockField("cfgHoraInicio2");
+      horaFin2 = readAndNormalizeClockField("cfgHoraFin2");
+      const a2 = scheduleToMinutes(horaInicio2);
+      const b2 = scheduleToMinutes(horaFin2);
+      if (!horaInicio2 || !horaFin2 || !Number.isFinite(a2) || !Number.isFinite(b2) || a2 >= b2) {
+        return { error: "Franja 2 inválida: usá HH:MM (ej. 16:00 o 16.00) y Desde menor que Hasta." };
+      }
+      if (a2 < b) {
+        return {
+          error: `La franja 2 debe empezar a las ${horaFin} o después (cuando termina la franja 1).`,
+        };
+      }
+    }
+    const direccion = $("cfgDireccion")?.value?.trim() || config?.direccion || "";
+    if (!direccion) {
+      return { error: "Falta la dirección del negocio. Completala en Configuración y volvé a guardar el horario." };
+    }
     return {
       nombre: $("cfgNombre")?.value?.trim() || config?.nombre || "",
       whatsapp: $("cfgWhatsapp")?.value?.trim() || config?.whatsappNumero || "",
-      horaInicio: Number($("cfgHoraInicio")?.value),
-      horaFin: Number($("cfgHoraFin")?.value),
-      horaInicio2: franja2Visible ? ($("cfgHoraInicio2")?.value?.trim() ?? "") : "",
-      horaFin2: franja2Visible ? ($("cfgHoraFin2")?.value?.trim() ?? "") : "",
+      horaInicio,
+      horaFin,
+      horaInicio2,
+      horaFin2,
       diasAtencion,
       categoria: $("cfgCategoria")?.value || config?.categoria || "otro",
       ciudad: $("cfgCiudad")?.value?.trim() || config?.ciudad || "",
-      direccion: $("cfgDireccion")?.value?.trim() || config?.direccion || "",
+      direccion,
       colorMarca: $("cfgColor")?.value || config?.colorMarca || "#6366F1",
       transferAlias: $("cfgAlias")?.value?.trim() || config?.transferencia?.alias || "",
       transferCbu: $("cfgCbu")?.value?.trim() || config?.transferencia?.cbu || "",
@@ -2643,20 +2789,26 @@
   }
 
   async function guardarHorario() {
+    const btn = $("btnGuardarHorario");
+    const msg = $("horarioMsg");
+    setMessage(msg, "Guardando…", false);
     const body = collectNegocioBody();
     if (body.error) {
-      setMessage($("horarioMsg"), body.error, true);
+      setMessage(msg, body.error, true);
       return;
     }
     try {
+      if (btn) btn.disabled = true;
       await api(`/api/${SLUG}/admin/business`, { method: "PATCH", body: JSON.stringify(body) });
-      setMessage($("horarioMsg"), "Horario guardado.", false);
+      setMessage(msg, "Horario guardado.", false);
       await loadConfig();
       fillHorarioSelects();
       fillConfigForm();
       if (agendaMode === "calendario") renderCalendario();
     } catch (e) {
-      setMessage($("horarioMsg"), e.message, true);
+      setMessage(msg, e.message || "No se pudo guardar el horario.", true);
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 
@@ -2932,8 +3084,8 @@
     $("proHorarioPropio")?.addEventListener("change", (e) => {
       setProHorarioPropio(e.target.checked);
       if (e.target.checked && !$("proHoraInicio")?.value) {
-        if ($("proHoraInicio")) $("proHoraInicio").value = config?.horaInicio ?? 9;
-        if ($("proHoraFin")) $("proHoraFin").value = config?.horaFin ?? 20;
+        if ($("proHoraInicio")) $("proHoraInicio").value = scheduleToClock(config?.horaInicio, "09:00");
+        if ($("proHoraFin")) $("proHoraFin").value = scheduleToClock(config?.horaFin, "20:00");
         setSelectedProDiasAtencion(config?.diasAtencion);
       }
     });
@@ -2989,10 +3141,15 @@
     $("btnGuardarNegocio")?.addEventListener("click", guardarNegocio);
     $("btnGuardarHorario")?.addEventListener("click", guardarHorario);
     $("btnAgregarFranja2")?.addEventListener("click", () => {
+      clearHorarioSuccessMsg();
       setFranja2Visible(true);
+      ["cfgHoraInicio2", "cfgHoraFin2"].forEach(bindClockInputNormalize);
       $("cfgHoraInicio2")?.focus();
     });
-    $("btnQuitarFranja2")?.addEventListener("click", () => setFranja2Visible(false));
+    $("btnQuitarFranja2")?.addEventListener("click", () => {
+      clearHorarioSuccessMsg();
+      setFranja2Visible(false);
+    });
     $("cfgDiasAtencion")?.addEventListener("click", (e) => {
       const btn = e.target.closest?.(".dia-chip");
       if (!btn) return;

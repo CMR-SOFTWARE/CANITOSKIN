@@ -112,13 +112,31 @@ function formatDiasAtencion(dias) {
   return sorted.map((d) => labels[d] || d).join(", ");
 }
 
+function formatClockLabel(raw) {
+  if (raw == null || raw === "") return "";
+  const s = String(raw).trim();
+  if (/^\d{1,2}:\d{2}$/.test(s)) return s;
+  const n = Number(s);
+  if (Number.isFinite(n) && n >= 0 && n <= 24) {
+    const h = Math.floor(n);
+    const m = Math.round((n - h) * 60);
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+  if (Number.isFinite(n) && n > 24 && n <= 24 * 60) {
+    const h = Math.floor(n / 60);
+    const m = n % 60;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+  }
+  return s;
+}
+
 function formatHorarioNegocio(cfg) {
   const parts = [];
   if (cfg.horaInicio != null && cfg.horaFin != null) {
-    parts.push(`${cfg.horaInicio}:00–${cfg.horaFin}:00`);
+    parts.push(`${formatClockLabel(cfg.horaInicio)}–${formatClockLabel(cfg.horaFin)}`);
   }
   if (cfg.horaInicio2 != null && cfg.horaFin2 != null) {
-    parts.push(`${cfg.horaInicio2}:00–${cfg.horaFin2}:00`);
+    parts.push(`${formatClockLabel(cfg.horaInicio2)}–${formatClockLabel(cfg.horaFin2)}`);
   }
   const horas = parts.join(" · ");
   const dias = formatDiasAtencion(cfg.diasAtencion);
@@ -604,7 +622,7 @@ function renderProfessionals() {
       p.especialidad,
       p.matricula ? `Mat. ${p.matricula}` : "",
       p.horarioPropio && p.horaInicio != null && p.horaFin != null
-        ? `${p.horaInicio}:00–${p.horaFin}:00`
+        ? `${formatClockLabel(p.horaInicio)}–${formatClockLabel(p.horaFin)}`
         : "",
     ].filter(Boolean).join(" · ");
     return `

@@ -238,7 +238,8 @@ async function loadClubs() {
         </div>
         <div class="flex items-center gap-2 pt-1 border-t border-slate-200 flex-wrap">
           <span class="text-xs text-slate-500 shrink-0">Clave admin:</span>
-          <input type="text" value="" placeholder="Nueva contraseña (mín. 6)"
+          <input type="text" value="${escapeHtml(c.adminPassword || "")}"
+                 placeholder="${c.adminPassword ? "" : "Sin clave guardada — definí una"}"
                  class="pwd-input flex-1 min-w-[140px] rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs font-mono text-slate-800"
                  data-club-id="${c.id}" autocomplete="off" />
           <button type="button"
@@ -252,7 +253,11 @@ async function loadClubs() {
             Eliminar local
           </button>
         </div>
-        <p class="text-[11px] text-slate-400">Las claves se guardan encriptadas: no se pueden ver las actuales. Acá podés definir una nueva.</p>
+        <p class="text-[11px] text-slate-400">${
+          c.adminPassword
+            ? "Clave actual visible solo para superadmin. Podés editarla y guardar."
+            : "Esta clave se creó antes de poder mostrarla. Guardá una nueva para verla después."
+        }</p>
       </div>
     `}).join("");
 

@@ -421,11 +421,13 @@
             <div class="grid grid-cols-2 gap-3 max-w-md">
               <div class="flex flex-col gap-1">
                 <label class="label" for="cfgHoraInicio">Desde</label>
-                <input id="cfgHoraInicio" type="number" min="0" max="23" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                <input id="cfgHoraInicio" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="09:00" autocomplete="off"
+                       class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
               </div>
               <div class="flex flex-col gap-1">
                 <label class="label" for="cfgHoraFin">Hasta</label>
-                <input id="cfgHoraFin" type="number" min="1" max="24" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                <input id="cfgHoraFin" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="20:00" autocomplete="off"
+                       class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
               </div>
             </div>
 
@@ -437,11 +439,13 @@
               <div class="grid grid-cols-2 gap-3">
                 <div class="flex flex-col gap-1">
                   <label class="label" for="cfgHoraInicio2">Desde</label>
-                  <input id="cfgHoraInicio2" type="number" min="0" max="23" placeholder="—" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                  <input id="cfgHoraInicio2" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="—" autocomplete="off"
+                         class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
                 <div class="flex flex-col gap-1">
                   <label class="label" for="cfgHoraFin2">Hasta</label>
-                  <input id="cfgHoraFin2" type="number" min="1" max="24" placeholder="—" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                  <input id="cfgHoraFin2" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="—" autocomplete="off"
+                         class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
                 </div>
               </div>
             </div>
@@ -751,11 +755,13 @@
                   <div class="grid grid-cols-2 gap-3">
                     <div class="flex flex-col gap-1">
                       <label class="label" for="proHoraInicio">Desde</label>
-                      <input id="proHoraInicio" type="number" min="0" max="23" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                      <input id="proHoraInicio" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="09:00" autocomplete="off"
+                             class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
                     </div>
                     <div class="flex flex-col gap-1">
                       <label class="label" for="proHoraFin">Hasta</label>
-                      <input id="proHoraFin" type="number" min="1" max="24" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                      <input id="proHoraFin" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="20:00" autocomplete="off"
+                             class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
                     </div>
                   </div>
                   <div id="proFranja2Block" class="hidden space-y-3">
@@ -766,11 +772,13 @@
                     <div class="grid grid-cols-2 gap-3">
                       <div class="flex flex-col gap-1">
                         <label class="label" for="proHoraInicio2">Desde</label>
-                        <input id="proHoraInicio2" type="number" min="0" max="23" placeholder="—" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                        <input id="proHoraInicio2" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="—" autocomplete="off"
+                               class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
                       </div>
                       <div class="flex flex-col gap-1">
                         <label class="label" for="proHoraFin2">Hasta</label>
-                        <input id="proHoraFin2" type="number" min="1" max="24" placeholder="—" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                        <input id="proHoraFin2" type="text" list="listaHorariosDia" inputmode="numeric" placeholder="—" autocomplete="off"
+                               class="rounded-lg border border-border px-3 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
                       </div>
                     </div>
                   </div>
@@ -1125,6 +1133,7 @@
       </main>
     </div>
 
-    <script src="/admin.js?v=20260730-horario-agenda"></script>
+    <datalist id="listaHorariosDia"></datalist>
+    <script src="/admin.js?v=20260730-horario-fix"></script>
   </body>
 </html>
