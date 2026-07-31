@@ -420,100 +420,105 @@
           <header class="mb-5 flex flex-wrap items-end justify-between gap-3">
             <div>
               <h1 class="text-h1">Agenda</h1>
-              <p class="text-meta mt-1">Calendario, turnos, horario y bloqueos.</p>
+              <p class="text-meta mt-1">Turnos, calendario, horario y bloqueos.</p>
             </div>
-            <div class="flex flex-wrap items-center gap-2">
-              <button id="btnToggleAgendar" type="button" class="btn-primary px-4 py-2 text-sm">+ Agendar turno</button>
-              <div class="pill-group pill-group--vista" role="group" aria-label="Vista de agenda">
-                <button id="btnVistaLista" type="button">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
-                  </svg>
-                  Lista
-                </button>
-                <button id="btnVistaCalendario" type="button" class="is-active">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <rect x="3" y="5" width="18" height="16" rx="2" />
-                    <path d="M16 3v4M8 3v4M3 11h18" />
-                  </svg>
-                  Calendario
-                </button>
-              </div>
+            <div class="pill-group pill-group--vista" role="group" aria-label="Vista de agenda">
+              <button id="btnVistaLista" type="button" class="is-active">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+                </svg>
+                Lista
+              </button>
+              <button id="btnVistaCalendario" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                  <rect x="3" y="5" width="18" height="16" rx="2" />
+                  <path d="M16 3v4M8 3v4M3 11h18" />
+                </svg>
+                Calendario
+              </button>
             </div>
           </header>
 
-          <div id="formAgendarManual" class="ds-card p-4 md:p-5 mb-4 hidden">
-            <h2 class="text-h2 mb-1">Agendar turno manual</h2>
-            <p class="text-meta mb-4">Sin comprobante. Ideal para reservas por teléfono o presencial.</p>
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              <div class="flex flex-col gap-1">
-                <label class="label" for="manNombre">Nombre</label>
-                <input id="manNombre" type="text" autocomplete="name" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" placeholder="Cliente" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="label" for="manTelefono">Teléfono</label>
-                <input id="manTelefono" type="tel" inputmode="numeric" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" placeholder="3364578599" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="label" for="manServicio">Servicio</label>
-                <select id="manServicio" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
-              </div>
-              <div id="manProWrap" class="flex flex-col gap-1 hidden">
-                <label class="label" for="manProfesional">Profesional</label>
-                <select id="manProfesional" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="label" for="manFecha">Fecha</label>
-                <input id="manFecha" type="date" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="label" for="manHorario">Horario</label>
-                <select id="manHorario" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
-                  <option value="">Elegí fecha y servicio</option>
-                </select>
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="label" for="manEstado">Estado</label>
-                <select id="manEstado" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
-                  <option value="confirmada">Pagado / agendado</option>
-                  <option value="pendiente">Sin cobrar</option>
-                </select>
-              </div>
-            </div>
-            <div class="mt-4 flex flex-wrap items-center gap-2">
-              <button id="btnGuardarAgendar" type="button" class="btn-primary px-4 py-2 text-sm">Guardar turno</button>
-              <button id="btnCancelarAgendar" type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
-              <p id="manMsg" class="min-h-5 text-sm font-semibold"></p>
-            </div>
-          </div>
-
-          <div id="formModificarHorario" class="ds-card p-4 md:p-5 mb-4 hidden">
-            <h2 class="text-h2 mb-1">Modificar horario</h2>
-            <p id="modReservaInfo" class="text-meta mb-4">—</p>
-            <input type="hidden" id="modReservaId" value="" />
-            <input type="hidden" id="modServiceId" value="" />
-            <input type="hidden" id="modProfessionalId" value="" />
-            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div class="flex flex-col gap-1">
-                <label class="label" for="modFecha">Nueva fecha</label>
-                <input id="modFecha" type="date" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
-              </div>
-              <div class="flex flex-col gap-1">
-                <label class="label" for="modHorario">Nuevo horario</label>
-                <select id="modHorario" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
-                  <option value="">Elegí fecha</option>
-                </select>
-              </div>
-            </div>
-            <div class="mt-4 flex flex-wrap items-center gap-2">
-              <button id="btnGuardarModHorario" type="button" class="btn-primary px-4 py-2 text-sm">Guardar cambio</button>
-              <button id="btnCancelarModHorario" type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
-              <p id="modMsg" class="min-h-5 text-sm font-semibold"></p>
-            </div>
-          </div>
-
           <div class="ds-card p-4 md:p-5 mb-4">
-            <div id="filtrosLista" class="mb-4 flex flex-wrap items-center gap-2 hidden">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h2 class="text-h2">Turnos</h2>
+                <p class="text-meta-sm mt-0.5">Lista y calendario de reservas.</p>
+              </div>
+              <button id="btnToggleAgendar" type="button" class="btn-primary px-4 py-2 text-sm shrink-0">+ Agendar turno</button>
+            </div>
+
+            <div id="formAgendarManual" class="mb-4 hidden rounded-xl border border-border bg-content/60 p-4">
+              <h3 class="text-sm font-semibold text-primary mb-1">Agendar turno manual</h3>
+              <p class="text-meta-sm mb-4">Sin comprobante. Ideal para reservas por teléfono o presencial.</p>
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="manNombre">Nombre</label>
+                  <input id="manNombre" type="text" autocomplete="name" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" placeholder="Cliente" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="manTelefono">Teléfono</label>
+                  <input id="manTelefono" type="tel" inputmode="numeric" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" placeholder="3364578599" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="manServicio">Servicio</label>
+                  <select id="manServicio" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+                </div>
+                <div id="manProWrap" class="flex flex-col gap-1 hidden">
+                  <label class="label" for="manProfesional">Profesional</label>
+                  <select id="manProfesional" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="manFecha">Fecha</label>
+                  <input id="manFecha" type="date" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="manHorario">Horario</label>
+                  <select id="manHorario" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
+                    <option value="">Elegí fecha y servicio</option>
+                  </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="manEstado">Estado</label>
+                  <select id="manEstado" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
+                    <option value="confirmada">Pagado / agendado</option>
+                    <option value="pendiente">Sin cobrar</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mt-4 flex flex-wrap items-center gap-2">
+                <button id="btnGuardarAgendar" type="button" class="btn-primary px-4 py-2 text-sm">Guardar turno</button>
+                <button id="btnCancelarAgendar" type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
+                <p id="manMsg" class="min-h-5 text-sm font-semibold"></p>
+              </div>
+            </div>
+
+            <div id="formModificarHorario" class="mb-4 hidden rounded-xl border border-border bg-content/60 p-4">
+              <h3 class="text-sm font-semibold text-primary mb-1">Modificar horario</h3>
+              <p id="modReservaInfo" class="text-meta-sm mb-4">—</p>
+              <input type="hidden" id="modReservaId" value="" />
+              <input type="hidden" id="modServiceId" value="" />
+              <input type="hidden" id="modProfessionalId" value="" />
+              <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="modFecha">Nueva fecha</label>
+                  <input id="modFecha" type="date" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent" />
+                </div>
+                <div class="flex flex-col gap-1">
+                  <label class="label" for="modHorario">Nuevo horario</label>
+                  <select id="modHorario" class="rounded-lg border border-border px-3 py-2 focus:outline-none focus:ring-2 focus:ring-business-accent">
+                    <option value="">Elegí fecha</option>
+                  </select>
+                </div>
+              </div>
+              <div class="mt-4 flex flex-wrap items-center gap-2">
+                <button id="btnGuardarModHorario" type="button" class="btn-primary px-4 py-2 text-sm">Guardar cambio</button>
+                <button id="btnCancelarModHorario" type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
+                <p id="modMsg" class="min-h-5 text-sm font-semibold"></p>
+              </div>
+            </div>
+
+            <div id="filtrosLista" class="mb-4 flex flex-wrap items-center gap-2">
               <label class="text-meta" for="filtroFecha">Fecha</label>
               <input id="filtroFecha" type="date" class="rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
               <label class="text-meta" for="filtroEstado">Estado</label>
@@ -528,10 +533,10 @@
               <button id="btnExportarCSV" type="button" class="rounded-lg border border-border px-3 py-1.5 text-sm font-semibold hover:bg-neutral-bg">Exportar CSV</button>
             </div>
 
-            <div id="vistaLista" class="hidden">
+            <div id="vistaLista">
               <div id="reservasList" class="grid gap-3"></div>
             </div>
-            <div id="vistaCalendario">
+            <div id="vistaCalendario" class="hidden">
               <div class="mb-3 flex flex-wrap items-center gap-3">
                 <label class="text-meta" id="calProLabel" for="calProfesional">Profesional</label>
                 <select id="calProfesional" class="rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent"></select>
@@ -1177,6 +1182,6 @@
     </div>
 
     <datalist id="listaHorariosDia"></datalist>
-    <script src="/admin.js?v=20260730-cal-top"></script>
+    <script src="/admin.js?v=20260730-agendar-turnos"></script>
   </body>
 </html>
