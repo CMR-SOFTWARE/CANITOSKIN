@@ -1,22 +1,25 @@
-# Reservas de Canchas - App Web Simple
+# Canito Skin — plataforma de turnos y market
 
-Aplicacion web para reservar turnos de 2 canchas de futbol.
+Plataforma a medida para Canito Skin (San Nicolás de los Arroyos): reserva de
+turnos con varios profesionales y catálogo de la línea propia de skincare.
+Negocio único, sin multi-tenant.
 
 ## Stack
 
-- Frontend: HTML, CSS, JavaScript (sin frameworks)
-- Backend: Node.js + Express
-- Almacenamiento: SQLite (`reservas.sqlite`)
-- Subida de comprobantes: `multer` en carpeta `uploads`
+- Backend: Node.js + Express (`server/index.js`)
+- Frontend: HTML, CSS, JavaScript vanilla (`public/`), Tailwind vía CDN (sin build)
+- Base de datos: Supabase (Postgres), con SQLite local como fallback de desarrollo
+- Subida de comprobantes: `multer`, guardados en Supabase Storage (bucket `comprobantes`)
+- Deploy: Vercel (`vercel.json`, función serverless única sobre `server/index.js`)
 
 ## Estructura
 
-- `public/` -> frontend
-- `server/` -> backend Express
-- `uploads/` -> comprobantes subidos
-- `reservas.sqlite` -> base SQLite de reservas y bloqueos
+- `public/` → frontend (landing + wizard de reserva en `index.html`, panel admin en `admin.html`)
+- `server/index.js` → API Express (turnos, profesionales, servicios, movimientos, productos)
+- `supabase-canitoskin.sql` → schema completo de Supabase (turnos + market/CRM/videos)
+- `docs/` → Términos y Política de Privacidad (⚠️ ver nota abajo)
 
-## Instalacion
+## Instalación
 
 1. Instalar dependencias:
 
@@ -24,69 +27,43 @@ Aplicacion web para reservar turnos de 2 canchas de futbol.
    npm install
    ```
 
-2. Crear archivo `.env` (copiar desde `.env.example`) y completar datos reales:
+2. Crear `.env` (copiar desde `.env.example`) con las credenciales reales de
+   Supabase, WhatsApp y admin. Si el proyecto está vinculado a Vercel, `vercel
+   env pull .env.local` trae las variables de producción/preview — el server
+   carga `.env` y después `.env.local` (que pisa lo anterior si existe).
 
-   ```env
-   PORT=3000
-   SQLITE_PATH=
-   WHATSAPP_NUMERO=54911XXXXXXXX
-   TRANSFER_ALIAS=tu.alias.real
-   TRANSFER_CBU=tu.cbu.real
-   TRANSFER_TITULAR=Nombre y Apellido
-   ADMIN_PASSWORD=tu_clave_admin
-   ```
+3. Ejecutar `supabase-canitoskin.sql` completo en el SQL Editor de tu proyecto
+   de Supabase antes de arrancar (crea tablas, RLS y seed del negocio "canito").
 
-3. Iniciar servidor:
+4. Iniciar servidor:
 
    ```bash
    npm start
    ```
 
-4. Abrir en el navegador:
+5. Abrir en el navegador: [http://localhost:3000](http://localhost:3000)
 
-   [http://localhost:3000](http://localhost:3000)
+## API pública (prefijo `/api/:slug/...`, slug fijo: `canito`)
 
-## API
-
-### `POST /reservas`
-
-Guarda una reserva y el comprobante.
-
-Campos esperados (multipart/form-data):
-
-- `nombre`
-- `telefono`
-- `cancha` (1 o 2)
-- `fecha` (YYYY-MM-DD)
-- `horario` (10:00 a 23:00)
-- `comprobante` (JPG, PNG, WEBP o PDF, max 5MB)
-
-### `GET /api/reservas?cancha=1&fecha=2026-05-01`
-
-Devuelve reservas filtradas para bloquear horarios ocupados.
-
-### `GET /api/config`
-
-Devuelve configuracion basica (horarios, transferencia, numero WhatsApp).
+- `GET /config` — datos del negocio, servicios, profesionales, planes
+- `GET /disponibilidad`, `GET /bloqueos` — horarios disponibles
+- `GET /productos-destacados` — preview de productos para la landing
+- `POST /reservas` — crear turno (multipart, con comprobante)
+- `GET /mis-reservas`, `POST /cancelar/:token` — gestión de turnos por teléfono
 
 ### Panel administrador
 
-- URL: [http://localhost:3000/admin.html](http://localhost:3000/admin.html)
+- URL: `/admin`
 - Login con `ADMIN_PASSWORD`
-- Funciones:
-  - Ver reservas con enlace al comprobante
-  - Cancelar turnos (solo admin)
-  - Crear bloqueos por cancha (dia completo o por horario)
-  - Quitar bloqueos
+- Secciones: Agenda, Servicios, Equipo, Clientes, Planes, Movimientos, Estadísticas, Configuración
 
-## Notas
+## ⚠️ Pendiente: Términos y Política de Privacidad
 
-- Los horarios ocupados se muestran en gris y no se pueden seleccionar.
-- Los horarios bloqueados por admin se muestran en color distinto y no se pueden seleccionar.
-- Al reservar, se genera enlace `wa.me` con el mensaje prearmado y se redirige automaticamente.
-- El comprobante se guarda en el servidor, pero no puede adjuntarse automaticamente a WhatsApp Web.
-- `WHATSAPP_NUMERO` debe ir en formato internacional sin `+`, espacios ni guiones.
-- Si no defines `SQLITE_PATH`, la app usa `reservas.sqlite` en la carpeta del proyecto (en Vercel queda en `/tmp`).
-- En Vercel, para persistencia real entre invocaciones, configura `KV_REST_API_URL` y `KV_REST_API_TOKEN` (Redis/Upstash desde Integrations).
-- Si el runtime no puede cargar SQLite nativo (caso serverless), la app hace fallback automatico a JSON en `/tmp` para no caerse.
-- Si un usuario quiere cancelar, lo solicita por WhatsApp y el admin decide la cancelacion desde el panel.
+`docs/TERMINOS-Y-CONDICIONES.md` y `docs/POLITICA-DE-PRIVACIDAD.md` todavía
+describen el modelo **multi-tenant** de la plataforma anterior (CMR Nexo):
+"negocio usuario" vs. "cliente final", CMR como responsable/encargado del
+tratamiento de datos de terceros, suscripciones, aislamiento multi-tenant,
+etc. Ese modelo ya no existe — Canito Skin es un único negocio con relación
+directa con sus clientes. Estos documentos necesitan una reescritura legal
+sustantiva (no solo cambiar el nombre de marca) antes de considerarse
+vigentes para Canito Skin.
