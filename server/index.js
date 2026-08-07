@@ -38,131 +38,34 @@ const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "comprobantes";
 const USE_SQLITE = !USE_SUPABASE && Boolean(sqlite3);
 
 const SLOT_STEP_MIN = 15;
-const CATEGORIAS = new Set(["peluqueria", "estetica", "masajes", "psicologia", "legal", "otro"]);
-const ESTADOS_NEGOCIO = new Set([
-  "pendiente_pago", "pendiente_aprobacion", "activo", "pausado", "suspendido", "rechazado", "dado_de_baja",
-]);
-const ESTADOS_CON_MOTIVO = new Set(["pausado", "suspendido", "dado_de_baja"]);
+const CATEGORIAS = new Set(["estetica"]);
 const ESTADOS_TURNO = new Set(["pendiente", "confirmada", "cancelada"]);
 
-const DEFAULT_BUSINESS_SLUG = (process.env.BUSINESS_SLUG || "mi-negocio").toLowerCase().replace(/[^a-z0-9-]/g, "-");
-const DEFAULT_BUSINESS_NOMBRE = process.env.BUSINESS_NOMBRE || "Studio Demo CMR";
+const DEFAULT_BUSINESS_SLUG = (process.env.BUSINESS_SLUG || "canito").toLowerCase().replace(/[^a-z0-9-]/g, "-");
+const DEFAULT_BUSINESS_NOMBRE = process.env.BUSINESS_NOMBRE || "Canito Skin";
 const DEFAULT_BUSINESS_CATEGORIA = CATEGORIAS.has(process.env.BUSINESS_CATEGORIA)
   ? process.env.BUSINESS_CATEGORIA
-  : "peluqueria";
-const DEFAULT_BUSINESS_CIUDAD = process.env.BUSINESS_CIUDAD || "San Nicolás";
+  : "estetica";
+const DEFAULT_BUSINESS_CIUDAD = process.env.BUSINESS_CIUDAD || "San Nicolás de los Arroyos";
 const DEFAULT_BUSINESS_BARRIO = process.env.BUSINESS_BARRIO || "Centro";
-const DEFAULT_BUSINESS_COLOR = process.env.BUSINESS_COLOR_MARCA || "#0f766e";
+const DEFAULT_BUSINESS_DIRECCION = process.env.BUSINESS_DIRECCION || "Allurralde 314";
+const DEFAULT_BUSINESS_COLOR = process.env.BUSINESS_COLOR_MARCA || "#5b5f51";
 const DEFAULT_BUSINESS_HORA_INICIO = parseInt(process.env.BUSINESS_HORA_INICIO || "9", 10);
 const DEFAULT_BUSINESS_HORA_FIN = parseInt(process.env.BUSINESS_HORA_FIN || "20", 10);
 const DEFAULT_BUSINESS_PRECIO = process.env.BUSINESS_PRECIO || "0";
 const DEFAULT_BUSINESS_WHATSAPP = (process.env.WHATSAPP_NUMERO || "5491112345678").replace(/\D/g, "");
 const DEFAULT_BUSINESS_ALIAS = process.env.TRANSFER_ALIAS || "mi.alias";
 const DEFAULT_BUSINESS_CBU = process.env.TRANSFER_CBU || "0000000000000000000000";
-const DEFAULT_BUSINESS_TITULAR = process.env.TRANSFER_TITULAR || "Nombre Negocio";
+const DEFAULT_BUSINESS_TITULAR = process.env.TRANSFER_TITULAR || "Canito Skin";
 const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "admin123";
-const DEFAULT_ADMIN_PASSWORD_SECOND = process.env.ADMIN_PASSWORD_SECOND || "";
-const SUPERADMIN_PASSWORD = process.env.SUPERADMIN_PASSWORD || "";
-const CMR_NOTIFY_WHATSAPP = (
-  process.env.CMR_NOTIFY_WHATSAPP ||
-  process.env.WHATSAPP_CMR ||
-  "5493364578599"
-).replace(/\D/g, "");
-
 const CATEGORIA_LABELS = {
-  peluqueria: "Peluquería",
   estetica: "Estética",
-  masajes: "Masajes",
-  psicologia: "Psicología",
-  legal: "Legal",
-  otro: "Otro",
 };
 
 const LOGOS_DIR = path.join(UPLOADS_DIR, "logos");
-const SOLICITUDES_DIR = path.join(UPLOADS_DIR, "solicitudes");
 if (!fsSync.existsSync(DATA_DIR)) fsSync.mkdirSync(DATA_DIR, { recursive: true });
 if (!fsSync.existsSync(UPLOADS_DIR)) fsSync.mkdirSync(UPLOADS_DIR, { recursive: true });
 if (!fsSync.existsSync(LOGOS_DIR)) fsSync.mkdirSync(LOGOS_DIR, { recursive: true });
-if (!fsSync.existsSync(SOLICITUDES_DIR)) fsSync.mkdirSync(SOLICITUDES_DIR, { recursive: true });
-
-const SUBSCRIPTION_PRECIO = process.env.SUBSCRIPTION_PRECIO || "0";
-const SUBSCRIPTION_ALIAS_ENV = process.env.SUBSCRIPTION_TRANSFER_ALIAS || "";
-const SUBSCRIPTION_CBU_ENV = process.env.SUBSCRIPTION_TRANSFER_CBU || "";
-const SUBSCRIPTION_TITULAR_ENV = process.env.SUBSCRIPTION_TRANSFER_TITULAR || "";
-
-let platformTransferCache = null;
-let platformTransferCacheAt = 0;
-const PLATFORM_TRANSFER_TTL_MS = 30 * 1000;
-
-async function loadPlatformTransfer() {
-  const now = Date.now();
-  if (platformTransferCache && now - platformTransferCacheAt < PLATFORM_TRANSFER_TTL_MS) {
-    return platformTransferCache;
-  }
-  const fallback = {
-    alias: SUBSCRIPTION_ALIAS_ENV,
-    cbu: SUBSCRIPTION_CBU_ENV,
-    titular: SUBSCRIPTION_TITULAR_ENV,
-  };
-  try {
-    if (USE_SQLITE) {
-      const rows = await dbAll(
-        "SELECT key, value FROM platform_settings WHERE key IN ('transfer_alias','transfer_cbu','transfer_titular')"
-      );
-      const map = Object.fromEntries((rows || []).map((r) => [r.key, r.value || ""]));
-      platformTransferCache = {
-        alias: map.transfer_alias || fallback.alias,
-        cbu: map.transfer_cbu || fallback.cbu,
-        titular: map.transfer_titular || fallback.titular,
-      };
-      platformTransferCacheAt = now;
-      return platformTransferCache;
-    }
-    if (USE_SUPABASE) {
-      const { data, error } = await supabase
-        .from("platform_settings")
-        .select("key, value")
-        .in("key", ["transfer_alias", "transfer_cbu", "transfer_titular"]);
-      if (!error && data?.length) {
-        const map = Object.fromEntries(data.map((r) => [r.key, r.value || ""]));
-        platformTransferCache = {
-          alias: map.transfer_alias || fallback.alias,
-          cbu: map.transfer_cbu || fallback.cbu,
-          titular: map.transfer_titular || fallback.titular,
-        };
-        platformTransferCacheAt = now;
-        return platformTransferCache;
-      }
-    }
-  } catch (_) { /* fallback */ }
-  platformTransferCache = fallback;
-  platformTransferCacheAt = now;
-  return fallback;
-}
-
-async function savePlatformTransfer({ alias, cbu, titular }) {
-  const rows = [
-    { key: "transfer_alias", value: alias ?? "" },
-    { key: "transfer_cbu", value: cbu ?? "" },
-    { key: "transfer_titular", value: titular ?? "" },
-  ];
-  if (USE_SQLITE) {
-    for (const r of rows) {
-      await dbRun(
-        "INSERT INTO platform_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-        [r.key, r.value]
-      );
-    }
-  } else if (USE_SUPABASE) {
-    const { error } = await supabase.from("platform_settings").upsert(rows, { onConflict: "key" });
-    if (error) throw new Error(error.message);
-  } else {
-    throw new Error("No hay backend disponible.");
-  }
-  platformTransferCache = { alias: alias ?? "", cbu: cbu ?? "", titular: titular ?? "" };
-  platformTransferCacheAt = Date.now();
-  return platformTransferCache;
-}
 
 async function uploadBusinessLogoFile(businessId, file) {
   const ext = path.extname(file.originalname) || ".jpg";
@@ -324,257 +227,9 @@ function effectiveSchedule(business, pro) {
   };
 }
 
-const PLANES_FALLBACK = {
-  inicial:     { nombre: "Inicial",     limiteProfesionales: 1,    precio: 20000, featured: false, sortOrder: 1, features: ["Hasta 1 profesional", "Turnos online", "Panel admin", "WhatsApp"] },
-  profesional: { nombre: "Profesional", limiteProfesionales: 3,    precio: 35000, featured: true,  sortOrder: 2, features: ["Hasta 3 profesionales", "Turnos online", "Panel admin", "WhatsApp", "Soporte prioritario"] },
-  max:         { nombre: "Max",         limiteProfesionales: null, precio: 60000, featured: false, sortOrder: 3, features: ["Profesionales ilimitados", "Turnos online", "Panel admin", "WhatsApp", "Soporte prioritario"] },
-};
-
-const DEFAULT_PLAN_FEATURES = {
-  inicial: PLANES_FALLBACK.inicial.features,
-  profesional: PLANES_FALLBACK.profesional.features,
-  max: PLANES_FALLBACK.max.features,
-};
-
-let platformPlansCache = null;
-let platformPlansCacheAt = 0;
-const PLATFORM_PLANS_TTL_MS = 60 * 1000;
-
-function invalidatePlatformPlansCache() {
-  platformPlansCache = null;
-  platformPlansCacheAt = 0;
-}
-
-function parsePlanFeatures(raw, planId = null) {
-  if (Array.isArray(raw)) {
-    return raw.map((x) => String(x || "").trim()).filter(Boolean);
-  }
-  if (typeof raw === "string" && raw.trim()) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        return parsed.map((x) => String(x || "").trim()).filter(Boolean);
-      }
-    } catch (_) { /* ignore */ }
-  }
-  if (planId && DEFAULT_PLAN_FEATURES[planId]) return [...DEFAULT_PLAN_FEATURES[planId]];
-  return [];
-}
-
-function serializePlanFeatures(features) {
-  const list = Array.isArray(features)
-    ? features.map((x) => String(x || "").trim()).filter(Boolean)
-    : [];
-  return JSON.stringify(list);
-}
-
-function mapPlanRow(r) {
-  let raw = r.limite_profesionales !== undefined ? r.limite_profesionales : r.max_professionals;
-  if (raw === -1) raw = null; // sentinel legacy "ilimitado"
-  const limite = raw === null || raw === undefined || raw === "" ? null : Number(raw);
-  const precio = Number(r.precio);
-  return {
-    id: r.id,
-    nombre: r.nombre,
-    limiteProfesionales: Number.isFinite(limite) ? limite : null,
-    maxProfessionals: Number.isFinite(limite) ? limite : null,
-    precio: Number.isFinite(precio) ? precio : 0,
-    features: parsePlanFeatures(r.features, r.id),
-    featured: r.featured === true || r.featured === 1 || r.featured === "true",
-    sortOrder: Number.isFinite(Number(r.sort_order)) ? Number(r.sort_order) : 0,
-    promo: {
-      title: r.promo_title ? String(r.promo_title) : null,
-      discountType: r.promo_discount_type === "fixed_amount" ? "fixed_amount" : (r.promo_discount_type === "percentage" ? "percentage" : null),
-      discountValue: r.promo_discount_value == null || r.promo_discount_value === "" ? null : Number(r.promo_discount_value),
-      startDate: r.promo_start_date || null,
-      endDate: r.promo_end_date || null,
-      active: r.promo_active === true || r.promo_active === 1 || r.promo_active === "true",
-    },
-  };
-}
-
-function computePlanPricing(plan, now = new Date()) {
-  const originalPrice = Number(plan.precio) || 0;
-  const promo = plan.promo || {};
-  const discountType = promo.discountType === "fixed_amount" ? "fixed_amount" : "percentage";
-  const discountValue = Number(promo.discountValue);
-  const hasDiscount = Number.isFinite(discountValue) && discountValue > 0;
-  const startOk = !promo.startDate || new Date(promo.startDate).getTime() <= now.getTime();
-  const endOk = !promo.endDate || new Date(promo.endDate).getTime() >= now.getTime();
-  const isPromoActive = !!(
-    promo.active &&
-    promo.title &&
-    hasDiscount &&
-    startOk &&
-    endOk
-  );
-
-  let finalPrice = originalPrice;
-  if (isPromoActive) {
-    if (discountType === "fixed_amount") {
-      finalPrice = Math.max(0, Math.round((originalPrice - discountValue) * 100) / 100);
-    } else {
-      finalPrice = Math.max(0, Math.round(originalPrice * (1 - discountValue / 100)));
-    }
-  }
-
-  return {
-    id: plan.id,
-    nombre: plan.nombre,
-    limiteProfesionales: plan.limiteProfesionales,
-    maxProfessionals: plan.limiteProfesionales,
-    features: Array.isArray(plan.features) ? plan.features : [],
-    featured: !!plan.featured,
-    sortOrder: plan.sortOrder || 0,
-    precio: originalPrice,
-    original_price: originalPrice,
-    final_price: finalPrice,
-    is_promo_active: isPromoActive,
-    promo_title: isPromoActive ? promo.title : null,
-    promo: {
-      title: promo.title || null,
-      discount_type: promo.discountType || null,
-      discount_percentage: promo.discountType === "percentage" ? discountValue : null,
-      discount_value: Number.isFinite(discountValue) ? discountValue : null,
-      start_date: promo.startDate || null,
-      end_date: promo.endDate || null,
-      active: !!promo.active,
-      is_active: isPromoActive,
-      original_price: originalPrice,
-      final_price: finalPrice,
-    },
-  };
-}
-
-async function loadPlatformPlans() {
-  const now = Date.now();
-  if (platformPlansCache && now - platformPlansCacheAt < PLATFORM_PLANS_TTL_MS) {
-    return platformPlansCache;
-  }
-  const selectCols =
-    "id, nombre, limite_profesionales, precio, features, featured, sort_order, promo_title, promo_discount_type, promo_discount_value, promo_start_date, promo_end_date, promo_active";
-  try {
-    if (USE_SQLITE) {
-      const rows = await dbAll(`SELECT ${selectCols} FROM platform_plans ORDER BY sort_order ASC, precio ASC`);
-      if (rows?.length) {
-        const map = {};
-        for (const r of rows) map[r.id] = mapPlanRow(r);
-        platformPlansCache = map;
-        platformPlansCacheAt = now;
-        return map;
-      }
-    }
-    if (USE_SUPABASE) {
-      let { data, error } = await supabase
-        .from("platform_plans")
-        .select(selectCols)
-        .order("sort_order", { ascending: true })
-        .order("precio", { ascending: true });
-      if (error && /column|does not exist|42703/i.test(String(error.message || ""))) {
-        ({ data, error } = await supabase
-          .from("platform_plans")
-          .select("id, nombre, limite_profesionales, precio")
-          .order("precio"));
-      }
-      if (!error && data?.length) {
-        const map = {};
-        for (const r of data) map[r.id] = mapPlanRow(r);
-        platformPlansCache = map;
-        platformPlansCacheAt = now;
-        return map;
-      }
-    }
-  } catch (err) {
-    console.warn("[plans] fallback a constantes:", err.message);
-  }
-  platformPlansCache = { ...PLANES_FALLBACK };
-  platformPlansCacheAt = now;
-  return platformPlansCache;
-}
-
-async function listPlatformPlansComputed() {
-  const plans = await loadPlatformPlans();
-  return Object.entries(plans)
-    .map(([id, p]) => computePlanPricing({ ...p, id: p.id || id }))
-    .sort((a, b) => (a.sortOrder - b.sortOrder) || (a.precio - b.precio));
-}
-
-async function getPlatformPlanRow(planId) {
-  const id = String(planId || "").trim();
-  if (!id) return null;
-  if (USE_SQLITE) {
-    return (
-      (await dbGet(
-        `SELECT id, nombre, limite_profesionales, precio, features, featured, sort_order,
-                promo_title, promo_discount_type, promo_discount_value, promo_start_date, promo_end_date, promo_active
-         FROM platform_plans WHERE id = ?`,
-        [id]
-      )) || null
-    );
-  }
-  if (USE_SUPABASE) {
-    const { data, error } = await supabase
-      .from("platform_plans")
-      .select(
-        "id, nombre, limite_profesionales, precio, features, featured, sort_order, promo_title, promo_discount_type, promo_discount_value, promo_start_date, promo_end_date, promo_active"
-      )
-      .eq("id", id)
-      .maybeSingle();
-    if (error) throw error;
-    return data || null;
-  }
-  const fb = PLANES_FALLBACK[id];
-  if (!fb) return null;
-  return {
-    id,
-    nombre: fb.nombre,
-    limite_profesionales: fb.limiteProfesionales,
-    precio: fb.precio,
-    features: JSON.stringify(fb.features),
-    featured: fb.featured,
-    sort_order: fb.sortOrder,
-    promo_title: null,
-    promo_discount_type: null,
-    promo_discount_value: null,
-    promo_start_date: null,
-    promo_end_date: null,
-    promo_active: false,
-  };
-}
-
-async function appendPlanPriceHistory(planId, precioAnterior, precioNuevo, adminLabel = "superadmin") {
-  if (USE_SQLITE) {
-    await dbRun(
-      `INSERT INTO platform_plan_price_history (plan_id, precio_anterior, precio_nuevo, admin_label, created_at)
-       VALUES (?, ?, ?, ?, ?)`,
-      [planId, precioAnterior, precioNuevo, adminLabel, new Date().toISOString()]
-    );
-    return;
-  }
-  if (USE_SUPABASE) {
-    const { error } = await supabase.from("platform_plan_price_history").insert({
-      plan_id: planId,
-      precio_anterior: precioAnterior,
-      precio_nuevo: precioNuevo,
-      admin_label: adminLabel,
-    });
-    if (error && !/does not exist|relation/i.test(String(error.message || ""))) {
-      console.warn("[plans] no se pudo guardar historial de precio:", error.message);
-    }
-  }
-}
-
-async function getMaxProfessionals(planId) {
-  const plans = await loadPlatformPlans();
-  const limite = plans[planId]?.limiteProfesionales;
-  if (limite == null) return Number.POSITIVE_INFINITY;
-  return limite;
-}
-
-async function getPlanInfo(planId) {
-  const plans = await loadPlatformPlans();
-  const plan = plans[planId] || PLANES_FALLBACK[planId] || PLANES_FALLBACK.inicial;
-  return computePlanPricing(plan);
+// Canito Skin: un solo negocio, sin límite de profesionales por plan.
+async function getMaxProfessionals(_planId) {
+  return Number.POSITIVE_INFINITY;
 }
 
 // ============================================================
@@ -615,11 +270,6 @@ function timingSafeEqualString(a, b) {
     }
     return crypto.timingSafeEqual(bufA, bufB);
   } catch (_) { return false; }
-}
-
-function verifySuperAdminPassword(plain) {
-  if (!SUPERADMIN_PASSWORD || !plain) return false;
-  return timingSafeEqualString(plain, SUPERADMIN_PASSWORD);
 }
 
 async function validateFileMagicBytes(file) {
@@ -673,67 +323,15 @@ async function initDb() {
   if (!USE_SQLITE) return;
 
   await dbRun(`
-    CREATE TABLE IF NOT EXISTS platform_plans (
-      id TEXT PRIMARY KEY,
-      nombre TEXT NOT NULL,
-      limite_profesionales INTEGER,
-      max_professionals INTEGER,
-      precio REAL NOT NULL DEFAULT 0,
-      features TEXT DEFAULT '[]',
-      featured INTEGER NOT NULL DEFAULT 0,
-      sort_order INTEGER NOT NULL DEFAULT 0,
-      promo_title TEXT,
-      promo_discount_type TEXT,
-      promo_discount_value REAL,
-      promo_start_date TEXT,
-      promo_end_date TEXT,
-      promo_active INTEGER NOT NULL DEFAULT 0
-    )
-  `);
-  try {
-    const cols = await dbAll("PRAGMA table_info(platform_plans)");
-    const names = new Set(cols.map((c) => c.name));
-    if (!names.has("limite_profesionales")) {
-      await dbRun("ALTER TABLE platform_plans ADD COLUMN limite_profesionales INTEGER");
-      await dbRun("UPDATE platform_plans SET limite_profesionales = max_professionals WHERE limite_profesionales IS NULL");
-    }
-    const alterCols = [
-      ["features", "TEXT DEFAULT '[]'"],
-      ["featured", "INTEGER NOT NULL DEFAULT 0"],
-      ["sort_order", "INTEGER NOT NULL DEFAULT 0"],
-      ["promo_title", "TEXT"],
-      ["promo_discount_type", "TEXT"],
-      ["promo_discount_value", "REAL"],
-      ["promo_start_date", "TEXT"],
-      ["promo_end_date", "TEXT"],
-      ["promo_active", "INTEGER NOT NULL DEFAULT 0"],
-    ];
-    for (const [col, def] of alterCols) {
-      if (!names.has(col)) await dbRun(`ALTER TABLE platform_plans ADD COLUMN ${col} ${def}`);
-    }
-  } catch (_) { /* ignore */ }
-
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS platform_plan_price_history (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      plan_id TEXT NOT NULL,
-      precio_anterior REAL NOT NULL,
-      precio_nuevo REAL NOT NULL,
-      admin_label TEXT NOT NULL DEFAULT 'superadmin',
-      created_at TEXT NOT NULL,
-      FOREIGN KEY (plan_id) REFERENCES platform_plans(id) ON DELETE CASCADE
-    )
-  `);
-
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS businesses (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT NOT NULL UNIQUE,
       nombre TEXT NOT NULL,
-      categoria TEXT NOT NULL DEFAULT 'otro',
+      categoria TEXT NOT NULL DEFAULT 'estetica',
       ciudad TEXT,
       barrio TEXT,
-      color_marca TEXT DEFAULT '#0f766e',
+      direccion TEXT,
+      color_marca TEXT DEFAULT '#5b5f51',
       logo_url TEXT,
       whatsapp TEXT NOT NULL DEFAULT '',
       transfer_alias TEXT NOT NULL DEFAULT '',
@@ -745,7 +343,7 @@ async function initDb() {
       hora_fin_2 INTEGER,
       dias_atencion TEXT NOT NULL DEFAULT '1,2,3,4,5',
       precio TEXT NOT NULL DEFAULT '0',
-      plan TEXT NOT NULL DEFAULT 'inicial',
+      plan TEXT NOT NULL DEFAULT 'canito',
       estado TEXT NOT NULL DEFAULT 'activo',
       estado_motivo TEXT,
       creado_en TEXT NOT NULL
@@ -761,15 +359,6 @@ async function initDb() {
     }
     if (!bizNames.has("direccion")) await dbRun("ALTER TABLE businesses ADD COLUMN direccion TEXT");
   } catch (_) { /* ignore */ }
-
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS localidades (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre TEXT NOT NULL UNIQUE,
-      activo INTEGER NOT NULL DEFAULT 1,
-      creado_en TEXT NOT NULL
-    )
-  `);
 
   await dbRun(`
     CREATE TABLE IF NOT EXISTS professionals (
@@ -902,17 +491,6 @@ async function initDb() {
   } catch (_) { /* ignore */ }
 
   await dbRun(`
-    CREATE TABLE IF NOT EXISTS admin_users (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      username TEXT NOT NULL UNIQUE,
-      password_salt TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'super_admin',
-      creado_en TEXT NOT NULL
-    )
-  `);
-
-  await dbRun(`
     CREATE TABLE IF NOT EXISTS appointments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       business_id INTEGER NOT NULL,
@@ -971,53 +549,6 @@ async function initDb() {
     )
   `);
 
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS platform_payments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      business_id INTEGER NOT NULL,
-      plan_id TEXT NOT NULL,
-      monto REAL NOT NULL DEFAULT 0,
-      comprobante_url TEXT,
-      creado_en TEXT NOT NULL,
-      FOREIGN KEY (business_id) REFERENCES businesses(id),
-      FOREIGN KEY (plan_id) REFERENCES platform_plans(id)
-    )
-  `);
-
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS solicitudes (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      nombre TEXT NOT NULL,
-      slug TEXT NOT NULL,
-      categoria TEXT NOT NULL DEFAULT 'otro',
-      ciudad TEXT,
-      barrio TEXT,
-      direccion TEXT,
-      whatsapp TEXT NOT NULL,
-      email TEXT NOT NULL,
-      comprobante_url TEXT,
-      plan TEXT NOT NULL DEFAULT 'inicial',
-      estado TEXT NOT NULL DEFAULT 'pendiente',
-      creado_en TEXT NOT NULL
-    )
-  `);
-  try {
-    const solCols = await dbAll("PRAGMA table_info(solicitudes)");
-    const solNames = new Set(solCols.map((c) => c.name));
-    if (!solNames.has("direccion")) await dbRun("ALTER TABLE solicitudes ADD COLUMN direccion TEXT");
-    if (!solNames.has("terminos_aceptados")) await dbRun("ALTER TABLE solicitudes ADD COLUMN terminos_aceptados INTEGER NOT NULL DEFAULT 0");
-    if (!solNames.has("terminos_aceptados_en")) await dbRun("ALTER TABLE solicitudes ADD COLUMN terminos_aceptados_en TEXT");
-    if (!solNames.has("terminos_aceptados_ip")) await dbRun("ALTER TABLE solicitudes ADD COLUMN terminos_aceptados_ip TEXT");
-    if (!solNames.has("terminos_version")) await dbRun("ALTER TABLE solicitudes ADD COLUMN terminos_version TEXT");
-  } catch (_) { /* ignore */ }
-
-  await dbRun(`
-    CREATE TABLE IF NOT EXISTS platform_settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL DEFAULT ''
-    )
-  `);
-
   await dbRun("CREATE INDEX IF NOT EXISTS idx_appointments_biz_fecha ON appointments (business_id, fecha)");
   await dbRun("CREATE INDEX IF NOT EXISTS idx_appointments_cancel ON appointments (cancel_token)");
   await dbRun("CREATE INDEX IF NOT EXISTS idx_movimientos_biz_fecha ON movimientos (business_id, fecha)");
@@ -1031,46 +562,6 @@ function hashAdminPassword(plain) {
   const salt = crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(plain, salt, ADMIN_SCRYPT_KEYLEN, ADMIN_SCRYPT_OPTS).toString("hex");
   return { salt, hash };
-}
-
-/** Copia reversible solo para que el superadmin pueda ver la clave actual. */
-function encryptAdminPasswordVault(plain) {
-  const key = crypto.createHash("sha256").update(String(ADMIN_SESSION_SECRET)).digest();
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv("aes-256-gcm", key, iv);
-  const enc = Buffer.concat([cipher.update(String(plain), "utf8"), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return Buffer.concat([iv, tag, enc]).toString("base64");
-}
-
-function decryptAdminPasswordVault(blob) {
-  if (!blob) return null;
-  try {
-    const buf = Buffer.from(String(blob), "base64");
-    if (buf.length < 29) return null;
-    const iv = buf.subarray(0, 12);
-    const tag = buf.subarray(12, 28);
-    const data = buf.subarray(28);
-    const key = crypto.createHash("sha256").update(String(ADMIN_SESSION_SECRET)).digest();
-    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(tag);
-    return Buffer.concat([decipher.update(data), decipher.final()]).toString("utf8");
-  } catch (_) {
-    return null;
-  }
-}
-
-function resolveAdminPasswordFromRow(row) {
-  if (!row) return null;
-  const fromVault = decryptAdminPasswordVault(row.password_vault);
-  if (fromVault) return fromVault;
-  if (DEFAULT_ADMIN_PASSWORD && verifyAdminRowPasswords(DEFAULT_ADMIN_PASSWORD, row)) {
-    return DEFAULT_ADMIN_PASSWORD;
-  }
-  if (DEFAULT_ADMIN_PASSWORD_SECOND && verifyAdminRowPasswords(DEFAULT_ADMIN_PASSWORD_SECOND, row)) {
-    return DEFAULT_ADMIN_PASSWORD_SECOND;
-  }
-  return null;
 }
 
 function verifyAdminPasswordScrypt(plain, salt, hashHex) {
@@ -1129,39 +620,11 @@ async function verifyAdminPasswordForBusiness(plain, businessId) {
   return false;
 }
 
-async function verifySuperAdminFromDb(plain) {
-  if (!plain) return false;
-  if (USE_SQLITE) {
-    const rows = await dbAll("SELECT * FROM admin_users WHERE role = 'super_admin'");
-    return rows.some((row) => verifyAdminPasswordScrypt(plain, row.password_salt, row.password_hash));
-  }
-  if (USE_SUPABASE) {
-    const { data } = await supabase.from("admin_users").select("*").eq("role", "super_admin");
-    return (data || []).some((row) => verifyAdminPasswordScrypt(plain, row.password_salt, row.password_hash));
-  }
-  return false;
-}
-
-async function isValidSuperAdminPassword(plain) {
-  if (verifySuperAdminPassword(plain)) return true;
-  return verifySuperAdminFromDb(plain);
-}
-
 function requireAdmin(req, res, next) {
   const auth = req.headers.authorization || "";
   const [, token] = auth.split(" ");
   const parsed = parseAdminToken(token);
   if (!parsed || parsed.businessId !== req.business.id) {
-    return res.status(401).json({ error: "No autorizado." });
-  }
-  return next();
-}
-
-function requireSuperAdmin(req, res, next) {
-  const auth = req.headers.authorization || "";
-  const [, token] = auth.split(" ");
-  const parsed = parseAdminToken(token);
-  if (!parsed || parsed.businessId !== 0) {
     return res.status(401).json({ error: "No autorizado." });
   }
   return next();
@@ -1425,17 +888,17 @@ function conflictErrorBloqueoVsTurnos(appointments) {
 // MAPPERS
 // ============================================================
 function mapBusinessRow(row, professionals = [], services = [], clientPlans = []) {
-  const plan = row.plan || "inicial";
+  const plan = row.plan || "canito";
   const pros = (professionals || []).map((p) => mapProfessionalRow(p));
   return {
     id: row.id,
     slug: row.slug,
     nombre: row.nombre,
-    categoria: row.categoria || "otro",
+    categoria: row.categoria || "estetica",
     ciudad: row.ciudad || null,
     barrio: row.barrio || null,
     direccion: row.direccion || null,
-    colorMarca: row.color_marca || "#0f766e",
+    colorMarca: row.color_marca || "#5b5f51",
     logoUrl: row.logo_url || null,
     whatsapp: row.whatsapp || "",
     transferencia: {
@@ -1492,49 +955,6 @@ function mapMovimientoRow(row) {
     appointmentId: row.appointment_id ?? null,
     creadoEn: row.creado_en,
   };
-}
-
-function mapLocalidadRow(row) {
-  return {
-    id: row.id,
-    nombre: row.nombre,
-    activo: row.activo === true || row.activo === 1 || row.activo === "1",
-    creadoEn: row.creado_en || null,
-  };
-}
-
-async function listLocalidades({ soloActivas = false } = {}) {
-  if (USE_SQLITE) {
-    const rows = soloActivas
-      ? await dbAll("SELECT * FROM localidades WHERE activo = 1 ORDER BY nombre ASC")
-      : await dbAll("SELECT * FROM localidades ORDER BY nombre ASC");
-    return rows.map(mapLocalidadRow);
-  }
-  if (USE_SUPABASE) {
-    let query = supabase.from("localidades").select("*").order("nombre", { ascending: true });
-    if (soloActivas) query = query.eq("activo", true);
-    const { data, error } = await query;
-    if (error) {
-      if (/localidades|does not exist|relation|schema cache/i.test(error.message || "")) {
-        return [];
-      }
-      throw new Error(error.message);
-    }
-    return (data || []).map(mapLocalidadRow);
-  }
-  return [];
-}
-
-async function assertLocalidadActiva(nombre) {
-  const ciudad = String(nombre || "").trim();
-  if (!ciudad) return { ok: false, error: "Seleccioná una localidad." };
-  const list = await listLocalidades({ soloActivas: true });
-  if (!list.length) {
-    return { ok: false, error: "Todavía no hay localidades cargadas. Pedile al superadmin que cree una." };
-  }
-  const hit = list.find((l) => l.nombre.toLowerCase() === ciudad.toLowerCase());
-  if (!hit) return { ok: false, error: "Localidad inválida. Elegí una de la lista." };
-  return { ok: true, nombre: hit.nombre };
 }
 
 function parseMoneyAmount(raw) {
@@ -2116,44 +1536,6 @@ async function getBusinessBySlug(slug, { onlyActivo = true } = {}) {
   return null;
 }
 
-async function listPublicBusinesses() {
-  if (USE_SQLITE) {
-    const rows = await dbAll(
-      `SELECT slug, nombre, logo_url, categoria, ciudad, barrio, direccion, color_marca
-       FROM businesses WHERE estado = 'activo' ORDER BY id ASC`
-    );
-    return rows.map((r) => ({
-      slug: r.slug,
-      nombre: r.nombre,
-      logoUrl: r.logo_url || null,
-      categoria: r.categoria || "otro",
-      ciudad: r.ciudad || null,
-      barrio: r.barrio || null,
-      direccion: r.direccion || null,
-      colorMarca: r.color_marca || null,
-    }));
-  }
-  if (USE_SUPABASE) {
-    const { data, error } = await supabase
-      .from("businesses")
-      .select("slug, nombre, logo_url, categoria, ciudad, barrio, direccion, color_marca")
-      .eq("estado", "activo")
-      .order("id");
-    if (error) throw new Error(error.message);
-    return (data || []).map((r) => ({
-      slug: r.slug,
-      nombre: r.nombre,
-      logoUrl: r.logo_url || null,
-      categoria: r.categoria || "otro",
-      ciudad: r.ciudad || null,
-      barrio: r.barrio || null,
-      direccion: r.direccion || null,
-      colorMarca: r.color_marca || null,
-    }));
-  }
-  return [];
-}
-
 // ============================================================
 // SEED
 // ============================================================
@@ -2176,147 +1558,12 @@ async function ensureAdminForBusiness(businessId, now) {
   }
 }
 
-async function seedPlatformPlans() {
-  const rows = [
-    {
-      id: "inicial",
-      nombre: "Inicial",
-      limite_profesionales: 1,
-      precio: 20000,
-      featured: 0,
-      sort_order: 1,
-      features: serializePlanFeatures(DEFAULT_PLAN_FEATURES.inicial),
-    },
-    {
-      id: "profesional",
-      nombre: "Profesional",
-      limite_profesionales: 3,
-      precio: 35000,
-      featured: 1,
-      sort_order: 2,
-      features: serializePlanFeatures(DEFAULT_PLAN_FEATURES.profesional),
-    },
-    {
-      id: "max",
-      nombre: "Max",
-      limite_profesionales: null,
-      precio: 60000,
-      featured: 0,
-      sort_order: 3,
-      features: serializePlanFeatures(DEFAULT_PLAN_FEATURES.max),
-    },
-  ];
-  if (USE_SQLITE) {
-    for (const p of rows) {
-      const legacyMax = p.limite_profesionales == null ? -1 : p.limite_profesionales;
-      // No pisar precio/promo editados por Super Admin
-      await dbRun(
-        `INSERT INTO platform_plans (
-           id, nombre, limite_profesionales, max_professionals, precio,
-           features, featured, sort_order, promo_active
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
-         ON CONFLICT(id) DO NOTHING`,
-        [p.id, p.nombre, p.limite_profesionales, legacyMax, p.precio, p.features, p.featured, p.sort_order]
-      );
-      await dbRun(
-        `UPDATE platform_plans
-         SET features = COALESCE(NULLIF(TRIM(features), ''), ?),
-             featured = COALESCE(featured, ?),
-             sort_order = CASE WHEN sort_order IS NULL OR sort_order = 0 THEN ? ELSE sort_order END
-         WHERE id = ? AND (features IS NULL OR TRIM(features) = '' OR TRIM(features) = '[]')`,
-        [p.features, p.featured, p.sort_order, p.id]
-      );
-    }
-    await dbRun("DELETE FROM platform_plans WHERE id = 'estandar'");
-    for (const [key, value] of [
-      ["transfer_alias", SUBSCRIPTION_ALIAS_ENV || ""],
-      ["transfer_cbu", SUBSCRIPTION_CBU_ENV || ""],
-      ["transfer_titular", SUBSCRIPTION_TITULAR_ENV || ""],
-    ]) {
-      await dbRun(
-        "INSERT INTO platform_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO NOTHING",
-        [key, value]
-      );
-    }
-    invalidatePlatformPlansCache();
-    return;
-  }
-  if (USE_SUPABASE) {
-    for (const p of rows) {
-      // Insert only if missing — no overwrite de precio/promo
-      const { data: existing } = await supabase
-        .from("platform_plans")
-        .select("id, features, featured, sort_order")
-        .eq("id", p.id)
-        .maybeSingle();
-      if (!existing) {
-        await supabase.from("platform_plans").insert({
-          id: p.id,
-          nombre: p.nombre,
-          limite_profesionales: p.limite_profesionales,
-          max_professionals: p.limite_profesionales,
-          precio: p.precio,
-          features: DEFAULT_PLAN_FEATURES[p.id] || [],
-          featured: !!p.featured,
-          sort_order: p.sort_order,
-          promo_active: false,
-        });
-      } else {
-        const patch = {};
-        if (!existing.features || (Array.isArray(existing.features) && !existing.features.length)) {
-          patch.features = DEFAULT_PLAN_FEATURES[p.id] || [];
-        }
-        if (existing.featured == null) patch.featured = !!p.featured;
-        if (existing.sort_order == null || existing.sort_order === 0) patch.sort_order = p.sort_order;
-        if (Object.keys(patch).length) {
-          await supabase.from("platform_plans").update(patch).eq("id", p.id);
-        }
-      }
-    }
-    await supabase.from("platform_plans").delete().eq("id", "estandar");
-    invalidatePlatformPlansCache();
-    await supabase.from("platform_settings").upsert(
-      [
-        { key: "transfer_alias", value: SUBSCRIPTION_ALIAS_ENV || "" },
-        { key: "transfer_cbu", value: SUBSCRIPTION_CBU_ENV || "" },
-        { key: "transfer_titular", value: SUBSCRIPTION_TITULAR_ENV || "" },
-      ],
-      { onConflict: "key", ignoreDuplicates: true }
-    );
-  }
-}
-
-async function removeLegacyDemoBusiness() {
-  if (!USE_SUPABASE) return;
-  const { data: existing, error } = await supabase
-    .from("businesses")
-    .select("id, slug, nombre")
-    .eq("slug", "mi-negocio")
-    .maybeSingle();
-  if (error) {
-    console.warn("[seed] No se pudo buscar negocio demo:", error.message);
-    return;
-  }
-  if (!existing) return;
-  if (existing.nombre !== "Studio Demo CMR") return;
-  try {
-    await deleteBusinessCascade(existing.id);
-    console.log(`[seed] Negocio demo eliminado (id=${existing.id}, slug=${existing.slug})`);
-  } catch (e) {
-    console.warn("[seed] No se pudo eliminar negocio demo:", e.message);
-  }
-}
-
+// Canito Skin: un solo negocio. En Supabase el seed real vive en
+// supabase-canitoskin.sql; acá solo garantizamos el fallback local (SQLite).
 async function seedDefaultBusiness() {
   const now = new Date().toISOString();
-  await seedPlatformPlans();
 
-  // Producción (Supabase): no crear demo; limpiar el legacy si quedó.
-  if (USE_SUPABASE) {
-    await removeLegacyDemoBusiness();
-    return;
-  }
-
+  if (USE_SUPABASE) return;
   if (!USE_SQLITE) return;
 
   const existing = await dbGet("SELECT id FROM businesses WHERE slug = ? LIMIT 1", [DEFAULT_BUSINESS_SLUG]);
@@ -2326,13 +1573,13 @@ async function seedDefaultBusiness() {
   }
   const result = await dbRun(
     `INSERT INTO businesses (
-       slug, nombre, categoria, ciudad, barrio, color_marca, whatsapp,
+       slug, nombre, categoria, ciudad, barrio, direccion, color_marca, whatsapp,
        transfer_alias, transfer_cbu, transfer_titular,
        hora_inicio, hora_fin, precio, plan, estado, creado_en
-     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'inicial', 'activo', ?)`,
+     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'canito', 'activo', ?)`,
     [
       DEFAULT_BUSINESS_SLUG, DEFAULT_BUSINESS_NOMBRE, DEFAULT_BUSINESS_CATEGORIA,
-      DEFAULT_BUSINESS_CIUDAD, DEFAULT_BUSINESS_BARRIO, DEFAULT_BUSINESS_COLOR,
+      DEFAULT_BUSINESS_CIUDAD, DEFAULT_BUSINESS_BARRIO, DEFAULT_BUSINESS_DIRECCION, DEFAULT_BUSINESS_COLOR,
       DEFAULT_BUSINESS_WHATSAPP, DEFAULT_BUSINESS_ALIAS, DEFAULT_BUSINESS_CBU,
       DEFAULT_BUSINESS_TITULAR, DEFAULT_BUSINESS_HORA_INICIO, DEFAULT_BUSINESS_HORA_FIN,
       DEFAULT_BUSINESS_PRECIO, now,
@@ -2341,32 +1588,22 @@ async function seedDefaultBusiness() {
   const businessId = result.lastID;
 
   await dbRun(
-    "INSERT INTO professionals (business_id, nombre, activo) VALUES (?, ?, 1)",
-    [businessId, "Ana"]
-  );
-  await dbRun(
-    "INSERT INTO professionals (business_id, nombre, activo) VALUES (?, ?, 1)",
-    [businessId, "Luis"]
+    "INSERT INTO professionals (business_id, nombre, especialidad, activo) VALUES (?, ?, ?, 1)",
+    [businessId, "Cande", "Estética facial / skincare"]
   );
 
   const seedServices = [
-    { nombre: "Corte", descripcion: "Corte de cabello", duracion_min: 45, precio: "8000", categoria: "peluqueria" },
-    { nombre: "Coloración", descripcion: "Coloración completa", duracion_min: 120, precio: "25000", categoria: "peluqueria" },
-    { nombre: "Barba", descripcion: "Arreglo de barba", duracion_min: 30, precio: "5000", categoria: "peluqueria" },
+    { nombre: "Limpieza facial profunda", descripcion: "Limpieza y renovación de la piel", duracion_min: 60, precio: "15000", sena: "5000", categoria: "Faciales" },
+    { nombre: "Extracciones", descripcion: "Extracciones controladas según tipo de piel", duracion_min: 45, precio: "12000", sena: "4000", categoria: "Faciales" },
+    { nombre: "Tratamiento pieles maduras", descripcion: "Protocolo de cuidado para pieles maduras", duracion_min: 75, precio: "18000", sena: "6000", categoria: "Faciales" },
   ];
   for (const s of seedServices) {
     await dbRun(
-      `INSERT INTO services (business_id, nombre, descripcion, duracion_min, precio, categoria, activo)
-       VALUES (?, ?, ?, ?, ?, ?, 1)`,
-      [businessId, s.nombre, s.descripcion, s.duracion_min, s.precio, s.categoria]
+      `INSERT INTO services (business_id, nombre, descripcion, duracion_min, precio, sena, categoria, activo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
+      [businessId, s.nombre, s.descripcion, s.duracion_min, s.precio, s.sena, s.categoria]
     );
   }
-
-  await dbRun(
-    `INSERT INTO plans (business_id, nombre, sesiones, precio, descripcion, activo)
-     VALUES (?, '4 cortes', 4, '28000', 'Pack de 4 cortes', 1)`,
-    [businessId]
-  );
 
   await ensureAdminForBusiness(businessId, now);
   console.log(`[seed] Negocio "${DEFAULT_BUSINESS_NOMBRE}" creado con slug "${DEFAULT_BUSINESS_SLUG}"`);
@@ -2569,46 +1806,6 @@ function buildWhatsAppUrl(whatsappNumero, text) {
   return `https://wa.me/${num}?text=${encodeURIComponent(text)}`;
 }
 
-function publicBaseUrl(req) {
-  const fromEnv = (process.env.PUBLIC_BASE_URL || process.env.APP_URL || "").trim().replace(/\/$/, "");
-  if (fromEnv) return fromEnv;
-  const proto = String(req.get("x-forwarded-proto") || req.protocol || "https")
-    .split(",")[0]
-    .trim();
-  const host = String(req.get("x-forwarded-host") || req.get("host") || "")
-    .split(",")[0]
-    .trim();
-  if (!host) return "";
-  return `${proto}://${host}`;
-}
-
-function absolutePublicUrl(req, maybeRelative) {
-  if (!maybeRelative) return "";
-  if (/^https?:\/\//i.test(maybeRelative)) return maybeRelative;
-  const base = publicBaseUrl(req);
-  if (!base) return maybeRelative;
-  return `${base}${maybeRelative.startsWith("/") ? "" : "/"}${maybeRelative}`;
-}
-
-function buildSolicitudNotifyWhatsApp({ nombre, planLabel, categoria, ciudad, direccion, whatsapp, email, slug, comprobanteUrl }) {
-  const cat = CATEGORIA_LABELS[categoria] || categoria || "—";
-  const text = [
-    "🛒 *Nueva solicitud CMR Turnos*",
-    "",
-    `*Negocio:* ${nombre}`,
-    `*Plan:* ${planLabel}`,
-    `*Categoría:* ${cat}`,
-    `*Localidad:* ${ciudad || "—"}`,
-    `*Dirección:* ${direccion || "—"}`,
-    `*WhatsApp contacto:* ${whatsapp || "—"}`,
-    `*Email:* ${email || "—"}`,
-    `*Slug:* /${slug || ""}`,
-    "",
-    `*Comprobante:* ${comprobanteUrl || "(sin link)"}`,
-  ].join("\n");
-  return buildWhatsAppUrl(CMR_NOTIFY_WHATSAPP, text);
-}
-
 function comprobantePublicUrl(req, archivo) {
   if (USE_SUPABASE) {
     return supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(archivo).data.publicUrl;
@@ -2698,31 +1895,6 @@ async function resolveBusiness(req, res, next) {
 // ============================================================
 // PUBLIC LIST
 // ============================================================
-async function handleListNegocios(_req, res, next) {
-  try {
-    res.json(await listPublicBusinesses());
-  } catch (error) { next(error); }
-}
-
-app.get("/api/negocios", handleListNegocios);
-app.get("/api/clubs", handleListNegocios);
-
-app.get("/api/localidades", async (_req, res, next) => {
-  try {
-    res.json(await listLocalidades({ soloActivas: true }));
-  } catch (error) { next(error); }
-});
-
-app.get("/api/maps-config", (_req, res) => {
-  const apiKey = String(process.env.GOOGLE_MAPS_API_KEY || "").trim();
-  res.json({
-    enabled: Boolean(apiKey),
-    apiKey: apiKey || null,
-    region: "AR",
-    language: "es",
-  });
-});
-
 // ============================================================
 // API /api/:slug/...
 // ============================================================
@@ -4342,9 +3514,7 @@ app.patch("/api/:slug/admin/business", resolveBusiness, requireAdmin, async (req
     const precio = body.precio !== undefined && body.precio !== null
       ? String(body.precio).trim() || "0"
       : (req.business.precio || "0");
-    const localidadCheck = await assertLocalidadActiva(body.ciudad);
-    if (!localidadCheck.ok) return res.status(400).json({ error: localidadCheck.error });
-    const ciudad = localidadCheck.nombre;
+    const ciudad = (body.ciudad || "").trim() || req.business.ciudad || DEFAULT_BUSINESS_CIUDAD;
     const barrio = (body.barrio || "").trim() || null;
     const direccion = (body.direccion || "").trim() || null;
     if (!direccion) return res.status(400).json({ error: "La dirección es obligatoria." });
@@ -4436,321 +3606,6 @@ app.post("/api/:slug/admin/password", resolveBusiness, requireAdmin, async (req,
   } catch (error) { next(error); }
 });
 
-// ============================================================
-// SUPERADMIN
-// ============================================================
-app.post("/api/superadmin/login", async (req, res, next) => {
-  try {
-    const ip = getClientIp(req);
-    const rlKey = `superadmin:${ip}`;
-    if (!checkLoginRateLimit(rlKey)) {
-      return res.status(429).json({ error: "Demasiados intentos. Esperá 15 minutos." });
-    }
-    const password = (req.body?.password || "").trim();
-    const ok = await isValidSuperAdminPassword(password);
-    if (!ok) {
-      if (!SUPERADMIN_PASSWORD) {
-        const hasDb = await verifySuperAdminFromDb(password);
-        if (!hasDb) {
-          return res.status(503).json({
-            error: "Super-admin no habilitado. Configurá SUPERADMIN_PASSWORD o un admin_users.",
-          });
-        }
-      }
-      return res.status(401).json({ error: "Clave incorrecta." });
-    }
-    resetLoginRateLimit(rlKey);
-    const token = createAdminSession(0);
-    return res.json({ token, expiresInMs: ADMIN_SESSION_TTL_MS });
-  } catch (error) { next(error); }
-});
-
-app.get("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const estado = (req.query.estado || "").trim();
-    const vaultMap = await loadAdminPasswordVaultMap();
-    if (USE_SQLITE) {
-      const rows = estado && ESTADOS_NEGOCIO.has(estado)
-        ? await dbAll("SELECT * FROM businesses WHERE estado = ? ORDER BY id ASC", [estado])
-        : await dbAll("SELECT * FROM businesses ORDER BY id ASC");
-      const admins = await dbAll("SELECT * FROM business_admins");
-      const byBiz = new Map(admins.map((a) => [Number(a.business_id), a]));
-      return res.json(rows.map((r) => {
-        const id = Number(r.id);
-        return {
-          id: r.id, slug: r.slug, nombre: r.nombre, categoria: r.categoria,
-          ciudad: r.ciudad, barrio: r.barrio, colorMarca: r.color_marca,
-          logoUrl: r.logo_url, plan: r.plan || "inicial", estado: r.estado,
-          estadoMotivo: r.estado_motivo, creadoEn: r.creado_en,
-          adminPassword: vaultMap.get(id) || resolveAdminPasswordFromRow(byBiz.get(id)) || "",
-        };
-      }));
-    }
-    if (USE_SUPABASE) {
-      let query = supabase.from("businesses").select("*").order("id");
-      if (estado && ESTADOS_NEGOCIO.has(estado)) query = query.eq("estado", estado);
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      const { data: admins, error: adminErr } = await supabase
-        .from("business_admins")
-        .select("business_id, password_salt, password_hash, password_salt_b, password_hash_b");
-      if (adminErr) throw new Error(adminErr.message);
-      const byBiz = new Map((admins || []).map((a) => [Number(a.business_id), a]));
-      return res.json((data || []).map((r) => {
-        const id = Number(r.id);
-        return {
-          id: r.id, slug: r.slug, nombre: r.nombre, categoria: r.categoria,
-          ciudad: r.ciudad, barrio: r.barrio, colorMarca: r.color_marca,
-          logoUrl: r.logo_url, plan: r.plan || "inicial", estado: r.estado,
-          estadoMotivo: r.estado_motivo, creadoEn: r.creado_en,
-          adminPassword: vaultMap.get(id) || resolveAdminPasswordFromRow(byBiz.get(id)) || "",
-        };
-      }));
-    }
-    return res.json([]);
-  } catch (error) { next(error); }
-});
-
-app.get("/api/superadmin/clubs", requireSuperAdmin, (req, res, next) => {
-  req.url = "/api/superadmin/negocios" + (req.url.includes("?") ? req.url.slice(req.url.indexOf("?")) : "");
-  return app._router.handle(req, res, next);
-});
-
-app.get("/api/superadmin/metrics", requireSuperAdmin, async (_req, res, next) => {
-  try {
-    const counts = {};
-    for (const e of ESTADOS_NEGOCIO) counts[e] = 0;
-    if (USE_SQLITE) {
-      const rows = await dbAll("SELECT estado, COUNT(*) as cnt FROM businesses GROUP BY estado");
-      for (const r of rows) counts[r.estado] = r.cnt;
-    } else if (USE_SUPABASE) {
-      const { data, error } = await supabase.from("businesses").select("estado");
-      if (error) throw new Error(error.message);
-      for (const r of data || []) counts[r.estado] = (counts[r.estado] || 0) + 1;
-    }
-    res.json({ byEstado: counts, total: Object.values(counts).reduce((a, b) => a + b, 0) });
-  } catch (error) { next(error); }
-});
-
-app.post("/api/superadmin/negocios", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const nombre = (req.body?.nombre || "").trim();
-    const rawSlug = (req.body?.slug || "").trim().toLowerCase().replace(/[^a-z0-9-]/g, "-");
-    const password = (req.body?.password || "").trim();
-    const categoria = CATEGORIAS.has(req.body?.categoria) ? req.body.categoria : "otro";
-    let ciudad = (req.body?.ciudad || "").trim() || null;
-    const barrio = (req.body?.barrio || "").trim() || null;
-    const direccion = (req.body?.direccion || "").trim() || null;
-    const plan = (await loadPlatformPlans())[req.body?.plan] ? req.body.plan : "inicial";
-
-    if (!nombre || !rawSlug || !password) {
-      return res.status(400).json({ error: "nombre, slug y password son requeridos." });
-    }
-    if (nombre.length > 100) return res.status(400).json({ error: "El nombre es demasiado largo." });
-    if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/.test(rawSlug) || rawSlug.length < 2) {
-      return res.status(400).json({ error: "Slug inválido. Usá letras minúsculas, números y guiones." });
-    }
-    if (ciudad) {
-      const localidadCheck = await assertLocalidadActiva(ciudad);
-      if (!localidadCheck.ok) return res.status(400).json({ error: localidadCheck.error });
-      ciudad = localidadCheck.nombre;
-    }
-
-    const now = new Date().toISOString();
-
-    if (USE_SQLITE) {
-      const existing = await dbGet("SELECT id FROM businesses WHERE slug = ? LIMIT 1", [rawSlug]);
-      if (existing) return res.status(409).json({ error: `Ya existe un negocio con el slug "${rawSlug}".` });
-      const result = await dbRun(
-        `INSERT INTO businesses (
-           slug, nombre, categoria, ciudad, barrio, direccion, color_marca, whatsapp,
-           transfer_alias, transfer_cbu, transfer_titular,
-           hora_inicio, hora_fin, precio, plan, estado, creado_en
-         ) VALUES (?, ?, ?, ?, ?, ?, '#0f766e', '', '', '', '', 9, 20, '0', ?, 'activo', ?)`,
-        [rawSlug, nombre, categoria, ciudad, barrio, direccion, plan, now]
-      );
-      await setBusinessAdminPassword(result.lastID, password);
-      return res.status(201).json({ ok: true, slug: rawSlug, nombre, id: result.lastID });
-    }
-    if (USE_SUPABASE) {
-      const { data: existing } = await supabase.from("businesses").select("id").eq("slug", rawSlug).maybeSingle();
-      if (existing) return res.status(409).json({ error: `Ya existe un negocio con el slug "${rawSlug}".` });
-      const { data: biz, error: bizErr } = await supabase.from("businesses").insert({
-        slug: rawSlug, nombre, categoria, ciudad, barrio, direccion, color_marca: "#0f766e",
-        whatsapp: "", transfer_alias: "", transfer_cbu: "", transfer_titular: "",
-        hora_inicio: 9, hora_fin: 20, precio: "0", plan, estado: "activo", creado_en: now,
-      }).select().single();
-      if (bizErr) throw new Error(bizErr.message);
-      await setBusinessAdminPassword(biz.id, password);
-      return res.status(201).json({ ok: true, slug: rawSlug, nombre, id: biz.id });
-    }
-    return res.status(503).json({ error: "No hay backend de datos disponible." });
-  } catch (error) { next(error); }
-});
-
-app.get("/api/superadmin/localidades", requireSuperAdmin, async (_req, res, next) => {
-  try {
-    res.json(await listLocalidades({ soloActivas: false }));
-  } catch (error) { next(error); }
-});
-
-app.post("/api/superadmin/localidades", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const nombre = String(req.body?.nombre || "").trim().replace(/\s+/g, " ");
-    if (!nombre || nombre.length < 2) {
-      return res.status(400).json({ error: "El nombre de la localidad es requerido." });
-    }
-    if (nombre.length > 80) return res.status(400).json({ error: "El nombre es demasiado largo." });
-    const now = new Date().toISOString();
-
-    if (USE_SQLITE) {
-      const existing = await dbGet(
-        "SELECT id FROM localidades WHERE lower(nombre) = lower(?) LIMIT 1",
-        [nombre]
-      );
-      if (existing) return res.status(409).json({ error: "Esa localidad ya existe." });
-      const result = await dbRun(
-        "INSERT INTO localidades (nombre, activo, creado_en) VALUES (?, 1, ?)",
-        [nombre, now]
-      );
-      return res.status(201).json({ ok: true, id: result.lastID, nombre, activo: true });
-    }
-    if (USE_SUPABASE) {
-      const { data: existing } = await supabase
-        .from("localidades")
-        .select("id")
-        .ilike("nombre", nombre)
-        .maybeSingle();
-      if (existing) return res.status(409).json({ error: "Esa localidad ya existe." });
-      const { data, error } = await supabase
-        .from("localidades")
-        .insert({ nombre, activo: true, creado_en: now })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return res.status(201).json({ ok: true, ...mapLocalidadRow(data) });
-    }
-    return res.status(503).json({ error: "No hay backend disponible." });
-  } catch (error) { next(error); }
-});
-
-app.patch("/api/superadmin/localidades/:id", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
-    const nombreRaw = req.body?.nombre != null ? String(req.body.nombre).trim().replace(/\s+/g, " ") : null;
-    const activoRaw = req.body?.activo;
-
-    if (USE_SQLITE) {
-      const row = await dbGet("SELECT * FROM localidades WHERE id = ? LIMIT 1", [id]);
-      if (!row) return res.status(404).json({ error: "Localidad no encontrada." });
-      let nombre = row.nombre;
-      let activo = row.activo;
-      if (nombreRaw != null) {
-        if (nombreRaw.length < 2) return res.status(400).json({ error: "Nombre inválido." });
-        const clash = await dbGet(
-          "SELECT id FROM localidades WHERE lower(nombre) = lower(?) AND id != ? LIMIT 1",
-          [nombreRaw, id]
-        );
-        if (clash) return res.status(409).json({ error: "Esa localidad ya existe." });
-        nombre = nombreRaw;
-      }
-      if (activoRaw !== undefined) activo = activoRaw === false || activoRaw === 0 || activoRaw === "0" ? 0 : 1;
-      await dbRun("UPDATE localidades SET nombre = ?, activo = ? WHERE id = ?", [nombre, activo, id]);
-      return res.json({ ok: true, id, nombre, activo: Boolean(activo) });
-    }
-    if (USE_SUPABASE) {
-      const { data: row } = await supabase.from("localidades").select("*").eq("id", id).maybeSingle();
-      if (!row) return res.status(404).json({ error: "Localidad no encontrada." });
-      const patch = {};
-      if (nombreRaw != null) {
-        if (nombreRaw.length < 2) return res.status(400).json({ error: "Nombre inválido." });
-        patch.nombre = nombreRaw;
-      }
-      if (activoRaw !== undefined) {
-        patch.activo = !(activoRaw === false || activoRaw === 0 || activoRaw === "0");
-      }
-      const { data, error } = await supabase.from("localidades").update(patch).eq("id", id).select().single();
-      if (error) throw new Error(error.message);
-      return res.json({ ok: true, ...mapLocalidadRow(data) });
-    }
-    return res.status(503).json({ error: "No hay backend disponible." });
-  } catch (error) { next(error); }
-});
-
-app.post("/api/superadmin/clubs", requireSuperAdmin, (req, res, next) => {
-  req.url = "/api/superadmin/negocios";
-  return app._router.handle(req, res, next);
-});
-
-app.patch("/api/superadmin/negocios/:id/plan", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const plan = (req.body?.plan || "").trim();
-    const plans = await loadPlatformPlans();
-    if (!plans[plan]) return res.status(400).json({ error: "Plan inválido." });
-
-    if (USE_SQLITE) {
-      const row = await dbGet("SELECT id FROM businesses WHERE id = ? LIMIT 1", [id]);
-      if (!row) return res.status(404).json({ error: "Negocio no encontrado." });
-      await dbRun("UPDATE businesses SET plan = ? WHERE id = ?", [plan, id]);
-      return res.json({ ok: true, plan });
-    }
-    if (USE_SUPABASE) {
-      const { error } = await supabase.from("businesses").update({ plan }).eq("id", id);
-      if (error) throw new Error(error.message);
-      return res.json({ ok: true, plan });
-    }
-    return res.status(503).json({ error: "No hay backend disponible." });
-  } catch (error) { next(error); }
-});
-
-app.patch("/api/superadmin/clubs/:id/plan", requireSuperAdmin, async (req, res, next) => {
-  req.url = `/api/superadmin/negocios/${req.params.id}/plan`;
-  return app._router.handle(req, res, next);
-});
-
-app.patch("/api/superadmin/negocios/:id/estado", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const estado = (req.body?.estado || "").trim();
-    const motivo = (req.body?.motivo || "").trim();
-    if (!ESTADOS_NEGOCIO.has(estado)) return res.status(400).json({ error: "Estado inválido." });
-    if (ESTADOS_CON_MOTIVO.has(estado) && !motivo) {
-      return res.status(400).json({ error: "El motivo es obligatorio para este estado." });
-    }
-
-    if (USE_SQLITE) {
-      const row = await dbGet("SELECT id FROM businesses WHERE id = ? LIMIT 1", [id]);
-      if (!row) return res.status(404).json({ error: "Negocio no encontrado." });
-      await dbRun(
-        "UPDATE businesses SET estado = ?, estado_motivo = ? WHERE id = ?",
-        [estado, motivo || null, id]
-      );
-      return res.json({ ok: true, estado, motivo: motivo || null });
-    }
-    if (USE_SUPABASE) {
-      const { error } = await supabase.from("businesses")
-        .update({ estado, estado_motivo: motivo || null }).eq("id", id);
-      if (error) throw new Error(error.message);
-      return res.json({ ok: true, estado, motivo: motivo || null });
-    }
-    return res.status(503).json({ error: "No hay backend disponible." });
-  } catch (error) { next(error); }
-});
-
-app.patch("/api/superadmin/clubs/:id/activo", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const activo = req.body?.activo;
-    if (typeof activo === "boolean") {
-      req.body.estado = activo ? "activo" : "pausado";
-      if (!activo && !req.body.motivo) req.body.motivo = "Desactivado por superadmin";
-    }
-    req.url = `/api/superadmin/negocios/${req.params.id}/estado`;
-    return app._router.handle(req, res, next);
-  } catch (error) { next(error); }
-});
-
 async function setBusinessAdminPassword(businessId, password) {
   const { salt, hash } = hashAdminPassword(password);
   const now = new Date().toISOString();
@@ -4777,7 +3632,6 @@ async function setBusinessAdminPassword(businessId, password) {
       });
       if (error) throw new Error(error.message);
     }
-    await saveAdminPasswordVault(businessId, password);
     return;
   }
   const existing = await dbGet(
@@ -4796,751 +3650,25 @@ async function setBusinessAdminPassword(businessId, password) {
       [businessId, salt, hash, now]
     );
   }
-  await saveAdminPasswordVault(businessId, password);
 }
-
-function adminPasswordVaultKey(businessId) {
-  return `admin_pwd_vault:${businessId}`;
-}
-
-async function saveAdminPasswordVault(businessId, password) {
-  const key = adminPasswordVaultKey(businessId);
-  const value = encryptAdminPasswordVault(password);
-  if (USE_SQLITE) {
-    await dbRun(
-      "INSERT INTO platform_settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-      [key, value]
-    );
-    return;
-  }
-  if (USE_SUPABASE) {
-    const { error } = await supabase.from("platform_settings").upsert({ key, value }, { onConflict: "key" });
-    if (error) console.warn("[admin-vault] No se pudo guardar clave visible:", error.message);
-  }
-}
-
-async function loadAdminPasswordVaultMap() {
-  const prefix = "admin_pwd_vault:";
-  const map = new Map();
-  if (USE_SQLITE) {
-    const rows = await dbAll(
-      "SELECT key, value FROM platform_settings WHERE key LIKE ?",
-      [`${prefix}%`]
-    );
-    for (const r of rows || []) {
-      const id = Number(String(r.key).slice(prefix.length));
-      const plain = decryptAdminPasswordVault(r.value);
-      if (Number.isFinite(id) && plain) map.set(id, plain);
-    }
-    return map;
-  }
-  if (USE_SUPABASE) {
-    const { data, error } = await supabase.from("platform_settings").select("key, value");
-    if (error) {
-      console.warn("[admin-vault] No se pudieron leer claves:", error.message);
-      return map;
-    }
-    for (const r of data || []) {
-      if (!String(r.key || "").startsWith(prefix)) continue;
-      const id = Number(String(r.key).slice(prefix.length));
-      const plain = decryptAdminPasswordVault(r.value);
-      if (Number.isFinite(id) && plain) map.set(id, plain);
-    }
-  }
-  return map;
-}
-
-async function deleteBusinessCascade(businessId) {
-  if (USE_SUPABASE) {
-    // FKs con ON DELETE CASCADE limpian tablas hijas
-    const { data, error } = await supabase
-      .from("businesses")
-      .delete()
-      .eq("id", businessId)
-      .select("id, slug, nombre");
-    if (error) throw new Error(error.message);
-    if (!data?.length) return null;
-    await supabase.from("platform_settings").delete().eq("key", adminPasswordVaultKey(businessId));
-    return data[0];
-  }
-
-  const row = await dbGet("SELECT id, slug, nombre FROM businesses WHERE id = ? LIMIT 1", [businessId]);
-  if (!row) return null;
-
-  // Orden: vínculos → turnos/caja/bloqueos → servicios/pros → admin → negocio
-  await dbRun("DELETE FROM professional_services WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM appointments WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM movimientos WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM bloqueos WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM bloqueos_recurrentes WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM platform_payments WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM plans WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM services WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM professionals WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM business_admins WHERE business_id = ?", [businessId]);
-  await dbRun("DELETE FROM platform_settings WHERE key = ?", [adminPasswordVaultKey(businessId)]);
-  await dbRun("DELETE FROM businesses WHERE id = ?", [businessId]);
-  return row;
-}
-
-app.patch("/api/superadmin/negocios/:id/password", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const password = (req.body?.password || "").trim();
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
-    if (!password) return res.status(400).json({ error: "La contraseña es requerida." });
-    if (password.length < 6) {
-      return res.status(400).json({ error: "La contraseña debe tener al menos 6 caracteres." });
-    }
-
-    if (USE_SQLITE) {
-      const row = await dbGet("SELECT id FROM businesses WHERE id = ? LIMIT 1", [id]);
-      if (!row) return res.status(404).json({ error: "Negocio no encontrado." });
-    } else if (USE_SUPABASE) {
-      const { data } = await supabase.from("businesses").select("id").eq("id", id).maybeSingle();
-      if (!data) return res.status(404).json({ error: "Negocio no encontrado." });
-    } else {
-      return res.status(503).json({ error: "No hay backend disponible." });
-    }
-
-    await setBusinessAdminPassword(id, password);
-    return res.json({ ok: true, password });
-  } catch (error) { next(error); }
-});
-
-app.patch("/api/superadmin/clubs/:id/password", requireSuperAdmin, (req, res, next) => {
-  req.url = `/api/superadmin/negocios/${req.params.id}/password`;
-  return app._router.handle(req, res, next);
-});
-
-app.delete("/api/superadmin/negocios/:id", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
-    const deleted = await deleteBusinessCascade(id);
-    if (!deleted) return res.status(404).json({ error: "Negocio no encontrado." });
-    return res.json({
-      ok: true,
-      id: deleted.id,
-      slug: deleted.slug,
-      nombre: deleted.nombre,
-    });
-  } catch (error) { next(error); }
-});
-
-app.delete("/api/superadmin/clubs/:id", requireSuperAdmin, (req, res, next) => {
-  req.url = `/api/superadmin/negocios/${req.params.id}`;
-  return app._router.handle(req, res, next);
-});
-
-app.patch("/api/superadmin/negocios/:id/logo", requireSuperAdmin, logoUpload.single("logo"), async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
-    if (!req.file) return res.status(400).json({ error: "No se recibió imagen." });
-    const validMagic = await validateFileMagicBytes(req.file);
-    if (!validMagic) return res.status(400).json({ error: "Imagen inválida." });
-
-    const logoUrl = await uploadBusinessLogoFile(id, req.file);
-    return res.json({ ok: true, logoUrl });
-  } catch (error) { next(error); }
-});
-
-app.patch("/api/superadmin/clubs/:id/logo", requireSuperAdmin, logoUpload.single("logo"), async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) return res.status(400).json({ error: "ID inválido." });
-    if (!req.file) return res.status(400).json({ error: "No se recibió imagen." });
-    const validMagic = await validateFileMagicBytes(req.file);
-    if (!validMagic) return res.status(400).json({ error: "Imagen inválida." });
-
-    const logoUrl = await uploadBusinessLogoFile(id, req.file);
-    return res.json({ ok: true, logoUrl });
-  } catch (error) { next(error); }
-});
 
 // ============================================================
-// PLATFORM PLANS + SUSCRIPCION
-// ============================================================
-app.get("/api/suscripcion", async (_req, res, next) => {
-  try {
-    const t = await loadPlatformTransfer();
-    res.json({
-      precio: SUBSCRIPTION_PRECIO,
-      alias: t.alias,
-      cbu: t.cbu,
-      titular: t.titular,
-    });
-  } catch (error) { next(error); }
-});
-
-app.get("/api/planes", async (_req, res, next) => {
-  try {
-    const plans = await listPlatformPlansComputed();
-    const t = await loadPlatformTransfer();
-    res.json(
-      plans.map((p) => ({
-        ...p,
-        alias: t.alias,
-        cbu: t.cbu,
-        titular: t.titular,
-      }))
-    );
-  } catch (error) { next(error); }
-});
-
-app.get("/api/superadmin/platform-plans", requireSuperAdmin, async (_req, res, next) => {
-  try {
-    res.json(await listPlatformPlansComputed());
-  } catch (error) { next(error); }
-});
-
-function parseOptionalDate(value) {
-  if (value == null || value === "") return null;
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.toISOString();
-}
-
-function promoMissingColumnsError(err) {
-  const msg = String(err?.message || err || "");
-  if (/column|does not exist|42703|promo_|features|featured|sort_order|platform_plan_price_history/i.test(msg)) {
-    return (
-      "Faltan columnas de planes/promos en Supabase. Ejecutá en el SQL Editor el bloque actualizado de platform_plans + platform_plan_price_history de supabase-setup.sql."
-    );
-  }
-  return null;
-}
-
-app.put("/api/superadmin/plans/:id", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const planId = String(req.params.id || "").trim();
-    const existing = await getPlatformPlanRow(planId);
-    if (!existing) return res.status(404).json({ error: "Plan no encontrado." });
-
-    const nombre = req.body?.nombre != null ? String(req.body.nombre).trim() : existing.nombre;
-    if (!nombre || nombre.length > 80) {
-      return res.status(400).json({ error: "Nombre de plan inválido." });
-    }
-
-    let precio = Number(existing.precio);
-    if (req.body?.precio != null && req.body.precio !== "") {
-      precio = Number(req.body.precio);
-      if (!Number.isFinite(precio) || precio <= 0) {
-        return res.status(400).json({ error: "El precio debe ser numérico y mayor a 0." });
-      }
-    }
-
-    let limite = existing.limite_profesionales;
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, "limiteProfesionales") ||
-        Object.prototype.hasOwnProperty.call(req.body || {}, "limite_profesionales")) {
-      const raw = req.body.limiteProfesionales ?? req.body.limite_profesionales;
-      if (raw === null || raw === "" || raw === "null" || raw === "ilimitado") {
-        limite = null;
-      } else {
-        const n = Number(raw);
-        if (!Number.isInteger(n) || n < 1) {
-          return res.status(400).json({ error: "El límite de profesionales debe ser un entero ≥ 1, o vacío/ilimitado." });
-        }
-        limite = n;
-      }
-    }
-
-    let features = parsePlanFeatures(existing.features, planId);
-    if (Object.prototype.hasOwnProperty.call(req.body || {}, "features")) {
-      if (!Array.isArray(req.body.features)) {
-        return res.status(400).json({ error: "features debe ser un array de textos." });
-      }
-      features = req.body.features.map((x) => String(x || "").trim()).filter(Boolean).slice(0, 20);
-    }
-
-    const featured = Object.prototype.hasOwnProperty.call(req.body || {}, "featured")
-      ? !!req.body.featured
-      : (existing.featured === true || existing.featured === 1);
-    const sortOrder = Object.prototype.hasOwnProperty.call(req.body || {}, "sortOrder")
-      ? Number(req.body.sortOrder)
-      : (Number.isFinite(Number(existing.sort_order)) ? Number(existing.sort_order) : 0);
-    if (!Number.isFinite(sortOrder)) {
-      return res.status(400).json({ error: "sortOrder inválido." });
-    }
-
-    const prevPrecio = Number(existing.precio);
-    const patch = {
-      nombre,
-      precio,
-      limite_profesionales: limite,
-      max_professionals: limite,
-      features: USE_SQLITE ? serializePlanFeatures(features) : features,
-      featured: USE_SQLITE ? (featured ? 1 : 0) : featured,
-      sort_order: sortOrder,
-    };
-
-    if (USE_SQLITE) {
-      await dbRun(
-        `UPDATE platform_plans
-         SET nombre = ?, precio = ?, limite_profesionales = ?, max_professionals = ?,
-             features = ?, featured = ?, sort_order = ?
-         WHERE id = ?`,
-        [patch.nombre, patch.precio, patch.limite_profesionales, patch.max_professionals,
-         patch.features, patch.featured, patch.sort_order, planId]
-      );
-    } else if (USE_SUPABASE) {
-      const { error } = await supabase.from("platform_plans").update({
-        nombre: patch.nombre,
-        precio: patch.precio,
-        limite_profesionales: patch.limite_profesionales,
-        max_professionals: patch.max_professionals,
-        features: features,
-        featured: featured,
-        sort_order: sortOrder,
-      }).eq("id", planId);
-      if (error) {
-        const hint = promoMissingColumnsError(error);
-        if (hint) return res.status(503).json({ error: hint });
-        throw error;
-      }
-    } else {
-      return res.status(503).json({ error: "Base de datos no disponible." });
-    }
-
-    if (Number.isFinite(prevPrecio) && prevPrecio !== precio) {
-      await appendPlanPriceHistory(planId, prevPrecio, precio, "superadmin");
-    }
-
-    invalidatePlatformPlansCache();
-    const updated = await getPlatformPlanRow(planId);
-    res.json(computePlanPricing(mapPlanRow(updated)));
-  } catch (error) {
-    const hint = promoMissingColumnsError(error);
-    if (hint) return res.status(503).json({ error: hint });
-    next(error);
-  }
-});
-
-app.put("/api/superadmin/plans/:id/promo", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const planId = String(req.params.id || "").trim();
-    const existing = await getPlatformPlanRow(planId);
-    if (!existing) return res.status(404).json({ error: "Plan no encontrado." });
-
-    const title = String(req.body?.title ?? req.body?.promo_title ?? "").trim();
-    if (!title || title.length > 80) {
-      return res.status(400).json({ error: "El título de la promo es requerido (máx. 80 caracteres)." });
-    }
-
-    const discountTypeRaw = String(req.body?.discount_type ?? req.body?.discountType ?? "percentage").trim();
-    const discountType = discountTypeRaw === "fixed_amount" ? "fixed_amount" : "percentage";
-    const discountValue = Number(
-      req.body?.discount_value ??
-      req.body?.discountValue ??
-      req.body?.discount_percentage ??
-      req.body?.discountPercentage
-    );
-    if (!Number.isFinite(discountValue) || discountValue <= 0) {
-      return res.status(400).json({ error: "El descuento debe ser numérico y mayor a 0." });
-    }
-    if (discountType === "percentage" && discountValue > 100) {
-      return res.status(400).json({ error: "El descuento porcentual no puede superar 100." });
-    }
-
-    const startDate = parseOptionalDate(req.body?.start_date ?? req.body?.startDate);
-    const endDate = parseOptionalDate(req.body?.end_date ?? req.body?.endDate);
-    if ((req.body?.start_date || req.body?.startDate) && !startDate) {
-      return res.status(400).json({ error: "start_date inválida." });
-    }
-    if ((req.body?.end_date || req.body?.endDate) && !endDate) {
-      return res.status(400).json({ error: "end_date inválida." });
-    }
-    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
-      return res.status(400).json({ error: "end_date debe ser posterior a start_date." });
-    }
-
-    const active = req.body?.active == null ? true : !!req.body.active;
-
-    if (USE_SQLITE) {
-      await dbRun(
-        `UPDATE platform_plans
-         SET promo_title = ?, promo_discount_type = ?, promo_discount_value = ?,
-             promo_start_date = ?, promo_end_date = ?, promo_active = ?
-         WHERE id = ?`,
-        [title, discountType, discountValue, startDate, endDate, active ? 1 : 0, planId]
-      );
-    } else if (USE_SUPABASE) {
-      const { error } = await supabase.from("platform_plans").update({
-        promo_title: title,
-        promo_discount_type: discountType,
-        promo_discount_value: discountValue,
-        promo_start_date: startDate,
-        promo_end_date: endDate,
-        promo_active: active,
-      }).eq("id", planId);
-      if (error) {
-        const hint = promoMissingColumnsError(error);
-        if (hint) return res.status(503).json({ error: hint });
-        throw error;
-      }
-    } else {
-      return res.status(503).json({ error: "Base de datos no disponible." });
-    }
-
-    invalidatePlatformPlansCache();
-    const updated = await getPlatformPlanRow(planId);
-    res.json(computePlanPricing(mapPlanRow(updated)));
-  } catch (error) {
-    const hint = promoMissingColumnsError(error);
-    if (hint) return res.status(503).json({ error: hint });
-    next(error);
-  }
-});
-
-app.delete("/api/superadmin/plans/:id/promo", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const planId = String(req.params.id || "").trim();
-    const existing = await getPlatformPlanRow(planId);
-    if (!existing) return res.status(404).json({ error: "Plan no encontrado." });
-
-    if (USE_SQLITE) {
-      await dbRun(
-        `UPDATE platform_plans
-         SET promo_title = NULL, promo_discount_type = NULL, promo_discount_value = NULL,
-             promo_start_date = NULL, promo_end_date = NULL, promo_active = 0
-         WHERE id = ?`,
-        [planId]
-      );
-    } else if (USE_SUPABASE) {
-      const { error } = await supabase.from("platform_plans").update({
-        promo_title: null,
-        promo_discount_type: null,
-        promo_discount_value: null,
-        promo_start_date: null,
-        promo_end_date: null,
-        promo_active: false,
-      }).eq("id", planId);
-      if (error) {
-        const hint = promoMissingColumnsError(error);
-        if (hint) return res.status(503).json({ error: hint });
-        throw error;
-      }
-    } else {
-      return res.status(503).json({ error: "Base de datos no disponible." });
-    }
-
-    invalidatePlatformPlansCache();
-    const updated = await getPlatformPlanRow(planId);
-    res.json(computePlanPricing(mapPlanRow(updated)));
-  } catch (error) {
-    const hint = promoMissingColumnsError(error);
-    if (hint) return res.status(503).json({ error: hint });
-    next(error);
-  }
-});
-
-app.get("/api/superadmin/suscripcion", requireSuperAdmin, async (_req, res, next) => {
-  try {
-    const t = await loadPlatformTransfer();
-    res.json({
-      precio: SUBSCRIPTION_PRECIO,
-      alias: t.alias,
-      cbu: t.cbu,
-      titular: t.titular,
-    });
-  } catch (error) { next(error); }
-});
-
-app.patch("/api/superadmin/suscripcion", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const alias = String(req.body?.alias ?? "").trim();
-    const cbu = String(req.body?.cbu ?? "").trim();
-    const titular = String(req.body?.titular ?? "").trim();
-    if (alias.length > 120 || cbu.length > 40 || titular.length > 120) {
-      return res.status(400).json({ error: "Datos de transferencia demasiado largos." });
-    }
-    try {
-      const saved = await savePlatformTransfer({ alias, cbu, titular });
-      return res.json({ ok: true, ...saved, precio: SUBSCRIPTION_PRECIO });
-    } catch (err) {
-      const msg = String(err.message || err);
-      if (/row-level security|42501/i.test(msg)) {
-        return res.status(503).json({
-          error:
-            "Supabase bloquea platform_settings (RLS). En SQL Editor ejecutá: alter table platform_settings disable row level security;",
-        });
-      }
-      if (/platform_settings|does not exist|relation/i.test(msg)) {
-        return res.status(503).json({
-          error:
-            "Falta crear la tabla platform_settings en Supabase. Ejecutá en el SQL Editor: create table if not exists platform_settings (key text primary key, value text not null default ''); alter table platform_settings disable row level security;",
-        });
-      }
-      throw err;
-    }
-  } catch (error) { next(error); }
-});
-
-// ============================================================
-// SOLICITUDES
-// ============================================================
-app.post("/api/solicitudes", upload.single("comprobante"), async (req, res, next) => {
-  try {
-    const nombre = (req.body?.nombre || "").trim();
-    const categoria = CATEGORIAS.has(req.body?.categoria)
-      ? req.body.categoria
-      : (CATEGORIAS.has(req.body?.deporte) ? "otro" : "otro");
-    const localidadCheck = await assertLocalidadActiva(req.body?.ciudad);
-    if (!localidadCheck.ok) return res.status(400).json({ error: localidadCheck.error });
-    const ciudad = localidadCheck.nombre;
-    const barrio = (req.body?.barrio || "").trim() || null;
-    const direccion = (req.body?.direccion || "").trim() || null;
-    if (!direccion) return res.status(400).json({ error: "La dirección es obligatoria." });
-    if (direccion.length > 200) return res.status(400).json({ error: "La dirección es demasiado larga." });
-    const whatsapp = (req.body?.whatsapp || "").trim().replace(/\D/g, "");
-    const email = (req.body?.email || "").trim().toLowerCase();
-    const plans = await loadPlatformPlans();
-    const plan = plans[req.body?.plan] ? req.body.plan : "inicial";
-
-    if (!nombre || nombre.length < 3) return res.status(400).json({ error: "Nombre inválido." });
-    if (nombre.length > 100) return res.status(400).json({ error: "El nombre es demasiado largo." });
-    if (!whatsapp || !email) {
-      return res.status(400).json({ error: "Nombre, WhatsApp y email son requeridos." });
-    }
-    if (email.length > 150) return res.status(400).json({ error: "El email es inválido." });
-    if (!req.file) return res.status(400).json({ error: "El comprobante de pago es requerido." });
-
-    const aceptoRaw = String(req.body?.aceptoTerminos || "").trim().toLowerCase();
-    const aceptoOk = aceptoRaw === "1" || aceptoRaw === "true" || aceptoRaw === "on" || aceptoRaw === "sí" || aceptoRaw === "si";
-    if (!aceptoOk) {
-      return res.status(400).json({
-        error: "Debés aceptar los Términos y Condiciones y la Política de Privacidad.",
-      });
-    }
-    const terminosVersion = (req.body?.terminosVersion || "2026-08-02").trim().slice(0, 40);
-    const terminosAceptadosEn = new Date().toISOString();
-    const terminosAceptadosIp = getClientIp(req) || null;
-
-    const validMagic = await validateFileMagicBytes(req.file);
-    if (!validMagic) {
-      if (req.file.path) fs.unlink(req.file.path).catch(() => {});
-      return res.status(400).json({ error: "El archivo no es válido." });
-    }
-
-    const slug = nombre
-      .toLowerCase()
-      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 50);
-
-    const now = new Date().toISOString();
-    let comprobanteUrl = null;
-    const planInfo = plans[plan];
-    const planLabel = planInfo
-      ? `${planInfo.nombre} · $${Number(planInfo.precio || 0).toLocaleString("es-AR")}/mes`
-      : plan;
-
-    function respondCreated(id, rawComprobanteUrl) {
-      const absoluteComprobante = absolutePublicUrl(req, rawComprobanteUrl);
-      const cmrWhatsAppUrl = buildSolicitudNotifyWhatsApp({
-        nombre,
-        planLabel,
-        categoria,
-        ciudad,
-        direccion,
-        whatsapp,
-        email,
-        slug,
-        comprobanteUrl: absoluteComprobante,
-      });
-      return res.status(201).json({
-        ok: true,
-        id,
-        comprobanteUrl: absoluteComprobante,
-        cmrWhatsAppUrl,
-      });
-    }
-
-    if (USE_SQLITE) {
-      const ext = path.extname(req.file.originalname) || ".jpg";
-      const filename = `sol_${Date.now()}${ext}`;
-      const buf = req.file.buffer || await fs.readFile(req.file.path);
-      await fs.writeFile(path.join(SOLICITUDES_DIR, filename), buf);
-      comprobanteUrl = `/uploads/solicitudes/${filename}`;
-      const result = await dbRun(
-        `INSERT INTO solicitudes (
-           nombre, slug, categoria, ciudad, barrio, direccion, whatsapp, email, comprobante_url, plan, estado, creado_en,
-           terminos_aceptados, terminos_aceptados_en, terminos_aceptados_ip, terminos_version
-         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, 1, ?, ?, ?)`,
-        [
-          nombre, slug, categoria, ciudad, barrio, direccion, whatsapp, email, comprobanteUrl, plan, now,
-          terminosAceptadosEn, terminosAceptadosIp, terminosVersion,
-        ]
-      );
-      return respondCreated(result.lastID, comprobanteUrl);
-    }
-    if (USE_SUPABASE) {
-      const ext = path.extname(req.file.originalname) || ".jpg";
-      const filename = `solicitudes/sol_${Date.now()}${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from(SUPABASE_BUCKET)
-        .upload(filename, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
-      if (upErr) throw new Error(upErr.message);
-      const { data: urlData } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(filename);
-      comprobanteUrl = urlData?.publicUrl || null;
-      const payload = {
-        nombre, slug, categoria, ciudad, barrio, direccion, whatsapp, email,
-        comprobante_url: comprobanteUrl, plan, estado: "pendiente", creado_en: now,
-        terminos_aceptados: true,
-        terminos_aceptados_en: terminosAceptadosEn,
-        terminos_aceptados_ip: terminosAceptadosIp,
-        terminos_version: terminosVersion,
-      };
-      let { data, error } = await supabase.from("solicitudes").insert(payload).select().single();
-      // Compatibilidad si aún no existen las columnas de consentimiento en Supabase
-      if (error && /terminos_/i.test(error.message || "")) {
-        delete payload.terminos_aceptados;
-        delete payload.terminos_aceptados_en;
-        delete payload.terminos_aceptados_ip;
-        delete payload.terminos_version;
-        ({ data, error } = await supabase.from("solicitudes").insert(payload).select().single());
-      }
-      if (error) throw new Error(error.message);
-      return respondCreated(data.id, comprobanteUrl);
-    }
-    return res.status(503).json({ error: "No hay backend disponible." });
-  } catch (error) { next(error); }
-});
-
-app.get("/api/superadmin/solicitudes", requireSuperAdmin, async (req, res, next) => {
-  try {
-    // Por defecto solo pendientes; ?estado=todas para historial completo
-    const estadoQ = (req.query.estado || "pendiente").trim().toLowerCase();
-    const all = estadoQ === "todas" || estadoQ === "all";
-
-    if (USE_SQLITE) {
-      const rows = all
-        ? await dbAll("SELECT * FROM solicitudes ORDER BY creado_en DESC")
-        : await dbAll("SELECT * FROM solicitudes WHERE estado = ? ORDER BY creado_en DESC", [estadoQ]);
-      return res.json(rows);
-    }
-    if (USE_SUPABASE) {
-      let query = supabase.from("solicitudes").select("*").order("creado_en", { ascending: false });
-      if (!all) query = query.eq("estado", estadoQ);
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
-      return res.json(data || []);
-    }
-    return res.json([]);
-  } catch (error) { next(error); }
-});
-
-app.patch("/api/superadmin/solicitudes/:id/aprobar", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const password = (req.body?.password || "").trim();
-    const slugOverride = (req.body?.slug || "").trim();
-    if (!password) return res.status(400).json({ error: "La clave admin del negocio es requerida." });
-
-    const now = new Date().toISOString();
-    const plans = await loadPlatformPlans();
-    const planFromBody = (req.body?.plan || "").trim();
-
-    async function approveSqlite() {
-      const sol = await dbGet("SELECT * FROM solicitudes WHERE id = ? LIMIT 1", [id]);
-      if (!sol) return res.status(404).json({ error: "Solicitud no encontrada." });
-      if (sol.estado !== "pendiente") return res.status(400).json({ error: "La solicitud ya fue procesada." });
-
-      const slug = slugOverride || sol.slug;
-      const existing = await dbGet("SELECT id FROM businesses WHERE slug = ? LIMIT 1", [slug]);
-      if (existing) return res.status(409).json({ error: `Ya existe un negocio con el slug "${slug}".` });
-
-      const solPlan = plans[planFromBody] ? planFromBody : (plans[sol.plan] ? sol.plan : "inicial");
-      const planInfo = plans[solPlan] || PLANES_FALLBACK.inicial;
-      const result = await dbRun(
-        `INSERT INTO businesses (
-           slug, nombre, categoria, ciudad, barrio, direccion, color_marca, whatsapp,
-           transfer_alias, transfer_cbu, transfer_titular,
-           hora_inicio, hora_fin, precio, plan, estado, creado_en
-         ) VALUES (?, ?, ?, ?, ?, ?, '#0f766e', ?, '', '', '', 9, 20, '0', ?, 'activo', ?)`,
-        [
-          slug, sol.nombre, sol.categoria || "otro", sol.ciudad || null, sol.barrio || null,
-          sol.direccion || null, sol.whatsapp, solPlan, now,
-        ]
-      );
-      await setBusinessAdminPassword(result.lastID, password);
-      await dbRun(
-        `INSERT INTO platform_payments (business_id, plan_id, monto, comprobante_url, creado_en)
-         VALUES (?, ?, ?, ?, ?)`,
-        [result.lastID, solPlan, planInfo.precio, sol.comprobante_url || null, now]
-      );
-      await dbRun("UPDATE solicitudes SET estado = 'aprobada' WHERE id = ?", [id]);
-      return res.json({ ok: true, slug, nombre: sol.nombre, businessId: result.lastID });
-    }
-
-    async function approveSupabase() {
-      const { data: sol, error: solErr } = await supabase.from("solicitudes").select("*").eq("id", id).maybeSingle();
-      if (solErr || !sol) return res.status(404).json({ error: "Solicitud no encontrada." });
-      if (sol.estado !== "pendiente") return res.status(400).json({ error: "La solicitud ya fue procesada." });
-
-      const slug = slugOverride || sol.slug;
-      const { data: existing } = await supabase.from("businesses").select("id").eq("slug", slug).maybeSingle();
-      if (existing) return res.status(409).json({ error: `Ya existe un negocio con el slug "${slug}".` });
-
-      const solPlan = plans[planFromBody] ? planFromBody : (plans[sol.plan] ? sol.plan : "inicial");
-      const planInfo = plans[solPlan] || PLANES_FALLBACK.inicial;
-      const { data: biz, error: bizErr } = await supabase.from("businesses").insert({
-        slug, nombre: sol.nombre, categoria: sol.categoria || "otro",
-        ciudad: sol.ciudad || null, barrio: sol.barrio || null, direccion: sol.direccion || null,
-        color_marca: "#0f766e",
-        whatsapp: sol.whatsapp, transfer_alias: "", transfer_cbu: "", transfer_titular: "",
-        hora_inicio: 9, hora_fin: 20, precio: "0", plan: solPlan, estado: "activo", creado_en: now,
-      }).select().single();
-      if (bizErr) throw new Error(bizErr.message);
-
-      await setBusinessAdminPassword(biz.id, password);
-
-      await supabase.from("platform_payments").insert({
-        business_id: biz.id, plan_id: solPlan, monto: planInfo.precio,
-        comprobante_url: sol.comprobante_url || null, creado_en: now,
-      });
-      await supabase.from("solicitudes").update({ estado: "aprobada" }).eq("id", id);
-      return res.json({ ok: true, slug, nombre: sol.nombre, businessId: biz.id });
-    }
-
-    if (USE_SQLITE) return approveSqlite();
-    if (USE_SUPABASE) return approveSupabase();
-    return res.status(503).json({ error: "No hay backend disponible." });
-  } catch (error) { next(error); }
-});
-
-app.patch("/api/superadmin/solicitudes/:id/rechazar", requireSuperAdmin, async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    if (USE_SQLITE) {
-      const sol = await dbGet("SELECT id, estado FROM solicitudes WHERE id = ? LIMIT 1", [id]);
-      if (!sol) return res.status(404).json({ error: "Solicitud no encontrada." });
-      if (sol.estado !== "pendiente") return res.status(400).json({ error: "La solicitud ya fue procesada." });
-      await dbRun("UPDATE solicitudes SET estado = 'rechazada' WHERE id = ?", [id]);
-      return res.json({ ok: true });
-    }
-    if (USE_SUPABASE) {
-      const { data: sol } = await supabase.from("solicitudes").select("id, estado").eq("id", id).maybeSingle();
-      if (!sol) return res.status(404).json({ error: "Solicitud no encontrada." });
-      if (sol.estado !== "pendiente") return res.status(400).json({ error: "La solicitud ya fue procesada." });
-      await supabase.from("solicitudes").update({ estado: "rechazada" }).eq("id", id);
-      return res.json({ ok: true });
-    }
-    return res.status(503).json({ error: "No hay backend disponible." });
-  } catch (error) { next(error); }
-});
-
-// ============================================================
-// PAGES
+// PAGES — Canito Skin (negocio único)
 // ============================================================
 app.get("/", (_req, res) => {
-  res.sendFile(path.join(ROOT_DIR, "public", "home.html"));
+  res.sendFile(path.join(ROOT_DIR, "public", "index.html"));
 });
 
-app.get("/sumate", (_req, res) => {
-  res.sendFile(path.join(ROOT_DIR, "public", "register.html"));
+app.get("/admin", (_req, res) => {
+  res.sendFile(path.join(ROOT_DIR, "public", "admin.html"));
+});
+
+app.get("/cart", (_req, res) => {
+  const cartPage = path.join(ROOT_DIR, "public", "cart.html");
+  if (fsSync.existsSync(cartPage)) {
+    return res.sendFile(cartPage);
+  }
+  return res.redirect("/");
 });
 
 app.get("/privacidad", (_req, res) => {
@@ -5551,14 +3679,7 @@ app.get("/terminos", (_req, res) => {
   res.sendFile(path.join(ROOT_DIR, "public", "terminos.html"));
 });
 
-app.get("/registro", (_req, res) => {
-  res.sendFile(path.join(ROOT_DIR, "public", "register.html"));
-});
-
-app.get("/superadmin", (_req, res) => {
-  res.sendFile(path.join(ROOT_DIR, "public", "superadmin.html"));
-});
-
+// Compat: alguien puede llegar con /canito o /canito/admin en el link.
 app.get("/:slug", async (req, res, next) => {
   if (req.params.slug.includes(".")) return next();
   try {
@@ -5592,7 +3713,7 @@ app.use((err, _req, res, _next) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, () => console.log(`CMR Nexo en http://localhost:${PORT}`));
+  app.listen(PORT, () => console.log(`Canito Skin en http://localhost:${PORT}`));
 }
 
 module.exports = app;

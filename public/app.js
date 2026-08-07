@@ -1,16 +1,14 @@
 function getSlug() {
+  const reserved = new Set(["admin", "cart", "privacidad", "terminos"]);
   const parts = window.location.pathname.split("/").filter(Boolean);
-  return parts[0] || "";
+  const first = parts[0] || "";
+  if (!first || reserved.has(first)) return "canito";
+  return first;
 }
 const SLUG = getSlug();
 
 const CATEGORIA_LABEL = {
-  peluqueria: "Peluquería",
   estetica: "Estética",
-  masajes: "Masajes",
-  psicologia: "Psicología",
-  legal: "Legal",
-  otro: "Otro",
 };
 
 const MONTH_NAMES = [

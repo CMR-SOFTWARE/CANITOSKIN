@@ -1,10 +1,13 @@
-/* CMR Nexo — Panel admin (Studio Alma style) */
+/* Canito Skin — Panel admin */
 (function () {
   "use strict";
 
   function getBusinessSlug() {
+    const reserved = new Set(["admin", "cart", "privacidad", "terminos"]);
     const parts = window.location.pathname.split("/").filter(Boolean);
-    return parts[0] || "";
+    const first = parts[0] || "";
+    if (!first || reserved.has(first)) return "canito";
+    return first;
   }
 
   const SLUG = getBusinessSlug();
@@ -2715,8 +2718,8 @@
       if ($("cfgHoraFin2")) $("cfgHoraFin2").value = scheduleToClock(config.horaFin2);
     }
     setSelectedDiasAtencion(config.diasAtencion);
-    if ($("cfgCategoria")) $("cfgCategoria").value = config.categoria || "otro";
-    fillLocalidadesSelect(config.ciudad || "");
+    if ($("cfgCategoria")) $("cfgCategoria").value = config.categoria || "estetica";
+    if ($("cfgCiudad")) $("cfgCiudad").value = config.ciudad || "";
     if ($("cfgDireccion")) $("cfgDireccion").value = config.direccion || "";
     if ($("cfgColor")) $("cfgColor").value = config.colorMarca || "#6366F1";
     if ($("cfgAlias")) $("cfgAlias").value = config.transferencia?.alias || "";
@@ -2730,27 +2733,6 @@
       }`;
     }
     updateLogoPreview();
-  }
-
-  let localidadesCache = null;
-  async function fillLocalidadesSelect(selected) {
-    const sel = $("cfgCiudad");
-    if (!sel) return;
-    try {
-      if (!localidadesCache) {
-        const res = await fetch("/api/localidades");
-        localidadesCache = await res.json();
-      }
-      const list = Array.isArray(localidadesCache) ? localidadesCache : [];
-      const opts = [`<option value="">Seleccioná una localidad</option>`];
-      for (const l of list) {
-        opts.push(`<option value="${escapeHtml(l.nombre)}">${escapeHtml(l.nombre)}</option>`);
-      }
-      sel.innerHTML = opts.join("");
-      if (selected && list.some((l) => l.nombre === selected)) sel.value = selected;
-    } catch (_) {
-      sel.innerHTML = `<option value="">No se pudieron cargar</option>`;
-    }
   }
 
   async function subirLogo(file) {

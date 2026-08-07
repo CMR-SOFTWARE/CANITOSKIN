@@ -1,7 +1,7 @@
 {
-  "name": "cmr-turnos",
+  "name": "canitoskin",
   "version": "1.0.0",
-  "description": "CMR Nexo — sistema multi-tenant de reservas de turnos para negocios",
+  "description": "Canito Skin — plataforma de turnos, market y admin (San Nicolás)",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js"
