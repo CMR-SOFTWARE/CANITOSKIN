@@ -1,20 +1,33 @@
 import type { Config } from "tailwindcss";
 
 /**
- * CMR Turnos — Tailwind theme
- * Los valores apuntan a CSS custom properties definidas en public/globals.css
- * para que home, ficha de negocio, admin y super-admin compartan la misma fuente de verdad.
+ * Canito Skin — Tailwind theme
+ * Valores → CSS custom properties en public/globals.css (fuente de verdad).
  *
- * Alcance de acentos:
- * - accent → plataforma (home, buscador, super-admin)
- * - business-accent → solo ficha pública / panel del negocio (se setea en runtime)
+ * Marca fija (un solo negocio): accent = business-accent = oliva.
+ * No hay accent por tenant.
  */
 const config: Config = {
   content: ["./public/**/*.{html,js}", "./server/**/*.{js,html}"],
   theme: {
     extend: {
       fontFamily: {
+        display: [
+          "Poppins",
+          "ui-sans-serif",
+          "system-ui",
+          "sans-serif",
+        ],
+        /* TODO: reemplazar por fuente serif oficial de marca */
+        serif: [
+          "Playfair Display",
+          "Fraunces",
+          "Georgia",
+          "Times New Roman",
+          "serif",
+        ],
         sans: [
+          "Poppins",
           "Inter",
           "ui-sans-serif",
           "system-ui",
@@ -24,15 +37,25 @@ const config: Config = {
         ],
       },
       fontSize: {
-        metric: ["1.875rem", { lineHeight: "1.15", fontWeight: "700" }], // 30px
-        h1: ["1.5rem", { lineHeight: "1.25", fontWeight: "700" }], // 24px
-        h2: ["1.125rem", { lineHeight: "1.35", fontWeight: "600" }], // 18px
-        h3: ["1rem", { lineHeight: "1.4", fontWeight: "600" }], // 16px
-        body: ["0.875rem", { lineHeight: "1.5", fontWeight: "500" }], // 14px
-        meta: ["0.8125rem", { lineHeight: "1.45", fontWeight: "400" }], // 13px
-        "meta-sm": ["0.75rem", { lineHeight: "1.4", fontWeight: "400" }], // 12px
+        metric: ["1.875rem", { lineHeight: "1.15", fontWeight: "900" }],
+        h1: ["1.5rem", { lineHeight: "1.2", fontWeight: "900" }],
+        h2: ["1.125rem", { lineHeight: "1.25", fontWeight: "900" }],
+        h3: ["1rem", { lineHeight: "1.4", fontWeight: "600" }],
+        body: ["0.875rem", { lineHeight: "1.5", fontWeight: "500" }],
+        meta: ["0.8125rem", { lineHeight: "1.45", fontWeight: "400" }],
+        "meta-sm": ["0.75rem", { lineHeight: "1.4", fontWeight: "400" }],
+        display: [
+          "clamp(2.25rem, 5vw, 3.75rem)",
+          { lineHeight: "0.95", fontWeight: "900", letterSpacing: "-0.03em" },
+        ],
       },
       colors: {
+        canito: {
+          oliva: "var(--canito-oliva)",
+          taupe: "var(--canito-taupe)",
+          crema: "var(--canito-crema)",
+          carbon: "var(--canito-carbon)",
+        },
         accent: {
           DEFAULT: "var(--accent)",
           hover: "var(--accent-hover)",

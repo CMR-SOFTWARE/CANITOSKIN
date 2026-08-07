@@ -1,4 +1,4 @@
-/* CMR Turnos — Google Places + mapa para ciudad/barrio */
+/* CMR Nexo — Google Places + mapa para ciudad/barrio */
 (function (global) {
   "use strict";
 

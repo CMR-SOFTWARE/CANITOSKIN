@@ -26,6 +26,30 @@ const subCbu = document.getElementById("subCbu");
 const subTitular = document.getElementById("subTitular");
 const btnGuardarSuscripcion = document.getElementById("btnGuardarSuscripcion");
 const subMsg = document.getElementById("subMsg");
+const plansList = document.getElementById("plansList");
+const plansMsg = document.getElementById("plansMsg");
+const btnRefreshPlans = document.getElementById("btnRefreshPlans");
+const modalPlanEdit = document.getElementById("modalPlanEdit");
+const planEditId = document.getElementById("planEditId");
+const planEditIdLabel = document.getElementById("planEditIdLabel");
+const planEditNombre = document.getElementById("planEditNombre");
+const planEditPrecio = document.getElementById("planEditPrecio");
+const planEditLimite = document.getElementById("planEditLimite");
+const planEditFeatures = document.getElementById("planEditFeatures");
+const planEditFeatured = document.getElementById("planEditFeatured");
+const promoTitle = document.getElementById("promoTitle");
+const promoDiscountType = document.getElementById("promoDiscountType");
+const promoDiscountValue = document.getElementById("promoDiscountValue");
+const promoStart = document.getElementById("promoStart");
+const promoEnd = document.getElementById("promoEnd");
+const promoActive = document.getElementById("promoActive");
+const planPreview = document.getElementById("planPreview");
+const planEditMsg = document.getElementById("planEditMsg");
+const btnGuardarPlan = document.getElementById("btnGuardarPlan");
+const btnGuardarPromo = document.getElementById("btnGuardarPromo");
+const btnEliminarPromo = document.getElementById("btnEliminarPromo");
+const btnCerrarPlanEdit = document.getElementById("btnCerrarPlanEdit");
+const btnCancelarPlanEdit = document.getElementById("btnCancelarPlanEdit");
 
 let saToken = sessionStorage.getItem("saToken") || "";
 let platformPlans = [];
@@ -144,10 +168,248 @@ async function loadPlatformPlans() {
         .join("");
       if ([...modalPlan.options].some((o) => o.value === current)) modalPlan.value = current;
     }
+    renderPlansAdminList();
   } catch (_) {
     platformPlans = [];
+    renderPlansAdminList();
   }
 }
+
+function formatMoneyAr(n) {
+  return Number(n || 0).toLocaleString("es-AR");
+}
+
+function toDatetimeLocalValue(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const pad = (x) => String(x).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function computePreviewPricing() {
+  const original = Number(planEditPrecio?.value);
+  const type = promoDiscountType?.value === "fixed_amount" ? "fixed_amount" : "percentage";
+  const value = Number(promoDiscountValue?.value);
+  const title = (promoTitle?.value || "").trim();
+  const active = !!promoActive?.checked;
+  const start = promoStart?.value ? new Date(promoStart.value) : null;
+  const end = promoEnd?.value ? new Date(promoEnd.value) : null;
+  const now = Date.now();
+  const startOk = !start || (!Number.isNaN(start.getTime()) && start.getTime() <= now);
+  const endOk = !end || (!Number.isNaN(end.getTime()) && end.getTime() >= now);
+  const hasDiscount = Number.isFinite(value) && value > 0;
+  const isActive = active && title && hasDiscount && Number.isFinite(original) && original > 0 && startOk && endOk;
+  let finalPrice = original;
+  if (isActive) {
+    finalPrice = type === "fixed_amount"
+      ? Math.max(0, original - value)
+      : Math.max(0, Math.round(original * (1 - value / 100)));
+  }
+  return { original, finalPrice, isActive, title };
+}
+
+function renderPlanPreview() {
+  if (!planPreview) return;
+  const { original, finalPrice, isActive, title } = computePreviewPricing();
+  const nombre = (planEditNombre?.value || "Plan").trim() || "Plan";
+  if (!Number.isFinite(original) || original <= 0) {
+    planPreview.innerHTML = `<p class="text-sm text-slate-400">Ingresá un precio válido para ver el preview.</p>`;
+    return;
+  }
+  planPreview.innerHTML = `
+    <div class="flex items-center gap-2 flex-wrap">
+      <span class="font-semibold text-slate-800">${escapeHtml(nombre)}</span>
+      ${isActive ? `<span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded-full bg-violet-100 text-violet-700">${escapeHtml(title)}</span>` : ""}
+    </div>
+    <div class="flex items-baseline gap-2 flex-wrap">
+      ${isActive ? `<span class="text-sm text-slate-400 line-through">$${formatMoneyAr(original)}</span>` : ""}
+      <span class="text-xl font-bold ${isActive ? "text-violet-700" : "text-slate-800"}">$${formatMoneyAr(isActive ? finalPrice : original)}</span>
+      <span class="text-xs text-slate-400">/ mes</span>
+    </div>
+    <p class="text-xs text-slate-500">${isActive ? "Promo vigente según fechas y toggle." : "Sin promo activa (se muestra precio original)."}</p>
+  `;
+}
+
+function renderPlansAdminList() {
+  if (!plansList) return;
+  if (!platformPlans.length) {
+    plansList.innerHTML = "<p class='text-slate-400 text-sm'>No se pudieron cargar los planes.</p>";
+    return;
+  }
+  plansList.innerHTML = platformPlans.map((p) => {
+    const promoOn = !!p.is_promo_active;
+    const promoConfigured = !!(p.promo && (p.promo.title || p.promo.active));
+    return `
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-2">
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-semibold text-slate-800">${escapeHtml(p.nombre)} <span class="text-xs font-mono text-slate-400">${escapeHtml(p.id)}</span></div>
+            <div class="text-sm text-slate-600 mt-0.5">
+              ${promoOn
+                ? `<span class="line-through text-slate-400 mr-1">$${formatMoneyAr(p.original_price)}</span><span class="font-semibold text-violet-700">$${formatMoneyAr(p.final_price)}</span>`
+                : `<span class="font-semibold">$${formatMoneyAr(p.precio)}</span>`}
+              <span class="text-slate-400">/ mes</span>
+              · ${escapeHtml(limiteLabel(p.limiteProfesionales))}
+            </div>
+          </div>
+          <button type="button" class="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white hover:bg-accent-hover shrink-0"
+                  data-action="edit-plan" data-plan-id="${escapeHtml(p.id)}">
+            Editar
+          </button>
+        </div>
+        <div class="flex items-center gap-2 flex-wrap text-xs">
+          <span class="font-semibold px-2 py-0.5 rounded-full ${promoOn ? "bg-violet-100 text-violet-700" : "bg-slate-200 text-slate-500"}">
+            Promo activa: ${promoOn ? `Sí — ${escapeHtml(p.promo_title || "")}` : "No"}
+          </span>
+          ${promoConfigured && !promoOn ? `<span class="text-amber-700">Configurada pero no vigente</span>` : ""}
+          ${p.featured ? `<span class="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-semibold">Destacado</span>` : ""}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function openPlanEditModal(planId) {
+  const plan = platformPlans.find((p) => p.id === planId);
+  if (!plan || !modalPlanEdit) return;
+  planEditId.value = plan.id;
+  planEditIdLabel.textContent = `id: ${plan.id}`;
+  planEditNombre.value = plan.nombre || "";
+  planEditPrecio.value = plan.precio ?? plan.original_price ?? "";
+  planEditLimite.value = plan.limiteProfesionales == null ? "" : String(plan.limiteProfesionales);
+  planEditFeatures.value = (plan.features || []).join("\n");
+  planEditFeatured.checked = !!plan.featured;
+  const promo = plan.promo || {};
+  promoTitle.value = promo.title || "";
+  promoDiscountType.value = promo.discount_type === "fixed_amount" ? "fixed_amount" : "percentage";
+  promoDiscountValue.value = promo.discount_value ?? promo.discount_percentage ?? "";
+  promoStart.value = toDatetimeLocalValue(promo.start_date);
+  promoEnd.value = toDatetimeLocalValue(promo.end_date);
+  promoActive.checked = !!promo.active;
+  planEditMsg?.classList.add("hidden");
+  renderPlanPreview();
+  modalPlanEdit.classList.remove("hidden");
+}
+
+function closePlanEditModal() {
+  modalPlanEdit?.classList.add("hidden");
+}
+
+plansList?.addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-action='edit-plan']");
+  if (!btn) return;
+  openPlanEditModal(btn.dataset.planId);
+});
+
+btnRefreshPlans?.addEventListener("click", () => loadPlatformPlans());
+btnCerrarPlanEdit?.addEventListener("click", closePlanEditModal);
+btnCancelarPlanEdit?.addEventListener("click", closePlanEditModal);
+modalPlanEdit?.addEventListener("click", (e) => {
+  if (e.target === modalPlanEdit) closePlanEditModal();
+});
+
+[planEditNombre, planEditPrecio, promoTitle, promoDiscountType, promoDiscountValue, promoStart, promoEnd, promoActive]
+  .forEach((el) => el?.addEventListener("input", renderPlanPreview));
+promoActive?.addEventListener("change", renderPlanPreview);
+promoDiscountType?.addEventListener("change", renderPlanPreview);
+
+btnGuardarPlan?.addEventListener("click", async () => {
+  const id = planEditId?.value;
+  if (!id) return;
+  const precio = Number(planEditPrecio.value);
+  if (!Number.isFinite(precio) || precio <= 0) {
+    setMsg(planEditMsg, "El precio debe ser numérico y mayor a 0.");
+    return;
+  }
+  const limiteRaw = (planEditLimite.value || "").trim();
+  let limiteProfesionales = null;
+  if (limiteRaw) {
+    const n = Number(limiteRaw);
+    if (!Number.isInteger(n) || n < 1) {
+      setMsg(planEditMsg, "Límite inválido: usá un entero ≥ 1 o dejalo vacío (ilimitado).");
+      return;
+    }
+    limiteProfesionales = n;
+  }
+  const features = (planEditFeatures.value || "")
+    .split(/\r?\n/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+  try {
+    btnGuardarPlan.disabled = true;
+    await api(`/api/superadmin/plans/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      body: JSON.stringify({
+        nombre: planEditNombre.value.trim(),
+        precio,
+        limiteProfesionales,
+        features,
+        featured: !!planEditFeatured.checked,
+      }),
+    });
+    setMsg(planEditMsg, "Plan guardado.", false);
+    await loadPlatformPlans();
+    openPlanEditModal(id);
+  } catch (error) {
+    setMsg(planEditMsg, error.message || "No se pudo guardar el plan.");
+  } finally {
+    btnGuardarPlan.disabled = false;
+  }
+});
+
+btnGuardarPromo?.addEventListener("click", async () => {
+  const id = planEditId?.value;
+  if (!id) return;
+  const title = (promoTitle.value || "").trim();
+  const discount_value = Number(promoDiscountValue.value);
+  if (!title) {
+    setMsg(planEditMsg, "Ingresá el título de la promo.");
+    return;
+  }
+  if (!Number.isFinite(discount_value) || discount_value <= 0) {
+    setMsg(planEditMsg, "El descuento debe ser numérico y mayor a 0.");
+    return;
+  }
+  try {
+    btnGuardarPromo.disabled = true;
+    await api(`/api/superadmin/plans/${encodeURIComponent(id)}/promo`, {
+      method: "PUT",
+      body: JSON.stringify({
+        title,
+        discount_type: promoDiscountType.value,
+        discount_percentage: discount_value,
+        discount_value,
+        start_date: promoStart.value ? new Date(promoStart.value).toISOString() : null,
+        end_date: promoEnd.value ? new Date(promoEnd.value).toISOString() : null,
+        active: !!promoActive.checked,
+      }),
+    });
+    setMsg(planEditMsg, "Promo guardada.", false);
+    await loadPlatformPlans();
+    openPlanEditModal(id);
+  } catch (error) {
+    setMsg(planEditMsg, error.message || "No se pudo guardar la promo.");
+  } finally {
+    btnGuardarPromo.disabled = false;
+  }
+});
+
+btnEliminarPromo?.addEventListener("click", async () => {
+  const id = planEditId?.value;
+  if (!id) return;
+  if (!confirm("¿Eliminar la promoción de este plan?")) return;
+  try {
+    btnEliminarPromo.disabled = true;
+    await api(`/api/superadmin/plans/${encodeURIComponent(id)}/promo`, { method: "DELETE" });
+    setMsg(planEditMsg, "Promo eliminada.", false);
+    await loadPlatformPlans();
+    openPlanEditModal(id);
+  } catch (error) {
+    setMsg(planEditMsg, error.message || "No se pudo eliminar la promo.");
+  } finally {
+    btnEliminarPromo.disabled = false;
+  }
+});
 
 async function loadSuscripcion() {
   try {

@@ -1,4 +1,4 @@
-/* CMR Turnos — Panel admin (Studio Alma style) */
+/* CMR Nexo — Panel admin (Studio Alma style) */
 (function () {
   "use strict";
 
@@ -22,6 +22,58 @@
 
   function $(id) {
     return document.getElementById(id);
+  }
+
+  /** Comprime/redimensiona fotos del celular para no superar el límite de subida. */
+  function compressImageFile(file, { maxSide = 1600, quality = 0.82, maxBytes = 5 * 1024 * 1024 } = {}) {
+    return new Promise((resolve) => {
+      if (!file || !file.type.startsWith("image/")) {
+        resolve(file);
+        return;
+      }
+      if (file.size <= 1.2 * 1024 * 1024 && file.type !== "image/heic" && file.type !== "image/heif") {
+        resolve(file);
+        return;
+      }
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        const scale = Math.min(1, maxSide / Math.max(width, height));
+        width = Math.max(1, Math.round(width * scale));
+        height = Math.max(1, Math.round(height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const finish = (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const name = String(file.name || "foto").replace(/\.\w+$/, "") + ".jpg";
+          resolve(new File([blob], name, { type: "image/jpeg", lastModified: Date.now() }));
+        };
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size > maxBytes) {
+              canvas.toBlob(finish, "image/jpeg", 0.7);
+            } else {
+              finish(blob);
+            }
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        resolve(file);
+      };
+      img.src = url;
+    });
   }
 
   function todayISO() {
@@ -1927,8 +1979,12 @@
 
   async function uploadProFoto(proId, file) {
     if (!file || !proId) return null;
+    const prepared = await compressImageFile(file);
+    if (prepared.size > 5 * 1024 * 1024) {
+      throw new Error("La imagen supera 5 MB incluso comprimida. Probá otra foto.");
+    }
     const form = new FormData();
-    form.append("foto", file);
+    form.append("foto", prepared);
     const data = await api(`/api/${SLUG}/admin/professionals/${proId}/foto`, {
       method: "PATCH",
       body: form,
@@ -2703,13 +2759,15 @@
       setMessage($("cfgLogoMsg"), "Solo se permiten imágenes.", true);
       return;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setMessage($("cfgLogoMsg"), "La imagen supera 2 MB.", true);
-      return;
-    }
-    const form = new FormData();
-    form.append("logo", file);
     try {
+      setMessage($("cfgLogoMsg"), "Preparando imagen…", false);
+      const prepared = await compressImageFile(file);
+      if (prepared.size > 5 * 1024 * 1024) {
+        setMessage($("cfgLogoMsg"), "La imagen supera 5 MB. Probá otra foto más liviana.", true);
+        return;
+      }
+      const form = new FormData();
+      form.append("logo", prepared);
       setMessage($("cfgLogoMsg"), "Subiendo…", false);
       const data = await api(`/api/${SLUG}/admin/logo`, { method: "PATCH", body: form });
       if (config) config.logoUrl = data.logoUrl;

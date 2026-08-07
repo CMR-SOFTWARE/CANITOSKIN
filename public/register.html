@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sumá tu negocio — CMR Turnos</title>
+  <title>Sumá tu negocio — CMR Nexo</title>
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/globals.css" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -97,6 +97,30 @@
       line-height: 1;
     }
     .price-card--featured .price-card__amount { color: #fff; }
+    .price-card__old {
+      font-size: 0.95rem;
+      color: var(--text-secondary);
+      text-decoration: line-through;
+      margin-bottom: 0.2rem;
+    }
+    .price-card--featured .price-card__old { color: rgba(255,255,255,0.7); }
+    .price-card__promo {
+      position: absolute;
+      top: 0.85rem;
+      right: 0.85rem;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.5rem;
+      border-radius: 0.4rem;
+      background: #EEF2FF;
+      color: var(--accent-hover);
+    }
+    .price-card--featured .price-card__promo {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
     .price-card__period {
       font-size: 0.95rem;
       font-weight: 500;
@@ -179,8 +203,8 @@
 
   <nav class="bg-sidebar px-6 py-4">
     <div class="mx-auto max-w-5xl flex items-center gap-3">
-      <img src="/images/logo-cmr.png" alt="CMR Turnos" class="h-8 w-8 rounded-lg object-contain" />
-      <span class="text-on-dark font-bold text-base tracking-tight">CMR Turnos</span>
+      <img src="/images/logo-cmr.png" alt="CMR Nexo" class="h-8 w-8 rounded-lg object-contain" />
+      <span class="text-on-dark font-bold text-base tracking-tight">CMR Nexo</span>
       <a href="/" class="ml-auto text-xs text-on-dark/70 hover:text-on-dark">← Volver al inicio</a>
     </div>
   </nav>
@@ -301,7 +325,7 @@
       <div class="rounded-xl bg-accent-light border border-accent/30 p-4 space-y-1">
         <p class="text-sm font-semibold text-accent-hover">Monto a transferir</p>
         <p class="text-3xl font-extrabold text-accent">$<span id="precioSub">—</span></p>
-        <p class="text-xs text-secondary">Suscripción mensual — CMR Turnos</p>
+        <p class="text-xs text-secondary">Suscripción mensual — CMR Nexo</p>
       </div>
 
       <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-1.5 text-sm">
@@ -316,6 +340,17 @@
                class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded file:border-0 file:bg-accent-light file:px-3 file:py-1 file:text-xs file:font-semibold file:text-accent cursor-pointer" />
         <p class="text-xs text-slate-400 mt-1">JPG, PNG, WEBP o PDF · máx. 5 MB</p>
       </div>
+
+      <label class="flex items-start gap-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 cursor-pointer">
+        <input id="aceptoTerminos" type="checkbox" class="mt-1 accent-[var(--accent,#6366F1)] shrink-0" />
+        <span>
+          Declaro haber leído y acepto los
+          <a href="/terminos" target="_blank" rel="noopener" class="font-semibold text-accent underline">Términos y Condiciones</a>
+          y la
+          <a href="/privacidad" target="_blank" rel="noopener" class="font-semibold text-accent underline">Política de Privacidad</a>
+          de CMR Nexo. *
+        </span>
+      </label>
 
       <p id="msg2" class="text-sm text-danger hidden"></p>
 
@@ -342,13 +377,22 @@
         Recibimos tu comprobante. Revisaremos el pago y activaremos tu negocio en menos de 24 horas.
         Te avisamos por WhatsApp cuando esté listo.
       </p>
-      <a href="/" class="inline-block mt-4 rounded-xl bg-accent px-6 py-3 text-sm font-bold text-white hover:bg-accent-hover transition-colors">
+      <a
+        id="btnAvisarCmr"
+        href="#"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="inline-flex items-center justify-center gap-2 mt-4 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-colors"
+      >
+        Enviar datos a CMR por WhatsApp
+      </a>
+      <a href="/" class="inline-block mt-3 rounded-xl border border-slate-200 px-6 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50 transition-colors">
         Volver al inicio
       </a>
     </section>
   </main>
 
-  <script src="/register.js"></script>
+  <script src="/register.js?v=20260803-promo"></script>
 
   <footer class="bg-sidebar text-on-dark/80 mt-auto">
     <div class="mx-auto max-w-5xl px-6 py-10">
@@ -356,7 +400,7 @@
         <div class="flex items-center gap-3">
           <img src="/images/logo-cmr.png" alt="CMR Software" class="h-10 w-10 rounded-lg object-contain" />
           <div>
-            <p class="font-bold text-white text-base leading-tight">CMR Turnos</p>
+            <p class="font-bold text-white text-base leading-tight">CMR Nexo</p>
             <p class="text-xs text-secondary">by CMR Software Solutions</p>
           </div>
         </div>

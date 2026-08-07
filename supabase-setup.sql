@@ -1,5 +1,5 @@
 -- ============================================================
--- CMR TURNOS — ESQUEMA MULTI-TENANT
+-- CMR NEXO — ESQUEMA MULTI-TENANT
 -- Ejecutar en el SQL Editor de Supabase
 -- ============================================================
 
@@ -9,22 +9,52 @@ create table if not exists platform_plans (
   nombre text not null,
   limite_profesionales integer, -- null = ilimitado
   max_professionals integer,    -- alias legado (mismo valor)
-  precio numeric not null default 0
+  precio numeric not null default 0,
+  features jsonb default '[]'::jsonb,
+  featured boolean not null default false,
+  sort_order integer not null default 0,
+  promo_title text,
+  promo_discount_type text,           -- percentage | fixed_amount
+  promo_discount_value numeric,
+  promo_start_date timestamptz,
+  promo_end_date timestamptz,
+  promo_active boolean not null default false
 );
 
 alter table platform_plans add column if not exists limite_profesionales integer;
+alter table platform_plans add column if not exists features jsonb;
+alter table platform_plans add column if not exists featured boolean;
+alter table platform_plans add column if not exists sort_order integer;
+alter table platform_plans add column if not exists promo_title text;
+alter table platform_plans add column if not exists promo_discount_type text;
+alter table platform_plans add column if not exists promo_discount_value numeric;
+alter table platform_plans add column if not exists promo_start_date timestamptz;
+alter table platform_plans add column if not exists promo_end_date timestamptz;
+alter table platform_plans add column if not exists promo_active boolean;
 
-insert into platform_plans (id, nombre, limite_profesionales, max_professionals, precio) values
-  ('inicial',     'Inicial',     1,    1,    20000),
-  ('profesional', 'Profesional', 3,    3,    35000),
-  ('max',         'Max',         null, null, 60000)
-on conflict (id) do update set
-  nombre = excluded.nombre,
-  limite_profesionales = excluded.limite_profesionales,
-  max_professionals = excluded.max_professionals,
-  precio = excluded.precio;
+update platform_plans set featured = false where featured is null;
+update platform_plans set sort_order = 0 where sort_order is null;
+update platform_plans set promo_active = false where promo_active is null;
+
+insert into platform_plans (id, nombre, limite_profesionales, max_professionals, precio, featured, sort_order, features) values
+  ('inicial',     'Inicial',     1,    1,    20000, false, 1, '["Hasta 1 profesional","Turnos online","Panel admin","WhatsApp"]'::jsonb),
+  ('profesional', 'Profesional', 3,    3,    35000, true,  2, '["Hasta 3 profesionales","Turnos online","Panel admin","WhatsApp","Soporte prioritario"]'::jsonb),
+  ('max',         'Max',         null, null, 60000, false, 3, '["Profesionales ilimitados","Turnos online","Panel admin","WhatsApp","Soporte prioritario"]'::jsonb)
+on conflict (id) do nothing;
 
 delete from platform_plans where id = 'estandar';
+
+-- Historial de cambios de precio de planes
+create table if not exists platform_plan_price_history (
+  id bigserial primary key,
+  plan_id text not null references platform_plans(id) on delete cascade,
+  precio_anterior numeric not null,
+  precio_nuevo numeric not null,
+  admin_label text not null default 'superadmin',
+  created_at timestamptz not null default now()
+);
+
+alter table platform_plan_price_history disable row level security;
 
 -- Negocios (antes clubs)
 create table if not exists businesses (
@@ -268,8 +298,18 @@ create table if not exists solicitudes (
   comprobante_url text,
   plan text not null default 'inicial',
   estado text not null default 'pendiente',
-  creado_en text not null
+  creado_en text not null,
+  terminos_aceptados boolean not null default false,
+  terminos_aceptados_en text,
+  terminos_aceptados_ip text,
+  terminos_version text
 );
+
+-- Migración: consentimiento de Términos / Privacidad en solicitudes existentes
+alter table solicitudes add column if not exists terminos_aceptados boolean not null default false;
+alter table solicitudes add column if not exists terminos_aceptados_en text;
+alter table solicitudes add column if not exists terminos_aceptados_ip text;
+alter table solicitudes add column if not exists terminos_version text;
 
 -- Datos de transferencia de la plataforma (alias CMR para cobro de planes)
 create table if not exists platform_settings (

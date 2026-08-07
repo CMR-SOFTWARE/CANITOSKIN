@@ -1,4 +1,4 @@
-/* CMR Turnos — public booking (Studio Alma–style, accent via --business-accent) */
+/* CMR Nexo — public booking (Studio Alma–style, accent via --business-accent) */
 
 .booking-page {
   background: #fff;
@@ -123,14 +123,22 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-height: 44px;
+  min-width: 7.5rem;
+  border: none;
   border-radius: 0.75rem;
   background: var(--business-accent);
-  padding: 0.5rem 1rem;
+  padding: 0.65rem 1.15rem;
   font-size: 0.875rem;
   font-weight: 600;
   color: #fff;
   text-decoration: none;
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: background 150ms ease;
+  position: relative;
+  z-index: 2;
 }
 
 .svc-card__btn:hover {

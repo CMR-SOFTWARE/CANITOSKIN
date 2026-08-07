@@ -1,12 +1,39 @@
 /* ============================================================
-   CMR Turnos — Design tokens (fuente de verdad)
+   Canito Skin — Design tokens (fuente de verdad)
    ============================================================
-   - --accent / --accent-*  → plataforma (home, buscador, super-admin)
-   - --business-accent      → solo ficha pública y panel del negocio
-   - Estados semánticos     → fijos en toda la plataforma
+   Paleta oficial del manual de marca (no alterar / no agregar
+   colores de marca sin aprobación):
+     --canito-oliva  #5b5f51  principal
+     --canito-taupe  #bdb6a3  secundario
+     --canito-crema  #f7f4f0  neutro claro
+     --canito-carbon #341f19  acento oscuro
+
+   Tipografía:
+     - Wordmark "canito" → siempre asset SVG/PNG (nunca web font)
+     - Display (H1/H2 sección) → Poppins Black, MAYÚSCULAS
+     - Serif detalles → placeholder hasta .ttf oficial
+     - Cuerpo → Poppins Regular/Medium (pendiente archivos;
+       mientras tanto fallback geométrico)
+
+   Bridge Nexo: --accent / --business-accent apuntan a la marca
+   fija (un solo negocio). No hay accent por tenant.
    ============================================================ */
 
-/* Inter self-hosted (sin link externo / sin next/font: stack HTML+Express) */
+/* Poppins Black — display (archivo entregado por marca) */
+@font-face {
+  font-family: "Poppins";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/canito/Poppins-Black.ttf") format("truetype");
+}
+
+/* TODO(marca): agregar Poppins Regular (400) + Medium (500) self-hosted
+   cuando Tomás entregue los .ttf/.woff2. Hasta entonces el cuerpo
+   cae al fallback geométrico del stack. */
+
+/* Inter — solo fallback técnico temporal para UI admin legada.
+   No es tipografía de marca Canito. Remover cuando Poppins 400/500 estén. */
 @font-face {
   font-family: "Inter";
   font-style: normal;
@@ -73,52 +100,74 @@
 }
 
 :root {
-  /* Acento primario de la plataforma (CMR Turnos) */
-  --accent: #6366F1;
-  --accent-hover: #4F46E5;
-  --accent-light: #EEF2FF;
+  /* ── Marca Canito (manual oficial) ── */
+  --canito-oliva: #5b5f51;
+  --canito-taupe: #bdb6a3;
+  --canito-crema: #f7f4f0;
+  --canito-carbon: #341f19;
 
-  /* Color de marca del negocio (default = plataforma; se pisa solo en ficha/admin del negocio) */
-  --business-accent: var(--accent);
-  --business-accent-hover: var(--accent-hover);
-  --business-accent-light: var(--accent-light);
+  /* ── Bridge → componentes Nexo existentes ──
+     Un solo negocio: accent = business-accent = oliva. */
+  --accent: var(--canito-oliva);
+  --accent-hover: var(--canito-carbon);
+  --accent-light: var(--canito-taupe);
 
-  /* Layout */
-  --sidebar-bg: #0A0A0A;
-  --content-bg: #F7F8FA;
-  --card-bg: #FFFFFF;
-  --border-color: #E4E4E7;
+  --business-accent: var(--canito-oliva);
+  --business-accent-hover: var(--canito-carbon);
+  --business-accent-light: var(--canito-taupe);
+
+  /* Layout — admin: más crema, sidebar marca oscura */
+  --sidebar-bg: var(--canito-carbon);
+  --content-bg: var(--canito-crema);
+  /* Blanco estructural de cards del catálogo (no es 5º color de marca) */
+  --card-bg: #ffffff;
+  --border-color: var(--canito-taupe);
 
   /* Texto */
-  --text-primary: #18181B;
-  --text-secondary: #71717A;
-  --text-on-dark: #F4F4F5;
+  --text-primary: var(--canito-carbon);
+  --text-secondary: var(--canito-oliva);
+  --text-on-dark: var(--canito-crema);
 
-  /* Estados semánticos (fijos — no dependen del color de marca) */
-  --success: #22C55E;
-  --success-bg: #DCFCE7;
-  --warning: #F59E0B;
-  --warning-bg: #FEF3C7;
-  --danger: #EF4444;
-  --danger-bg: #FEE2E2;
-  --neutral: #71717A;
-  --neutral-bg: #F4F4F5;
+  /* ── Estados semánticos — PROPUESTA (no están en el manual) ──
+     Mostrar a Tomás antes de dar por cerrados.
+     Dirección: tierra/cálidos, no semáforo genérico.
+       success  salvia desaturada  #6B7F5A / bg #E4E9DF
+       warning  ámbar tierra       #A8893F / bg #F3EBD4
+       danger   terracota          #A65D4C / bg #F3E4DF
+     Mientras no haya OK, se usan estos propuestos (marcados). */
+  --success: #6b7f5a; /* PENDING APPROVAL */
+  --success-bg: #e4e9df; /* PENDING APPROVAL */
+  --warning: #a8893f; /* PENDING APPROVAL */
+  --warning-bg: #f3ebd4; /* PENDING APPROVAL */
+  --danger: #a65d4c; /* PENDING APPROVAL */
+  --danger-bg: #f3e4df; /* PENDING APPROVAL */
+  --neutral: var(--canito-oliva);
+  --neutral-bg: var(--canito-taupe);
 
-  /* Tipografía */
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --text-metric: 1.875rem;   /* 30px — métricas dashboard */
-  --text-h1: 1.5rem;         /* 24px */
-  --text-h2: 1.125rem;       /* 18px */
-  --text-h3: 1rem;           /* 16px */
-  --text-body: 0.875rem;     /* 14px */
-  --text-meta: 0.8125rem;    /* 13px */
-  --text-meta-sm: 0.75rem;   /* 12px */
+  /* Tipografía — roles */
+  --font-display: "Poppins", ui-sans-serif, system-ui, sans-serif;
+  /* TODO: reemplazar por fuente serif oficial de marca */
+  --font-serif: "Playfair Display", "Fraunces", Georgia, "Times New Roman", serif;
+  --font-sans: "Poppins", "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  /* Radius / sombra de cards */
-  --radius-card: 16px;
-  --radius-xl: 12px;
-  --shadow-card: 0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
-  --shadow-card-soft: 0 4px 16px rgba(15, 23, 42, 0.05);
+  --text-metric: 1.875rem;
+  --text-h1: 1.5rem;
+  --text-h2: 1.125rem;
+  --text-h3: 1rem;
+  --text-body: 0.875rem;
+  --text-meta: 0.8125rem;
+  --text-meta-sm: 0.75rem;
+
+  /* Display de sección (catálogo / landing) — escala propia */
+  --text-display: clamp(2.25rem, 5vw, 3.75rem);
+  --text-display-sub: clamp(1.25rem, 2.5vw, 1.75rem);
+  --tracking-display: -0.03em;
+
+  /* Radius / sombra — más suave, menos “SaaS gris” */
+  --radius-card: 12px;
+  --radius-xl: 10px;
+  --shadow-card: 0 1px 3px rgba(52, 31, 25, 0.06), 0 1px 2px rgba(52, 31, 25, 0.04);
+  --shadow-card-soft: 0 4px 16px rgba(52, 31, 25, 0.06);
 }
 
 *,
@@ -143,24 +192,55 @@ body {
   background: var(--content-bg);
 }
 
+/* ── Roles tipográficos ── */
+
+/* Display: portadas de categoría / H1–H2 de sección landing */
+.font-display,
+.text-display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: var(--text-display);
+  line-height: 0.95;
+  letter-spacing: var(--tracking-display);
+  text-transform: uppercase;
+  color: var(--text-on-dark);
+}
+
+/* Serif elegante — subtítulos premium (“Nuestros tratamientos”, VIP) */
+.font-serif,
+.text-serif {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-style: italic;
+  font-size: var(--text-display-sub);
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+}
+
 h1,
 .text-h1 {
+  font-family: var(--font-display);
   font-size: var(--text-h1);
-  font-weight: 700;
-  line-height: 1.25;
+  font-weight: 900;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
   color: var(--text-primary);
 }
 
 h2,
 .text-h2 {
+  font-family: var(--font-display);
   font-size: var(--text-h2);
-  font-weight: 600;
-  line-height: 1.35;
+  font-weight: 900;
+  line-height: 1.25;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
   color: var(--text-primary);
 }
 
 h3,
 .text-h3 {
+  font-family: var(--font-sans);
   font-size: var(--text-h3);
   font-weight: 600;
   line-height: 1.4;
@@ -168,8 +248,9 @@ h3,
 }
 
 .text-metric {
+  font-family: var(--font-display);
   font-size: var(--text-metric);
-  font-weight: 700;
+  font-weight: 900;
   line-height: 1.15;
   letter-spacing: -0.02em;
 }
@@ -193,7 +274,7 @@ h3,
   color: var(--text-secondary);
 }
 
-/* Card estándar plataforma */
+/* Card estándar (admin / formularios) — no usar en hero */
 .ds-card {
   background: var(--card-bg);
   border: 1px solid var(--border-color);
@@ -201,7 +282,6 @@ h3,
   box-shadow: var(--shadow-card);
 }
 
-/* Botón primario (plataforma; en scope de negocio usa --business-accent) */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -211,7 +291,7 @@ h3,
   font-family: var(--font-sans);
   font-size: var(--text-body);
   font-weight: 500;
-  color: #fff;
+  color: var(--canito-crema);
   background: var(--accent);
   border: none;
   border-radius: 10px;
@@ -230,7 +310,6 @@ h3,
   background: var(--business-accent-hover);
 }
 
-/* Sidebar */
 .ds-sidebar {
   background: var(--sidebar-bg);
   color: var(--text-on-dark);
@@ -241,20 +320,19 @@ h3,
 }
 .ds-sidebar__item.is-active {
   opacity: 1;
-  background: var(--accent);
-  color: #fff;
+  background: var(--canito-oliva);
+  color: var(--canito-crema);
 }
 .scope-business .ds-sidebar__item.is-active {
   background: var(--business-accent);
 }
 
-/* Badges de estado (siempre semánticos fijos) */
 .badge-success {
   color: var(--success);
   background: var(--success-bg);
 }
 .badge-warning {
-  color: #B45309;
+  color: #8a6f2e; /* PENDING APPROVAL — tono sobre warning-bg */
   background: var(--warning-bg);
 }
 .badge-danger {
@@ -268,4 +346,150 @@ h3,
 
 .hidden {
   display: none !important;
+}
+
+/* ============================================================
+   Patrones de layout Canito (catálogo → web)
+   ============================================================
+
+   WIREFRAME — portada de categoría + cards (ASCII)
+
+   ┌─────────────────────────────────────────────────────────┐
+   │  SECCIÓN PORTADA  bg: oliva (#5b5f51)                   │
+   │                                                         │
+   │     FACIALES & RENOVACIÓN     ← .text-display (Poppins  │
+   │                                 Black, UPPERCASE)       │
+   │     Nuestros tratamientos     ← .text-serif (placeholder│
+   │                                 Playfair/Fraunces)      │
+   │         [line-art sutil]      ← watermark 1×, opacity ↓ │
+   └─────────────────────────────────────────────────────────┘
+   ┌─────────────────────────────────────────────────────────┐
+   │  BLOQUE CONTENIDO  bg: crema / taupe                    │
+   │                                                         │
+   │   ┌──────────────┐  ┌──────────────┐                    │
+   │   │ ▓▓▓ foto ▓▓▓ │  │ ▓▓▓ foto ▓▓▓ │  ← foto REAL       │
+   │   │              │  │              │                    │
+   │   │┌────────────┐│  │┌────────────┐│                    │
+   │   ││ LIMPIEZA   ││  ││ MASAJES    ││  ← .canito-label   │
+   │   ││ FACIAL…    ││  ││ FACIALES   ││    (blanco flotante│
+   │   │└────────────┘│  │└────────────┘│     superpuesto)   │
+   │   │ 45 min · …   │  │ 30 min · …   │                    │
+   │   └──────────────┘  └──────────────┘                    │
+   │                                                         │
+   │   [COMBO MIRADAS] ← .canito-sticker (leve rotate)       │
+   └─────────────────────────────────────────────────────────┘
+   ┌─────────────────────────────────────────────────────────┐
+   │  SIGUIENTE PORTADA  bg: taupe o carbon (alternancia)    │
+   └─────────────────────────────────────────────────────────┘
+
+   Alternancia de fondos en scroll: oliva → crema/taupe → oliva.
+   ============================================================ */
+
+/* Portada de categoría (fondo oliva / taupe / carbon) */
+.canito-section-cover {
+  position: relative;
+  overflow: hidden;
+  background: var(--canito-oliva);
+  color: var(--canito-crema);
+  padding: clamp(3rem, 8vw, 6rem) clamp(1.25rem, 4vw, 3rem);
+  text-align: center;
+}
+.canito-section-cover--taupe {
+  background: var(--canito-taupe);
+  color: var(--canito-carbon);
+}
+.canito-section-cover--carbon {
+  background: var(--canito-carbon);
+  color: var(--canito-crema);
+}
+.canito-section-cover .text-display {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+}
+.canito-section-cover .text-serif {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin-top: 0.75rem;
+  color: inherit;
+  opacity: 0.9;
+}
+
+/* Watermark line-art (usar <img class="canito-mark"> del asset oficial) */
+.canito-mark {
+  position: absolute;
+  inset: auto 0 0 auto;
+  width: min(42vw, 280px);
+  opacity: 0.12;
+  pointer-events: none;
+  user-select: none;
+  z-index: 0;
+}
+.canito-section-cover--taupe .canito-mark {
+  opacity: 0.18;
+  filter: brightness(0);
+}
+
+/* Bloque de contenido entre portadas */
+.canito-section-body {
+  background: var(--canito-crema);
+  padding: clamp(2rem, 5vw, 4rem) clamp(1.25rem, 4vw, 3rem);
+}
+.canito-section-body--taupe {
+  background: var(--canito-taupe);
+}
+
+/* Card de tratamiento / producto — patrón label flotante del PDF */
+.canito-service-card {
+  position: relative;
+  background: var(--card-bg);
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card-soft);
+}
+.canito-service-card__media {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  background: var(--canito-taupe);
+}
+.canito-service-card__body {
+  padding: 1.25rem 1rem 1.5rem;
+}
+/* Label blanco superpuesto al borde foto/contenido (signature) */
+.canito-label {
+  display: inline-block;
+  margin: -1.25rem 1rem 0;
+  position: relative;
+  z-index: 1;
+  padding: 0.5rem 0.85rem;
+  background: #ffffff;
+  color: var(--canito-carbon);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  box-shadow: var(--shadow-card);
+}
+
+/* Sticker rotado para Combo / Promo */
+.canito-sticker {
+  display: inline-block;
+  padding: 0.4rem 0.75rem;
+  background: var(--canito-carbon);
+  color: var(--canito-crema);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-size: 0.75rem;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  transform: rotate(-3deg);
+  box-shadow: var(--shadow-card);
+}
+.canito-sticker--promo {
+  background: var(--canito-oliva);
 }

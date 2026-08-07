@@ -240,12 +240,15 @@ function professionalsForSelectedService() {
   );
   if (fromPro.length) return fromPro;
   const svc = getSelectedService();
-  const ids = Array.isArray(svc?.professionalIds) ? svc.professionalIds.map(Number) : [];
+  const ids = Array.isArray(svc?.professionalIds)
+    ? svc.professionalIds.map(Number).filter(Number.isFinite)
+    : [];
   if (ids.length) return all.filter((p) => ids.includes(Number(p.id)));
-  if (svc?.professionalId != null) {
+  if (svc?.professionalId != null && svc.professionalId !== "") {
     return all.filter((p) => Number(p.id) === Number(svc.professionalId));
   }
-  return all;
+  // Sin profesional asignado al servicio → se usa el horario del local
+  return [];
 }
 
 function needsProfessionalStep() {
@@ -273,8 +276,27 @@ function wizardSteps() {
 }
 
 function setMensaje(texto, isError = true) {
-  mensaje.textContent = texto;
+  if (!mensaje) return;
+  mensaje.textContent = texto || "";
   mensaje.style.color = isError ? "var(--danger)" : "var(--success)";
+}
+
+function showBusinessNotice(texto) {
+  let el = document.getElementById("businessNotice");
+  if (!el && serviciosList?.parentElement) {
+    el = document.createElement("p");
+    el.id = "businessNotice";
+    el.className = "mt-3 text-sm font-semibold";
+    el.setAttribute("role", "alert");
+    serviciosList.parentElement.insertBefore(el, serviciosList.nextSibling);
+  }
+  if (!el) {
+    window.alert(texto);
+    return;
+  }
+  el.textContent = texto || "";
+  el.style.color = "var(--danger)";
+  if (texto) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 function showScreen(which) {
@@ -374,26 +396,23 @@ function startBooking(serviceId) {
   formDatos?.reset();
   formReserva?.reset();
   setMensaje("");
+  showBusinessNotice("");
 
   const now = new Date();
   calYear = now.getFullYear();
   calMonth = now.getMonth();
 
   const pros = professionalsForSelectedService();
-  if (!pros.length) {
-    setMensaje("Este servicio todavía no tiene un profesional asignado. Consultá al negocio.");
-    return;
-  }
-
   if (needsProfessionalStep()) {
     renderProfessionals();
     showWizardStep("professional");
   } else {
-    selectedProfessionalId = pros[0].id;
+    selectedProfessionalId = pros.length === 1 ? pros[0].id : null;
     renderCalendar();
     showWizardStep("fecha");
     refreshSlots().catch(() => {});
   }
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function wizardBack() {
@@ -490,6 +509,13 @@ function renderServicios() {
     });
   });
   serviciosList.innerHTML = html;
+  serviciosList.querySelectorAll("[data-service-id]").forEach((btn) => {
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      startBooking(btn.getAttribute("data-service-id"));
+    });
+  });
 }
 
 function buildPlanWhatsAppUrl(plan) {
@@ -1090,7 +1116,7 @@ async function loadConfig() {
   const linkAdmin = document.getElementById("linkAdmin");
   if (linkAdmin) linkAdmin.href = `/${SLUG}/admin`;
 
-  document.title = config.nombre ? `${config.nombre} · CMR Turnos` : "CMR Turnos";
+  document.title = config.nombre ? `${config.nombre} · CMR Nexo` : "CMR Nexo";
   navBusinessName.textContent = config.nombre || "";
   heroNombre.textContent = config.nombre || "Reservá tu turno";
   const cat = categoriaLabel(config.categoria);

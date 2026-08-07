@@ -1,4 +1,4 @@
-/* CMR Turnos — Landing interactions & negocios directory */
+/* CMR Nexo — Landing interactions & negocios directory */
 
 const loading = document.getElementById("loading");
 const emptyState = document.getElementById("emptyState");
@@ -93,23 +93,46 @@ let allNegocios = [];
 let activeCategoria = "todos";
 
 /* ─── Navbar scroll & mobile ─── */
+function setNavOpen(open) {
+  if (!mainNav) return;
+  mainNav.classList.toggle("is-open", open);
+  navToggle?.setAttribute("aria-expanded", String(open));
+  document.body.classList.toggle("nav-open", open);
+  const backdrop = document.getElementById("navBackdrop");
+  if (backdrop) backdrop.hidden = !open;
+}
+
 function initNav() {
   const onScroll = () => {
-    mainNav.classList.toggle("is-scrolled", window.scrollY > 40);
+    mainNav?.classList.toggle("is-scrolled", window.scrollY > 40);
   };
   window.addEventListener("scroll", onScroll, { passive: true });
   onScroll();
 
   navToggle?.addEventListener("click", () => {
-    const open = mainNav.classList.toggle("is-open");
-    navToggle.setAttribute("aria-expanded", String(open));
+    setNavOpen(!mainNav.classList.contains("is-open"));
+  });
+
+  document.getElementById("navBackdrop")?.addEventListener("click", () => {
+    setNavOpen(false);
   });
 
   document.querySelectorAll(".arena-nav__menu a").forEach((link) => {
-    link.addEventListener("click", () => {
-      mainNav.classList.remove("is-open");
-      navToggle?.setAttribute("aria-expanded", "false");
-    });
+    link.addEventListener("click", () => setNavOpen(false));
+  });
+
+  window.addEventListener(
+    "resize",
+    () => {
+      if (window.innerWidth > 900) setNavOpen(false);
+    },
+    { passive: true }
+  );
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && mainNav?.classList.contains("is-open")) {
+      setNavOpen(false);
+    }
   });
 }
 
@@ -222,6 +245,180 @@ function matchesLocation(negocio, query) {
   return Boolean(ciudad) && ciudad === q;
 }
 
+function clearCiudadMenuPosition(menu) {
+  if (!menu) return;
+  menu.style.position = "";
+  menu.style.top = "";
+  menu.style.bottom = "";
+  menu.style.left = "";
+  menu.style.right = "";
+  menu.style.width = "";
+  menu.style.maxHeight = "";
+  menu.style.zIndex = "";
+}
+
+function positionCiudadMenu() {
+  const trigger = document.getElementById("ciudadFilterTrigger");
+  const menu = document.getElementById("ciudadFilterMenu");
+  if (!trigger || !menu || menu.hidden) return;
+
+  const rect = trigger.getBoundingClientRect();
+  const gutter = 8;
+  const gap = 6;
+  const width = Math.min(rect.width, window.innerWidth - gutter * 2);
+  const left = Math.min(
+    Math.max(gutter, rect.left),
+    window.innerWidth - gutter - width
+  );
+  const spaceBelow = window.innerHeight - rect.bottom - gutter;
+  const spaceAbove = rect.top - gutter;
+  const preferUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+  const maxH = Math.min(256, preferUp ? spaceAbove - gap : spaceBelow - gap);
+
+  menu.style.position = "fixed";
+  menu.style.left = `${left}px`;
+  menu.style.width = `${width}px`;
+  menu.style.right = "auto";
+  menu.style.zIndex = "2000";
+  menu.style.maxHeight = `${Math.max(120, maxH)}px`;
+
+  if (preferUp) {
+    menu.style.top = "auto";
+    menu.style.bottom = `${window.innerHeight - rect.top + gap}px`;
+    menu.style.transformOrigin = "bottom center";
+  } else {
+    menu.style.bottom = "auto";
+    menu.style.top = `${rect.bottom + gap}px`;
+    menu.style.transformOrigin = "top center";
+  }
+}
+
+function setCiudadSelectOpen(open) {
+  const root = document.getElementById("ciudadSelect");
+  const trigger = document.getElementById("ciudadFilterTrigger");
+  const menu = document.getElementById("ciudadFilterMenu");
+  if (!root || !trigger || !menu) return;
+  root.classList.toggle("is-open", open);
+  trigger.setAttribute("aria-expanded", open ? "true" : "false");
+  menu.hidden = !open;
+  if (open) {
+    positionCiudadMenu();
+  } else {
+    clearCiudadMenuPosition(menu);
+  }
+}
+
+function syncCiudadSelectUI() {
+  const label = document.getElementById("ciudadFilterLabel");
+  const menu = document.getElementById("ciudadFilterMenu");
+  if (!ciudadFilter || !label) return;
+  const selected = ciudadFilter.options[ciudadFilter.selectedIndex];
+  label.textContent = selected?.textContent || "Todas las localidades";
+  if (!menu) return;
+  menu.querySelectorAll('[role="option"]').forEach((opt) => {
+    const isSelected = (opt.dataset.value || "") === ciudadFilter.value;
+    opt.setAttribute("aria-selected", isSelected ? "true" : "false");
+    opt.classList.toggle("is-selected", isSelected);
+  });
+}
+
+function buildCiudadMenu() {
+  const menu = document.getElementById("ciudadFilterMenu");
+  if (!ciudadFilter || !menu) return;
+  const wasOpen = !menu.hidden;
+  menu.innerHTML = Array.from(ciudadFilter.options)
+    .map((opt) => {
+      const value = opt.value;
+      const isSelected = value === ciudadFilter.value;
+      return `<li role="option" class="loc-select__option${isSelected ? " is-selected" : ""}" data-value="${escapeHtml(value)}" aria-selected="${isSelected}" tabindex="-1">${escapeHtml(opt.textContent)}</li>`;
+    })
+    .join("");
+  syncCiudadSelectUI();
+  if (wasOpen) positionCiudadMenu();
+}
+
+function initCiudadSelect() {
+  const root = document.getElementById("ciudadSelect");
+  const trigger = document.getElementById("ciudadFilterTrigger");
+  const menu = document.getElementById("ciudadFilterMenu");
+  if (!root || !trigger || !menu || !ciudadFilter || root.dataset.ready) return;
+  root.dataset.ready = "1";
+
+  trigger.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCiudadSelectOpen(!root.classList.contains("is-open"));
+  });
+
+  menu.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const opt = e.target.closest('[role="option"]');
+    if (!opt) return;
+    ciudadFilter.value = opt.dataset.value ?? "";
+    syncCiudadSelectUI();
+    setCiudadSelectOpen(false);
+    ciudadFilter.dispatchEvent(new Event("change", { bubbles: true }));
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!root.classList.contains("is-open")) return;
+    if (root.contains(e.target) || menu.contains(e.target)) return;
+    setCiudadSelectOpen(false);
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && root.classList.contains("is-open")) {
+      setCiudadSelectOpen(false);
+      trigger.focus();
+    }
+  });
+
+  const onReposition = () => {
+    if (root.classList.contains("is-open")) positionCiudadMenu();
+  };
+  window.addEventListener("resize", onReposition, { passive: true });
+  window.addEventListener("scroll", onReposition, { passive: true, capture: true });
+
+  trigger.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      setCiudadSelectOpen(true);
+      const focusOpt =
+        menu.querySelector('[aria-selected="true"]') || menu.querySelector('[role="option"]');
+      focusOpt?.focus();
+    }
+  });
+
+  menu.addEventListener("keydown", (e) => {
+    const options = [...menu.querySelectorAll('[role="option"]')];
+    const idx = options.indexOf(document.activeElement);
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      (options[Math.min(idx + 1, options.length - 1)] || options[0])?.focus();
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      (options[Math.max(idx - 1, 0)] || options[0])?.focus();
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      document.activeElement?.click();
+    } else if (e.key === "Escape") {
+      setCiudadSelectOpen(false);
+      trigger.focus();
+    }
+  });
+
+  buildCiudadMenu();
+}
+
+function updateNegociosStat() {
+  const statNum = document.getElementById("statClubsNum");
+  const statPlus = document.getElementById("statClubs");
+  if (!statNum) return;
+  const n = Array.isArray(allNegocios) ? allNegocios.length : 0;
+  statNum.textContent = String(n);
+  if (statPlus) statPlus.textContent = n >= 10 ? "+" : "";
+}
+
 async function populateCiudades() {
   if (!ciudadFilter) return;
   const current = ciudadFilter.value;
@@ -238,6 +435,7 @@ async function populateCiudades() {
     `<option value="">Todas las localidades</option>` +
     localidades.map((c) => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("");
   if (localidades.includes(current)) ciudadFilter.value = current;
+  buildCiudadMenu();
 }
 
 /* ─── Negocios grid ─── */
@@ -296,6 +494,7 @@ function renderGrid() {
 
 searchInput?.addEventListener("input", renderGrid);
 ciudadFilter?.addEventListener("change", renderGrid);
+initCiudadSelect();
 
 async function initNegocios() {
   try {
@@ -305,14 +504,8 @@ async function initNegocios() {
     loading?.classList.add("hidden");
     await populateCiudades();
     renderGrid();
+    updateNegociosStat();
     startHomeLivePoll();
-
-    const statNum = document.getElementById("statClubsNum");
-    const statPlus = document.getElementById("statClubs");
-    if (statNum && allNegocios.length > 0) {
-      statNum.textContent = String(allNegocios.length);
-      if (statPlus) statPlus.textContent = allNegocios.length >= 10 ? "+" : "";
-    }
   } catch (_) {
     if (loading) {
       loading.innerHTML = "<p>No se pudo cargar la lista de negocios.</p>";
@@ -345,12 +538,7 @@ async function pollHomeNegocios() {
     allNegocios = list;
     await populateCiudades();
     renderGrid();
-    const statNum = document.getElementById("statClubsNum");
-    const statPlus = document.getElementById("statClubs");
-    if (statNum && allNegocios.length > 0) {
-      statNum.textContent = String(allNegocios.length);
-      if (statPlus) statPlus.textContent = allNegocios.length >= 10 ? "+" : "";
-    }
+    updateNegociosStat();
   } catch (_) {
     /* silencioso */
   } finally {
@@ -445,10 +633,173 @@ function initBenefits() {
   });
 }
 
+/* ─── Planes dinámicos (precios + promos) ─── */
+function formatPlanMoney(n) {
+  return Number(n || 0).toLocaleString("es-AR");
+}
+
+function escapePlanHtml(str) {
+  return String(str ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function defaultFeaturesForPlan(plan) {
+  const lim = plan.limiteProfesionales;
+  const base = [
+    lim == null ? "Profesionales ilimitados" : (Number(lim) === 1 ? "Hasta 1 profesional" : `Hasta ${lim} profesionales`),
+    "Turnos online",
+    "Panel admin",
+    "WhatsApp",
+  ];
+  if (plan.id !== "inicial") base.push("Soporte prioritario");
+  return base;
+}
+
+async function loadHomePlans() {
+  const grid = document.getElementById("plansGrid");
+  if (!grid) return;
+  try {
+    const res = await fetch("/api/planes", { cache: "no-store" });
+    const planes = await res.json();
+    if (!Array.isArray(planes) || !planes.length) throw new Error("sin planes");
+    const order = ["inicial", "profesional", "max"];
+    const sorted = [...planes].sort((a, b) => {
+      const ia = order.indexOf(a.id);
+      const ib = order.indexOf(b.id);
+      if (ia === -1 && ib === -1) return (a.sortOrder || 0) - (b.sortOrder || 0) || a.precio - b.precio;
+      if (ia === -1) return 1;
+      if (ib === -1) return -1;
+      return ia - ib;
+    });
+    grid.innerHTML = sorted.map((plan) => {
+      const featured = !!plan.featured || plan.id === "profesional";
+      const features = Array.isArray(plan.features) && plan.features.length
+        ? plan.features
+        : defaultFeaturesForPlan(plan);
+      const promo = !!plan.is_promo_active;
+      const amount = promo ? plan.final_price : plan.precio;
+      const ctaClass = featured
+        ? "btn-arena btn-arena--plan-primary cut-corners cut-corners--sm"
+        : "btn-arena btn-arena--plan-outline cut-corners cut-corners--sm";
+      return `
+        <article class="plan-card reveal ${featured ? "plan-card--featured" : ""}">
+          ${featured ? `<span class="plan-card__badge cut-corners cut-corners--xs">Más popular</span>` : ""}
+          ${promo ? `<span class="plan-card__promo">${escapePlanHtml(plan.promo_title || "Promo")}</span>` : ""}
+          <header class="plan-card__head">
+            <span class="plan-card__tier">${escapePlanHtml(plan.nombre)}</span>
+            <div class="plan-card__price">
+              ${promo ? `<span class="plan-card__amount-old">$${formatPlanMoney(plan.original_price)}</span>` : ""}
+              <span class="plan-card__amount">$${formatPlanMoney(amount)}</span>
+              <span class="plan-card__period">/ mes</span>
+            </div>
+          </header>
+          <ul class="plan-card__features">
+            ${features.map((f) => `<li><span class="plan-card__check" aria-hidden="true"></span>${escapePlanHtml(f)}</li>`).join("")}
+          </ul>
+          <a href="/sumate?plan=${encodeURIComponent(plan.id)}" class="${ctaClass}">Empezar</a>
+        </article>`;
+    }).join("");
+    // Re-run reveal observer for new cards
+    if (typeof initReveal === "function") {
+      grid.querySelectorAll(".reveal").forEach((el) => {
+        el.classList.add("is-visible");
+      });
+    }
+  } catch (_) {
+    grid.innerHTML = `<p class="arena-empty">No se pudieron cargar los planes.</p>`;
+  }
+}
+
+/* ─── Features Nexo ─── */
+const FEATURES_NEXO = [
+  {
+    title: "Reservas online",
+    description:
+      "Tus clientes reservan sus turnos las 24 horas desde el celular, sin llamados ni ida y vuelta por mensajes.",
+    href: "/sumate",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>`,
+  },
+  {
+    title: "Sumá a tus profesionales",
+    description:
+      "Agregá a todo tu equipo, asignales su propia agenda y gestioná la disponibilidad de cada uno.",
+    href: "/sumate",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>`,
+  },
+  {
+    title: "Horarios y turnos",
+    description:
+      "Configurá horarios de atención, duración de turnos y disponibilidad de cada profesional en segundos.",
+    href: "/sumate",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>`,
+  },
+  {
+    title: "Avisos directo a tu WhatsApp",
+    description:
+      "Cada vez que reservan un turno, te llega la notificación directo a tu WhatsApp. Nunca más te enterás tarde.",
+    href: "/sumate",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+  },
+  {
+    title: "Estadísticas",
+    description:
+      "Mirá cómo crece tu negocio: turnos por día, clientes frecuentes y horarios más pedidos, todo en tiempo real.",
+    href: "/sumate",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 16V9M12 16v-5M17 16V7"/></svg>`,
+  },
+  {
+    title: "Ingresos, egresos y balance",
+    description:
+      "Registrá lo que entra y lo que sale de tu negocio, y mirá tu balance actualizado al instante.",
+    href: "/sumate",
+    icon: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v20"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>`,
+  },
+];
+
+function renderFeaturesNexo() {
+  const grid = document.getElementById("featuresGrid");
+  if (!grid) return;
+
+  grid.innerHTML = FEATURES_NEXO.map(
+    (item, index) => `
+    <article class="feature-nexo-card" style="--feature-delay:${index * 100}ms">
+      <span class="feature-nexo-card__icon">${item.icon}</span>
+      <h3 class="feature-nexo-card__title">${escapePlanHtml(item.title)}</h3>
+      <p class="feature-nexo-card__text">${escapePlanHtml(item.description)}</p>
+      <a class="feature-nexo-card__more" href="${escapePlanHtml(item.href)}">Ver más <span aria-hidden="true">→</span></a>
+    </article>`
+  ).join("");
+
+  const cards = grid.querySelectorAll(".feature-nexo-card");
+  if (!cards.length) return;
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    cards.forEach((card) => card.classList.add("is-visible"));
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      });
+    },
+    { threshold: 0.15, rootMargin: "0px 0px -48px 0px" }
+  );
+  cards.forEach((card) => observer.observe(card));
+}
+
 /* ─── Boot ─── */
 initNav();
 initHero();
 initReveal();
+renderFeaturesNexo();
+loadHomePlans();
 initCategories();
 initNegocios();
 initSteps();

@@ -6,7 +6,17 @@ tailwind.config = {
   theme: {
     extend: {
       fontFamily: {
+        display: ["Poppins", "ui-sans-serif", "system-ui", "sans-serif"],
+        /* TODO: reemplazar por fuente serif oficial de marca */
+        serif: [
+          "Playfair Display",
+          "Fraunces",
+          "Georgia",
+          "Times New Roman",
+          "serif",
+        ],
         sans: [
+          "Poppins",
           "Inter",
           "ui-sans-serif",
           "system-ui",
@@ -16,15 +26,25 @@ tailwind.config = {
         ],
       },
       fontSize: {
-        metric: ["1.875rem", { lineHeight: "1.15", fontWeight: "700" }],
-        h1: ["1.5rem", { lineHeight: "1.25", fontWeight: "700" }],
-        h2: ["1.125rem", { lineHeight: "1.35", fontWeight: "600" }],
+        metric: ["1.875rem", { lineHeight: "1.15", fontWeight: "900" }],
+        h1: ["1.5rem", { lineHeight: "1.2", fontWeight: "900" }],
+        h2: ["1.125rem", { lineHeight: "1.25", fontWeight: "900" }],
         h3: ["1rem", { lineHeight: "1.4", fontWeight: "600" }],
         body: ["0.875rem", { lineHeight: "1.5", fontWeight: "500" }],
         meta: ["0.8125rem", { lineHeight: "1.45", fontWeight: "400" }],
         "meta-sm": ["0.75rem", { lineHeight: "1.4", fontWeight: "400" }],
+        display: [
+          "clamp(2.25rem, 5vw, 3.75rem)",
+          { lineHeight: "0.95", fontWeight: "900", letterSpacing: "-0.03em" },
+        ],
       },
       colors: {
+        canito: {
+          oliva: "var(--canito-oliva)",
+          taupe: "var(--canito-taupe)",
+          crema: "var(--canito-crema)",
+          carbon: "var(--canito-carbon)",
+        },
         accent: {
           DEFAULT: "var(--accent)",
           hover: "var(--accent-hover)",

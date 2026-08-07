@@ -79,11 +79,17 @@ function limiteLabel(limite) {
 }
 
 function featuresForPlan(plan) {
+  if (Array.isArray(plan.features) && plan.features.length) return plan.features;
   const base = [limiteLabel(plan.limiteProfesionales), "Turnos online", "Panel admin", "WhatsApp"];
   if (plan.id === "profesional" || plan.id === "max" || plan.limiteProfesionales == null || Number(plan.limiteProfesionales) > 1) {
     if (plan.id !== "inicial") base.push("Soporte prioritario");
   }
   return base;
+}
+
+function effectivePlanPrice(plan) {
+  if (plan?.is_promo_active && plan.final_price != null) return Number(plan.final_price);
+  return Number(plan?.precio || 0);
 }
 
 function showMsg(el, text) {
@@ -109,14 +115,18 @@ function renderPricingCards(planes) {
 
   pricingGrid.innerHTML = sorted
     .map((plan) => {
-      const featured = plan.id === "profesional" || plan.featured;
+      const featured = !!plan.featured || plan.id === "profesional";
       const features = featuresForPlan(plan);
+      const promo = !!plan.is_promo_active;
+      const amount = effectivePlanPrice(plan);
       return `
       <article class="price-card ${featured ? "price-card--featured" : ""}" data-plan-id="${plan.id}">
         ${featured ? `<span class="price-card__badge">Más popular</span>` : ""}
+        ${promo ? `<span class="price-card__promo">${escapeHtml(plan.promo_title || "Promo")}</span>` : ""}
         <p class="price-card__tier">${escapeHtml(plan.nombre)}</p>
         <div>
-          <span class="price-card__amount">$${formatMoney(plan.precio)}</span>
+          ${promo ? `<div class="price-card__old">$${formatMoney(plan.original_price)}</div>` : ""}
+          <span class="price-card__amount">$${formatMoney(amount)}</span>
           <span class="price-card__period">/mes</span>
         </div>
         <div class="price-card__divider"></div>
@@ -142,7 +152,7 @@ function goToForm(planId) {
   const plan = planesById[planId];
   if (!plan) return;
   planHidden.value = planId;
-  planSeleccionadoLabel.textContent = `${plan.nombre} · $${formatMoney(plan.precio)}/mes`;
+  planSeleccionadoLabel.textContent = `${plan.nombre} · $${formatMoney(effectivePlanPrice(plan))}/mes`;
   pricingSection.classList.add("hidden");
   registroFlow.classList.remove("hidden");
   paso1.classList.remove("hidden");
@@ -194,7 +204,7 @@ document.getElementById("btnSiguiente").addEventListener("click", async () => {
   datosNegocio = { nombre, categoria, whatsapp: "549" + whatsapp, email, plan, ciudad, direccion };
 
   const planInfo = planesById[plan];
-  document.getElementById("precioSub").textContent = formatMoney(planInfo?.precio || 0);
+  document.getElementById("precioSub").textContent = formatMoney(effectivePlanPrice(planInfo) || 0);
 
   try {
     const res = await fetch("/api/planes");
@@ -204,7 +214,9 @@ document.getElementById("btnSiguiente").addEventListener("click", async () => {
       document.getElementById("aliasSub").textContent = p.alias || "—";
       document.getElementById("cbuSub").textContent = p.cbu || "—";
       document.getElementById("titularSub").textContent = p.titular || "—";
-      if (p.precio != null) document.getElementById("precioSub").textContent = formatMoney(p.precio);
+      if (p.final_price != null || p.precio != null) {
+        document.getElementById("precioSub").textContent = formatMoney(effectivePlanPrice(p));
+      }
     }
   } catch (_) {}
 
@@ -225,6 +237,10 @@ document.getElementById("btnEnviar").addEventListener("click", async () => {
   const btn = document.getElementById("btnEnviar");
 
   if (!comprobanteInput.files?.length) return showMsg(msg2, "Adjuntá el comprobante de pago.");
+  const acepto = document.getElementById("aceptoTerminos");
+  if (!acepto?.checked) {
+    return showMsg(msg2, "Debés aceptar los Términos y Condiciones y la Política de Privacidad.");
+  }
 
   const formData = new FormData();
   formData.append("nombre", datosNegocio.nombre);
@@ -234,6 +250,8 @@ document.getElementById("btnEnviar").addEventListener("click", async () => {
   formData.append("whatsapp", datosNegocio.whatsapp);
   formData.append("email", datosNegocio.email);
   formData.append("plan", datosNegocio.plan);
+  formData.append("aceptoTerminos", "1");
+  formData.append("terminosVersion", "2026-08-02");
   formData.append("comprobante", comprobanteInput.files[0]);
 
   try {
@@ -247,6 +265,17 @@ document.getElementById("btnEnviar").addEventListener("click", async () => {
     paso2.classList.add("hidden");
     paso3.classList.remove("hidden");
     activateDot(dot3, label3);
+
+    const btnAvisar = document.getElementById("btnAvisarCmr");
+    if (data.cmrWhatsAppUrl && btnAvisar) {
+      btnAvisar.href = data.cmrWhatsAppUrl;
+      // Abrir WhatsApp hacia CMR con negocio, plan y comprobante
+      window.setTimeout(() => {
+        window.open(data.cmrWhatsAppUrl, "_blank", "noopener,noreferrer");
+      }, 250);
+    } else if (btnAvisar) {
+      btnAvisar.classList.add("hidden");
+    }
   } catch (error) {
     showMsg(msg2, error.message);
     btn.disabled = false;

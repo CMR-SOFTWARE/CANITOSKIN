@@ -2,12 +2,12 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CMR Turnos — Tu turno. Un click.</title>
-  <meta name="description" content="CMR Turnos: reservá turnos de peluquería, estética, masajes, psicología y más. Encontrá el negocio, elegí servicio y confirmá online." />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>CMR Nexo — Tu turno. Un click.</title>
+  <meta name="description" content="CMR Nexo: reservá turnos de peluquería, estética, masajes, psicología y más. Encontrá el negocio, elegí servicio y confirmá online." />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <link rel="stylesheet" href="/globals.css" />
-  <link rel="stylesheet" href="/home-arena.css" />
+  <link rel="stylesheet" href="/home-arena.css?v=features-nexo-1" />
 </head>
 <body class="arena-page">
 
@@ -15,17 +15,18 @@
   <nav class="arena-nav" id="mainNav" aria-label="Navegación principal">
     <div class="arena-nav__inner">
       <a href="#" class="arena-nav__brand">
-        <img src="/images/logo-cmr.png" alt="CMR Turnos" class="arena-nav__logo arena-nav__logo--nav" width="44" height="44" />
-        <span class="arena-nav__name">CMR <span>TURNOS</span></span>
+        <img src="/images/logo-cmr.png" alt="CMR Nexo" class="arena-nav__logo arena-nav__logo--nav" width="44" height="44" />
+        <span class="arena-nav__name">CMR <span>NEXO</span></span>
       </a>
 
       <ul class="arena-nav__menu" id="navMenu">
         <li><a href="#negocios" class="arena-nav__link">Negocios</a></li>
         <li><a href="#beneficios" class="arena-nav__link">Beneficios</a></li>
+        <li><a href="#features" class="arena-nav__link">Funciones</a></li>
         <li><a href="#planes" class="arena-nav__link">Planes</a></li>
         <li><a href="#como-funciona" class="arena-nav__link">Cómo funciona</a></li>
-        <li><a href="#negocios" class="arena-nav__item arena-nav__item--outline cut-corners cut-corners--xs">Reservar</a></li>
-        <li><a href="/sumate" class="arena-nav__item arena-nav__item--tag cut-corners cut-corners--xs">Registrar</a></li>
+        <li><a href="#negocios" class="arena-nav__item arena-nav__item--outline arena-nav__item--mobile-solid">Reservar</a></li>
+        <li><a href="/sumate" class="arena-nav__item arena-nav__item--tag arena-nav__item--mobile-solid">Registrar</a></li>
       </ul>
 
       <button class="arena-nav__toggle" id="navToggle" aria-label="Abrir menú" aria-expanded="false">
@@ -33,6 +34,7 @@
       </button>
     </div>
   </nav>
+  <div class="arena-nav__backdrop" id="navBackdrop" hidden></div>
 
   <!-- Hero -->
   <section class="hero-arena" id="hero">
@@ -71,15 +73,32 @@
           <input id="searchInput" class="cut-corners" type="search" placeholder="Buscar negocio..." autocomplete="off" />
         </div>
         <div class="hero-arena__location">
-          <select id="ciudadFilter" class="cut-corners" aria-label="Filtrar por localidad">
-            <option value="">Todas las localidades</option>
-          </select>
+          <div class="loc-select" id="ciudadSelect">
+            <button
+              type="button"
+              class="loc-select__trigger cut-corners"
+              id="ciudadFilterTrigger"
+              aria-haspopup="listbox"
+              aria-expanded="false"
+              aria-controls="ciudadFilterMenu"
+              aria-label="Filtrar por localidad"
+            >
+              <span class="loc-select__label" id="ciudadFilterLabel">Todas las localidades</span>
+              <svg class="loc-select__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M6 9l6 6 6-6"/>
+              </svg>
+            </button>
+            <ul class="loc-select__menu" id="ciudadFilterMenu" role="listbox" hidden></ul>
+            <select id="ciudadFilter" class="loc-select__native" tabindex="-1" aria-hidden="true">
+              <option value="">Todas las localidades</option>
+            </select>
+          </div>
         </div>
       </div>
 
       <div class="hero-arena__stats">
         <div>
-          <div class="hero-stat__value"><span id="statClubs">+</span><span id="statClubsNum">50</span></div>
+          <div class="hero-stat__value"><span id="statClubs"></span><span id="statClubsNum">0</span></div>
           <div class="hero-stat__label">Negocios</div>
         </div>
         <div>
@@ -141,7 +160,7 @@
     <div class="arena-container">
       <div class="reveal section-header-minimal">
         <span class="section-label">Beneficios</span>
-        <h2 class="section-title">Por qué CMR Turnos</h2>
+        <h2 class="section-title">Por qué CMR Nexo</h2>
       </div>
       <div class="benefits-showcase">
         <article class="benefit-card-cut reveal">
@@ -172,6 +191,23 @@
     </div>
   </section>
 
+  <!-- Features Nexo -->
+  <section class="arena-section features-nexo" id="features">
+    <div class="arena-container">
+      <div class="reveal section-header-center features-nexo__header">
+        <span class="section-label">CMR Nexo</span>
+        <h2 class="section-title">
+          Todo tu negocio,<br />
+          <span class="features-nexo__title-accent">organizado en un solo lugar</span>
+        </h2>
+        <p class="section-subtitle section-subtitle--center features-nexo__subtitle">
+          Reservas, profesionales, horarios, avisos por WhatsApp, estadísticas y finanzas. Así de simple es gestionar tu negocio con Nexo.
+        </p>
+      </div>
+      <div class="features-nexo__grid" id="featuresGrid" aria-label="Funciones de CMR Nexo"></div>
+    </div>
+  </section>
+
   <!-- Planes -->
   <section class="arena-section arena-section--plans" id="planes">
     <div class="arena-container">
@@ -180,58 +216,8 @@
         <h2 class="section-title">Elegí el plan de tu negocio</h2>
         <p class="section-subtitle section-subtitle--center">Sin costos de instalación. Activación en menos de 24 hs. Cancelá cuando quieras.</p>
       </div>
-      <div class="plans-grid">
-        <article class="plan-card reveal">
-          <header class="plan-card__head">
-            <span class="plan-card__tier">Inicial</span>
-            <div class="plan-card__price">
-              <span class="plan-card__amount">$20.000</span>
-              <span class="plan-card__period">/ mes</span>
-            </div>
-          </header>
-          <ul class="plan-card__features">
-            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 1 profesional</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Turnos online</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
-          </ul>
-          <a href="/sumate?plan=inicial" class="btn-arena btn-arena--plan-outline cut-corners cut-corners--sm">Empezar</a>
-        </article>
-        <article class="plan-card plan-card--featured reveal">
-          <span class="plan-card__badge cut-corners cut-corners--xs">Más popular</span>
-          <header class="plan-card__head">
-            <span class="plan-card__tier">Profesional</span>
-            <div class="plan-card__price">
-              <span class="plan-card__amount">$35.000</span>
-              <span class="plan-card__period">/ mes</span>
-            </div>
-          </header>
-          <ul class="plan-card__features">
-            <li><span class="plan-card__check" aria-hidden="true"></span>Hasta 3 profesionales</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Turnos online</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Soporte prioritario</li>
-          </ul>
-          <a href="/sumate?plan=profesional" class="btn-arena btn-arena--plan-primary cut-corners cut-corners--sm">Empezar</a>
-        </article>
-        <article class="plan-card reveal">
-          <header class="plan-card__head">
-            <span class="plan-card__tier">Max</span>
-            <div class="plan-card__price">
-              <span class="plan-card__amount">$60.000</span>
-              <span class="plan-card__period">/ mes</span>
-            </div>
-          </header>
-          <ul class="plan-card__features">
-            <li><span class="plan-card__check" aria-hidden="true"></span>Profesionales ilimitados</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Turnos online</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Panel admin</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>WhatsApp</li>
-            <li><span class="plan-card__check" aria-hidden="true"></span>Soporte prioritario</li>
-          </ul>
-          <a href="/sumate?plan=max" class="btn-arena btn-arena--plan-outline cut-corners cut-corners--sm">Empezar</a>
-        </article>
+      <div class="plans-grid" id="plansGrid">
+        <!-- Se completa desde /api/planes -->
       </div>
     </div>
   </section>
@@ -284,7 +270,7 @@
     <div class="cta-arena reveal">
       <div class="cta-arena__content">
         <p class="cta-arena__eyebrow">¿Tenés un negocio?</p>
-        <h2 class="cta-arena__title">Publicá tu negocio en CMR Turnos</h2>
+        <h2 class="cta-arena__title">Publicá tu negocio en CMR Nexo</h2>
         <p class="cta-arena__desc">Turnos online · Activación en 24 hs · Sin instalación.</p>
         <div class="cta-arena__actions">
           <a href="/sumate" class="btn-arena btn-arena--primary cut-corners">Registrar negocio</a>
@@ -301,10 +287,10 @@
       <div class="arena-footer__grid">
         <div class="arena-footer__brand">
           <a href="#" class="arena-footer__brand-title" style="margin-bottom:0.35rem; display:inline-block; text-decoration:none">
-            <span class="arena-nav__name">CMR <span>TURNOS</span></span>
+            <span class="arena-nav__name">CMR <span>NEXO</span></span>
           </a>
           <div class="arena-footer__brand-meta">
-            <img src="/images/logo-cmr.png" alt="CMR Turnos" class="arena-nav__logo" width="40" height="40" />
+            <img src="/images/logo-cmr.png" alt="CMR Nexo" class="arena-nav__logo" width="40" height="40" />
             <span class="arena-footer__brand-company">CMR Software Solutions</span>
           </div>
           <p class="arena-footer__tagline">Turnos online · Reservas de servicios</p>
@@ -330,6 +316,14 @@
           </ul>
         </div>
         <div>
+          <h4 class="arena-footer__heading">Legal</h4>
+          <ul class="arena-footer__links">
+            <li><a href="/privacidad">Política de Privacidad</a></li>
+            <li><a href="/terminos">Términos y Condiciones</a></li>
+            <li><a href="mailto:cmrsoftware.sn@gmail.com">cmrsoftware.sn@gmail.com</a></li>
+          </ul>
+        </div>
+        <div>
           <h4 class="arena-footer__heading">Contacto</h4>
           <ul class="arena-footer__links">
             <li><a href="https://wa.me/5493364578599" target="_blank" rel="noopener">+54 9 336 457-8599</a></li>
@@ -339,11 +333,11 @@
         </div>
       </div>
       <div class="arena-footer__bottom">
-        <p class="arena-footer__legal">© 2026 CMR Software Solutions · CMR Turnos · Reservas de servicios</p>
+        <p class="arena-footer__legal">© 2026 CMR Software Solutions · CMR Nexo · Reservas de servicios</p>
       </div>
     </div>
   </footer>
 
-  <script src="/home.js"></script>
+  <script src="/home.js?v=features-nexo-1"></script>
 </body>
 </html>

@@ -1,7 +1,7 @@
 {
   "name": "cmr-turnos",
   "version": "1.0.0",
-  "description": "CMR Turnos — sistema multi-tenant de reservas de turnos para negocios",
+  "description": "CMR Nexo — sistema multi-tenant de reservas de turnos para negocios",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js"
