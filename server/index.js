@@ -1984,6 +1984,83 @@ app.get("/api/:slug/productos-destacados", resolveBusiness, async (req, res, nex
   } catch (error) { next(error); }
 });
 
+// Crea un pedido del market ("solicitud de compra", confirmación manual).
+// El precio SIEMPRE se recalcula desde productos.precio_base — nunca se
+// confía en el precio que manda el cliente.
+app.post("/api/:slug/pedidos", resolveBusiness, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) {
+      return res.status(501).json({ error: "El carrito de compras todavía no está disponible en este entorno." });
+    }
+
+    const nombre = (req.body?.nombre || "").trim();
+    const telefono = (req.body?.telefono || "").trim();
+    const email = (req.body?.email || "").trim() || null;
+    const entregaTipo = req.body?.entregaTipo === "envio" ? "envio" : "retiro";
+    const entregaDireccion = entregaTipo === "envio" ? (req.body?.entregaDireccion || "").trim() : null;
+    const notas = (req.body?.notas || "").trim().slice(0, 500) || null;
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+
+    if (!nombre || nombre.length < 3) return res.status(400).json({ error: "El nombre es obligatorio." });
+    if (nombre.length > 100) return res.status(400).json({ error: "El nombre no puede superar 100 caracteres." });
+    if (!telefono || telefono.length < 6) return res.status(400).json({ error: "El teléfono es obligatorio." });
+    if (telefono.length > 30) return res.status(400).json({ error: "El teléfono es inválido." });
+    if (entregaTipo === "envio" && !entregaDireccion) {
+      return res.status(400).json({ error: "Ingresá la dirección de envío." });
+    }
+    if (!items.length) return res.status(400).json({ error: "El carrito está vacío." });
+    if (items.length > 50) return res.status(400).json({ error: "Carrito inválido." });
+
+    const productoIds = [...new Set(items.map((it) => Number(it?.productoId)).filter(Number.isFinite))];
+    if (!productoIds.length) return res.status(400).json({ error: "Carrito inválido." });
+
+    const { data: productos, error: prodError } = await supabase
+      .from("productos")
+      .select("id, nombre, precio_base, activo")
+      .eq("business_id", req.business.id)
+      .in("id", productoIds);
+    if (prodError) throw new Error(prodError.message);
+
+    const productoById = new Map((productos || []).map((p) => [Number(p.id), p]));
+    const pedidoItems = [];
+    let total = 0;
+    for (const it of items) {
+      const producto = productoById.get(Number(it?.productoId));
+      if (!producto || !producto.activo) {
+        return res.status(400).json({ error: `El producto "${it?.nombre || ""}" ya no está disponible.` });
+      }
+      const cantidad = Math.max(1, Math.min(50, Math.trunc(Number(it?.cantidad) || 1)));
+      const precioUnitario = Number(producto.precio_base) || 0;
+      total += precioUnitario * cantidad;
+      pedidoItems.push({
+        producto_id: producto.id,
+        nombre: producto.nombre,
+        cantidad,
+        precio_unitario: precioUnitario,
+      });
+    }
+
+    const { data: pedido, error: pedidoError } = await supabase.from("pedidos").insert({
+      business_id: req.business.id,
+      nombre,
+      telefono,
+      email,
+      entrega_tipo: entregaTipo,
+      entrega_direccion: entregaDireccion,
+      notas,
+      total,
+    }).select().single();
+    if (pedidoError) throw new Error(pedidoError.message);
+
+    const { error: itemsError } = await supabase.from("pedido_items").insert(
+      pedidoItems.map((it) => ({ ...it, pedido_id: pedido.id }))
+    );
+    if (itemsError) throw new Error(itemsError.message);
+
+    res.json({ id: pedido.id, total, items: pedidoItems });
+  } catch (error) { next(error); }
+});
+
 app.get("/api/:slug/disponibilidad", resolveBusiness, async (req, res, next) => {
   try {
     const fecha = (req.query.fecha || "").trim();

@@ -644,10 +644,29 @@ async function loadProductosDestacados() {
           <span class="canito-label">${escapeHtml(p.nombre)}</span>
           <div class="canito-service-card__body">
             ${p.descripcion ? `<p class="text-meta text-secondary">${escapeHtml(p.descripcion)}</p>` : ""}
-            <p class="mt-2 font-semibold text-primary">${escapeHtml(formatPrice(p.precio))}</p>
+            <div class="mt-2 flex items-center justify-between gap-3">
+              <p class="font-semibold text-primary">${escapeHtml(formatPrice(p.precio))}</p>
+              <button type="button" data-add-to-cart="${escapeHtml(p.id)}" class="svc-card__btn !min-w-0 px-3 text-xs">
+                Agregar
+              </button>
+            </div>
           </div>
         </article>`;
     }).join("");
+    container.querySelectorAll("[data-add-to-cart]").forEach((btn) => {
+      const producto = productos.find((p) => String(p.id) === btn.getAttribute("data-add-to-cart"));
+      if (!producto || !window.CanitoCart) return;
+      btn.addEventListener("click", () => {
+        window.CanitoCart.addItem(producto, 1);
+        const original = btn.textContent;
+        btn.textContent = "Agregado ✓";
+        btn.disabled = true;
+        setTimeout(() => {
+          btn.textContent = original;
+          btn.disabled = false;
+        }, 1200);
+      });
+    });
   } catch (error) {
     container.innerHTML = `<p class="text-sm text-secondary">Muy pronto vas a poder ver acá nuestra línea de productos.</p>`;
   }

@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tu carrito — Canito Skin</title>
+    <meta name="robots" content="noindex" />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="stylesheet" href="/globals.css" />
+    <link rel="stylesheet" href="/booking.css?v=20260807-landing" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/tailwind-theme.js"></script>
+  </head>
+  <body class="scope-business booking-page font-sans text-primary">
+    <!-- Header -->
+    <header class="booking-header">
+      <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <a href="/" class="flex min-w-0 shrink-0 items-center gap-3 text-left" aria-label="Volver al inicio">
+          <div id="navLogo" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-business-accent text-sm font-bold text-white select-none"></div>
+          <span id="navBusinessName" class="truncate text-sm font-semibold text-primary sm:text-base"></span>
+        </a>
+
+        <nav class="hidden items-center gap-6 text-meta font-semibold text-secondary sm:flex" aria-label="Secciones">
+          <a href="/#servicios" class="hover:text-business-accent">Tratamientos</a>
+          <a href="/#productos-destacados" class="hover:text-business-accent">Productos</a>
+          <a href="/#sobre-canito" class="hover:text-business-accent">Nosotros</a>
+          <a href="/#ubicacion" class="hover:text-business-accent">Ubicación</a>
+        </nav>
+
+        <div class="flex shrink-0 items-center gap-2">
+          <a href="/cart" class="cart-link" aria-label="Ver carrito" aria-current="page">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+            <span data-cart-count class="cart-badge hidden">0</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-3xl px-4 py-10 sm:px-6">
+      <h1 class="font-display text-2xl uppercase text-canito-carbon">Tu carrito</h1>
+
+      <!-- Empty state -->
+      <div id="cartEmpty" class="mt-10 hidden flex-col items-center gap-4 text-center">
+        <p class="text-secondary">Tu carrito está vacío.</p>
+        <a href="/#productos-destacados" class="btn-accent" style="width: auto; padding-left: 1.5rem; padding-right: 1.5rem;">Ver catálogo</a>
+      </div>
+
+      <!-- Cart with items -->
+      <div id="cartContent" class="mt-8 hidden">
+        <ul id="cartItems" class="flex flex-col gap-4"></ul>
+
+        <div class="mt-6 flex items-center justify-between border-t border-canito-taupe pt-4 text-lg font-semibold text-primary">
+          <span>Total</span>
+          <span id="cartTotal">$ 0</span>
+        </div>
+
+        <form id="checkoutForm" class="mt-8 flex flex-col gap-4">
+          <div>
+            <span class="field-label">Entrega</span>
+            <div class="flex gap-3">
+              <label class="flex flex-1 items-center gap-2 rounded-xl border border-border p-3 text-sm">
+                <input type="radio" name="entregaTipo" value="retiro" checked /> Retiro en el local
+              </label>
+              <label class="flex flex-1 items-center gap-2 rounded-xl border border-border p-3 text-sm">
+                <input type="radio" name="entregaTipo" value="envio" /> Envío
+              </label>
+            </div>
+          </div>
+
+          <div id="direccionField" class="hidden">
+            <label class="field-label" for="entregaDireccion">Dirección de envío</label>
+            <input id="entregaDireccion" name="entregaDireccion" type="text" class="field-input" placeholder="Calle, número, localidad" />
+          </div>
+
+          <div>
+            <label class="field-label" for="nombre">Nombre y apellido</label>
+            <input id="nombre" name="nombre" type="text" required class="field-input" placeholder="Ej: Ana Pérez" />
+          </div>
+
+          <div>
+            <label class="field-label" for="telefono">Teléfono</label>
+            <input id="telefono" name="telefono" type="tel" required class="field-input" placeholder="Ej: 3364001234" />
+          </div>
+
+          <div>
+            <label class="field-label" for="email">Email (opcional)</label>
+            <input id="email" name="email" type="email" class="field-input" placeholder="tu@email.com" />
+          </div>
+
+          <div>
+            <label class="field-label" for="notas">Notas (opcional)</label>
+            <textarea id="notas" name="notas" rows="2" class="field-input" placeholder="Alguna aclaración para tu pedido"></textarea>
+          </div>
+
+          <p id="checkoutError" class="hidden text-sm font-medium text-red-600"></p>
+
+          <button type="submit" id="btnSubmitPedido" class="btn-accent">Enviar pedido</button>
+          <p class="text-center text-meta-sm text-secondary">Te contactamos por WhatsApp para coordinar el pago.</p>
+        </form>
+      </div>
+
+      <!-- Confirmation -->
+      <div id="cartConfirmacion" class="mt-10 hidden flex-col items-center gap-4 text-center">
+        <div class="flex h-14 w-14 items-center justify-center rounded-full bg-business-accent-light text-business-accent">
+          <svg viewBox="0 0 24 24" class="h-7 w-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        </div>
+        <p class="font-display text-xl uppercase text-canito-carbon">¡Listo! Recibimos tu pedido</p>
+        <p class="text-secondary">Te vamos a escribir por WhatsApp para coordinar el pago y la entrega.</p>
+        <a id="btnWhatsAppPedido" href="#" target="_blank" rel="noopener noreferrer" class="btn-accent" style="width: auto; padding-left: 1.5rem; padding-right: 1.5rem;">Escribinos por WhatsApp</a>
+        <a href="/" class="text-meta text-secondary hover:text-business-accent">Volver al inicio</a>
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-canito-taupe bg-canito-crema">
+      <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p class="font-display text-lg uppercase text-canito-carbon">Canito Skin</p>
+            <p class="mt-1 text-meta-sm text-secondary">Allurralde 314, San Nicolás de los Arroyos</p>
+          </div>
+          <nav class="flex flex-wrap gap-x-5 gap-y-2 text-meta text-secondary">
+            <a href="/#servicios" class="hover:text-business-accent">Turnos</a>
+            <a href="/#productos-destacados" class="hover:text-business-accent">Productos</a>
+            <a href="https://www.instagram.com/canitoskin/" target="_blank" rel="noopener noreferrer" class="hover:text-business-accent">Instagram</a>
+            <a href="/privacidad" class="hover:text-business-accent">Privacidad</a>
+            <a href="/terminos" class="hover:text-business-accent">Términos</a>
+          </nav>
+        </div>
+        <p class="text-meta-sm text-secondary/70">© 2026 Canito Skin · Sistema desarrollado por CMR Software Solutions</p>
+      </div>
+    </footer>
+
+    <script src="/cart.js?v=20260807-cart"></script>
+    <script src="/cart-page.js?v=20260807-cart"></script>
+  </body>
+</html>
