@@ -597,6 +597,62 @@ function renderEquipo() {
   }).join("");
 }
 
+/* ── Ubicación / contacto (footer de landing) ── */
+function renderUbicacionContacto() {
+  const horarioEl = document.querySelector("#ubicacionHorario span");
+  if (horarioEl) horarioEl.textContent = formatHorarioNegocio(config) || "Consultanos el horario por WhatsApp";
+
+  const wa = String(config?.whatsappNumero || "").replace(/\D/g, "");
+  const whatsappCTA = document.getElementById("whatsappCTA");
+  if (whatsappCTA) {
+    if (wa) {
+      const texto = `Hola! Quiero más información sobre ${config?.nombre || "Canito Skin"}.`;
+      whatsappCTA.href = `https://wa.me/${wa}?text=${encodeURIComponent(texto)}`;
+    } else {
+      whatsappCTA.classList.add("hidden");
+    }
+  }
+
+  const comoLlegarLink = document.getElementById("comoLlegarLink");
+  if (comoLlegarLink) {
+    const direccion = [config?.direccion, config?.ciudad].filter(Boolean).join(", ") || "Allurralde 314, San Nicolás de los Arroyos";
+    comoLlegarLink.href = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`;
+  }
+}
+
+/* ── Productos destacados (landing) ── */
+async function loadProductosDestacados() {
+  const container = document.getElementById("productosDestacadosList");
+  if (!container) return;
+  try {
+    const response = await fetch(`/api/${SLUG}/productos-destacados`, { cache: "no-store" });
+    if (!response.ok) throw new Error("No se pudieron cargar los productos.");
+    const productos = await response.json();
+    if (!Array.isArray(productos) || !productos.length) {
+      container.innerHTML = `<p class="text-sm text-secondary">Muy pronto vas a poder ver acá nuestra línea de productos.</p>`;
+      return;
+    }
+    container.innerHTML = productos.map((p) => {
+      const media = p.imagenUrl
+        ? `<img src="${escapeHtml(p.imagenUrl)}" alt="${escapeHtml(p.nombre)}" class="canito-service-card__media" loading="lazy" />`
+        : `<div class="canito-service-card__media flex items-center justify-center bg-canito-taupe text-canito-carbon/40">
+            <svg viewBox="0 0 24 24" class="h-10 w-10" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4V8z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>
+          </div>`;
+      return `
+        <article class="canito-service-card">
+          ${media}
+          <span class="canito-label">${escapeHtml(p.nombre)}</span>
+          <div class="canito-service-card__body">
+            ${p.descripcion ? `<p class="text-meta text-secondary">${escapeHtml(p.descripcion)}</p>` : ""}
+            <p class="mt-2 font-semibold text-primary">${escapeHtml(formatPrice(p.precio))}</p>
+          </div>
+        </article>`;
+    }).join("");
+  } catch (error) {
+    container.innerHTML = `<p class="text-sm text-secondary">Muy pronto vas a poder ver acá nuestra línea de productos.</p>`;
+  }
+}
+
 function setNavLogo() {
   const navLogo = document.getElementById("navLogo");
   if (!navLogo) return;
@@ -1114,7 +1170,7 @@ async function loadConfig() {
   const linkAdmin = document.getElementById("linkAdmin");
   if (linkAdmin) linkAdmin.href = `/${SLUG}/admin`;
 
-  document.title = config.nombre ? `${config.nombre} · CMR Nexo` : "CMR Nexo";
+  document.title = config.nombre ? `${config.nombre} — Reservá tu turno` : "Canito Skin";
   navBusinessName.textContent = config.nombre || "";
   heroNombre.textContent = config.nombre || "Reservá tu turno";
   const cat = categoriaLabel(config.categoria);
@@ -1128,6 +1184,7 @@ async function loadConfig() {
   renderServicios();
   renderPlanes();
   renderEquipo();
+  renderUbicacionContacto();
 }
 
 async function init() {
@@ -1136,6 +1193,7 @@ async function init() {
   } catch (error) {
     serviciosList.innerHTML = `<p class="text-sm text-danger">${escapeHtml(error.message || "Error inicializando.")}</p>`;
   }
+  loadProductosDestacados().catch(() => {});
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && wizardStep === "fecha") pollSlotsSilent();
   });

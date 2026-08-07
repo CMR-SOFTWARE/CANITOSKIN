@@ -1,5 +1,7 @@
 const path = require("path");
 require("dotenv").config({ path: path.join(__dirname, "..", ".env") });
+// .env.local (ej: generado por `vercel env pull`) pisa lo de .env si existe.
+require("dotenv").config({ path: path.join(__dirname, "..", ".env.local"), override: true });
 
 const express = require("express");
 const multer = require("multer");
@@ -1954,6 +1956,31 @@ app.get("/api/:slug/config", resolveBusiness, async (req, res, next) => {
       professionalsCount: activePros.length,
       slotStepMin: SLOT_STEP_MIN,
     });
+  } catch (error) { next(error); }
+});
+
+// Preview de productos para la landing (destacado=true). Lectura pública
+// mínima; el CRUD completo del market todavía no existe.
+app.get("/api/:slug/productos-destacados", resolveBusiness, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.json([]);
+    const { data, error } = await supabase
+      .from("productos")
+      .select("id, nombre, descripcion, precio_base, imagen_url, categoria")
+      .eq("business_id", req.business.id)
+      .eq("activo", true)
+      .eq("destacado", true)
+      .order("created_at", { ascending: false })
+      .limit(4);
+    if (error) throw new Error(error.message);
+    res.json((data || []).map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      descripcion: p.descripcion,
+      precio: p.precio_base,
+      imagenUrl: p.imagen_url,
+      categoria: p.categoria,
+    })));
   } catch (error) { next(error); }
 });
 
