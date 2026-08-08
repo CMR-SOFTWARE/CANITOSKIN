@@ -480,6 +480,12 @@
   }
 }
 
+.canito-pieles-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .cart-link {
   position: relative;
   display: inline-flex;
