@@ -701,7 +701,7 @@ function setNavLogo() {
       else img.addEventListener("load", apply, { once: true });
     }
   } else {
-    navLogo.textContent = initials(config.nombre) || "·";
+    navLogo.outerHTML = `<img id="navLogo" src="/images/logo-canito-nav.png" alt="${escapeHtml(config.nombre || "Canito Skin")}" class="h-10 w-auto max-w-[7rem] shrink-0 object-contain" />`;
   }
 }
 
