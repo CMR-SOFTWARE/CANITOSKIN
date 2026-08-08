@@ -470,6 +470,16 @@
   color: var(--text-primary);
 }
 
+.nav-links {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .nav-links {
+    display: flex;
+  }
+}
+
 .cart-link {
   position: relative;
   display: inline-flex;
