@@ -1013,7 +1013,7 @@
             <div class="mb-3 flex items-center justify-between gap-2">
               <div>
                 <h2 class="text-h2">Videos institucionales</h2>
-                <p class="text-meta-sm mt-0.5">Pegá el link del video (YouTube, Instagram, Vimeo o archivo directo). Se abre en pestaña nueva al tocar la card.</p>
+                <p class="text-meta-sm mt-0.5">Pegá un link (YouTube, Instagram, Vimeo) o subí el archivo directamente. Se abre en pestaña nueva al tocar la card.</p>
               </div>
             </div>
             <div class="grid grid-cols-1 gap-2 md:grid-cols-4">
@@ -1021,9 +1021,16 @@
               <input id="nuevoVideoUrl" type="url" placeholder="https://…" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
               <input id="nuevoVideoOrden" type="number" min="0" placeholder="Orden" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
             </div>
+            <div class="mt-2 flex items-center gap-2">
+              <span class="text-meta-sm text-secondary">o subí el archivo (MP4, WEBM, MOV):</span>
+              <input id="nuevoVideoArchivo" type="file" accept="video/mp4,video/webm,video/quicktime,video/x-m4v" class="rounded-lg border border-border px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+            </div>
             <div class="mt-3 flex items-center gap-2">
               <button id="btnAgregarVideo" type="button" class="btn-primary">Guardar video</button>
               <p id="videoFormMsg" class="min-h-5 text-sm font-semibold"></p>
+            </div>
+            <div id="videoUploadProgress" class="hidden mt-2 h-1.5 overflow-hidden rounded-full bg-neutral-bg">
+              <div id="videoUploadBar" class="h-full bg-business-accent transition-all" style="width: 0%"></div>
             </div>
             <div id="videosAdminList" class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3"></div>
             <p id="videosAdminEmpty" class="hidden p-4 text-meta text-center">Todavía no cargaste ningún video.</p>

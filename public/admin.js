@@ -2303,22 +2303,71 @@
     });
   }
 
+  function uploadVideoDirectoASupabase(file, onProgress) {
+    return new Promise(async (resolve, reject) => {
+      let signed;
+      try {
+        signed = await api(`/api/${SLUG}/admin/videos/upload-url`, {
+          method: "POST",
+          body: JSON.stringify({ mimetype: file.type }),
+        });
+      } catch (e) {
+        reject(e);
+        return;
+      }
+      const xhr = new XMLHttpRequest();
+      xhr.open("PUT", signed.signedUrl);
+      xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+      xhr.upload.addEventListener("progress", (ev) => {
+        if (ev.lengthComputable && onProgress) onProgress(Math.round((ev.loaded / ev.total) * 100));
+      });
+      xhr.addEventListener("load", () => {
+        if (xhr.status >= 200 && xhr.status < 300) resolve(signed.publicUrl);
+        else reject(new Error("No se pudo subir el video (código " + xhr.status + ")."));
+      });
+      xhr.addEventListener("error", () => reject(new Error("No se pudo subir el video. Revisá tu conexión.")));
+      xhr.send(file);
+    });
+  }
+
   async function agregarVideo() {
     const titulo = $("nuevoVideoTitulo")?.value?.trim() || "";
     const url = $("nuevoVideoUrl")?.value?.trim() || "";
     const orden = Number($("nuevoVideoOrden")?.value) || 0;
-    if (!url) {
-      setMessage($("videoFormMsg"), "Pegá el link del video.", true);
+    const fileInput = $("nuevoVideoArchivo");
+    const file = fileInput?.files?.[0] || null;
+
+    if (!url && !file) {
+      setMessage($("videoFormMsg"), "Pegá un link o subí un archivo de video.", true);
       return;
     }
+
+    const btn = $("btnAgregarVideo");
+    const progressWrap = $("videoUploadProgress");
+    const progressBar = $("videoUploadBar");
+    if (btn) btn.disabled = true;
+
     try {
-      await api(`/api/${SLUG}/admin/videos`, { method: "POST", body: JSON.stringify({ titulo, url, orden }) });
+      let finalUrl = url;
+      if (file) {
+        progressWrap?.classList.remove("hidden");
+        if (progressBar) progressBar.style.width = "0%";
+        setMessage($("videoFormMsg"), "Subiendo video…", false);
+        finalUrl = await uploadVideoDirectoASupabase(file, (pct) => {
+          if (progressBar) progressBar.style.width = pct + "%";
+        });
+      }
+      await api(`/api/${SLUG}/admin/videos`, { method: "POST", body: JSON.stringify({ titulo, url: finalUrl, orden }) });
       ["nuevoVideoTitulo", "nuevoVideoUrl", "nuevoVideoOrden"].forEach((id) => { if ($(id)) $(id).value = ""; });
+      if (fileInput) fileInput.value = "";
       setMessage($("videoFormMsg"), "Video agregado.", false);
       await loadVideos();
       renderVideosAdmin();
     } catch (e) {
       setMessage($("videoFormMsg"), e.message, true);
+    } finally {
+      if (btn) btn.disabled = false;
+      progressWrap?.classList.add("hidden");
     }
   }
 

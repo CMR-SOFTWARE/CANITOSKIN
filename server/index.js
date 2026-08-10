@@ -3597,6 +3597,32 @@ app.get("/api/:slug/admin/videos", resolveBusiness, requireAdmin, async (req, re
   } catch (error) { next(error); }
 });
 
+// Genera una URL firmada para que el navegador suba el video DIRECTO a
+// Supabase Storage, sin pasar por esta función serverless (Vercel corta
+// el body de las requests en ~4.5MB, un video no entra ahí).
+const VIDEO_MIME_EXT = {
+  "video/mp4": ".mp4",
+  "video/webm": ".webm",
+  "video/quicktime": ".mov",
+  "video/x-m4v": ".m4v",
+};
+app.post("/api/:slug/admin/videos/upload-url", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const mimetype = String(req.body?.mimetype || "");
+    const ext = VIDEO_MIME_EXT[mimetype];
+    if (!ext) return res.status(400).json({ error: "Formato de video no soportado. Usá MP4, WEBM o MOV." });
+
+    const filename = `video_${req.business.id}_${Date.now()}_${Math.round(Math.random() * 1e6)}${ext}`;
+    const storagePath = `videos/${filename}`;
+    const { data, error } = await supabase.storage.from(SUPABASE_BUCKET).createSignedUploadUrl(storagePath);
+    if (error) throw new Error(error.message);
+
+    const publicUrl = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+    res.json({ signedUrl: data.signedUrl, token: data.token, path: storagePath, publicUrl });
+  } catch (error) { next(error); }
+});
+
 app.post("/api/:slug/admin/videos", resolveBusiness, requireAdmin, async (req, res, next) => {
   try {
     if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
