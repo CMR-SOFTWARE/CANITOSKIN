@@ -150,7 +150,9 @@ async function removeGaleriaFotoFile(imagenUrl) {
 // Devuelve true si el error de Supabase es "la tabla no existe" (42P01) —
 // pasa mientras no se corrió la migración de videos_landing/galeria_pieles.
 function isMissingTableError(error) {
-  return error?.code === "42P01";
+  if (!error) return false;
+  if (error.code === "42P01" || error.code === "PGRST205" || error.code === "PGRST202") return true;
+  return /could not find the table|schema cache|does not exist/i.test(error.message || "");
 }
 
 function mapVideoRow(row) {
