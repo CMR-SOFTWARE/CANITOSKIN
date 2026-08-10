@@ -695,11 +695,21 @@ async function loadVideos() {
     if (!response.ok) throw new Error("No se pudieron cargar los videos.");
     const videos = await response.json();
     if (!Array.isArray(videos) || !videos.length) return renderFallback();
-    container.innerHTML = videos.map((v, i) => `
+    container.innerHTML = videos.map((v, i) => {
+      const esArchivoDirecto = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(v.url || "");
+      if (esArchivoDirecto) {
+        return `
+      <div class="canito-service-card">
+        <video class="canito-service-card__media !aspect-video" style="background:var(--canito-carbon)" controls preload="metadata" playsinline src="${escapeHtml(v.url)}"></video>
+        <p class="px-3 py-2 text-meta-sm text-canito-carbon">${escapeHtml(v.titulo || "Video")}</p>
+      </div>`;
+      }
+      return `
       <a href="${escapeHtml(v.url)}" target="_blank" rel="noopener noreferrer" class="canito-service-card">
         <div class="canito-service-card__media flex items-center justify-center !aspect-video ${i % 2 === 0 ? "bg-canito-oliva text-canito-crema/70" : "bg-canito-taupe text-canito-carbon/60"}">${PLAY_ICON}</div>
         <p class="px-3 py-2 text-meta-sm text-canito-carbon">${escapeHtml(v.titulo || "Ver video")}</p>
-      </a>`).join("");
+      </a>`;
+    }).join("");
   } catch (error) {
     renderFallback();
   }
