@@ -458,6 +458,11 @@ h3,
 .canito-service-card__body {
   padding: 1.25rem 1rem 1.5rem;
 }
+/* Fotos de producto: más cuadradas que las de tratamiento (4:5),
+   se ven más chicas/compactas en la grilla del market. */
+.canito-product-card__media {
+  aspect-ratio: 1 / 1;
+}
 /* Label blanco superpuesto al borde foto/contenido (signature) */
 .canito-label {
   display: inline-block;

@@ -634,8 +634,8 @@ async function loadProductosDestacados() {
     }
     container.innerHTML = productos.map((p) => {
       const media = p.imagenUrl
-        ? `<img src="${escapeHtml(p.imagenUrl)}" alt="${escapeHtml(p.nombre)}" class="canito-service-card__media" loading="lazy" />`
-        : `<div class="canito-service-card__media flex items-center justify-center bg-canito-taupe text-canito-carbon/40">
+        ? `<img src="${escapeHtml(p.imagenUrl)}" alt="${escapeHtml(p.nombre)}" class="canito-service-card__media canito-product-card__media" loading="lazy" />`
+        : `<div class="canito-service-card__media canito-product-card__media flex items-center justify-center bg-canito-taupe text-canito-carbon/40">
             <svg viewBox="0 0 24 24" class="h-10 w-10" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 8l8-4 8 4v8l-8 4-8-4V8z"/><path d="M4 8l8 4 8-4M12 12v8"/></svg>
           </div>`;
       return `
