@@ -16,8 +16,8 @@ tailwind.config = {
           "serif",
         ],
         sans: [
-          "Poppins",
           "Inter",
+          "Poppins",
           "ui-sans-serif",
           "system-ui",
           "-apple-system",

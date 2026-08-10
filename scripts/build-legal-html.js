@@ -92,7 +92,7 @@ function wrap(title, body, otherHref, otherLabel) {
 <body class="legal-page">
   <header class="legal-header">
     <div class="legal-header__inner">
-      <a href="/">CMR Nexo</a>
+      <a href="/">Canito Skin</a>
       <a href="${otherHref}">${otherLabel}</a>
     </div>
   </header>
@@ -104,7 +104,7 @@ function wrap(title, body, otherHref, otherLabel) {
     ${body}
   </main>
   <footer class="legal-footer">
-    © 2026 CMR Software Solutions · CMR Nexo ·
+    © 2026 Canito Skin · Sistema desarrollado por CMR Software Solutions ·
     <a href="/">Inicio</a> ·
     <a href="/privacidad">Privacidad</a> ·
     <a href="/terminos">Términos</a>
@@ -118,10 +118,10 @@ const terms = fs.readFileSync("docs/TERMINOS-Y-CONDICIONES.md", "utf8");
 const priv = fs.readFileSync("docs/POLITICA-DE-PRIVACIDAD.md", "utf8");
 fs.writeFileSync(
   "public/terminos.html",
-  wrap("Términos y Condiciones — CMR Nexo", mdToHtml(terms), "/privacidad", "Política de Privacidad")
+  wrap("Términos y Condiciones — Canito Skin", mdToHtml(terms), "/privacidad", "Política de Privacidad")
 );
 fs.writeFileSync(
   "public/privacidad.html",
-  wrap("Política de Privacidad — CMR Nexo", mdToHtml(priv), "/terminos", "Términos y Condiciones")
+  wrap("Política de Privacidad — Canito Skin", mdToHtml(priv), "/terminos", "Términos y Condiciones")
 );
 console.log("written");

@@ -261,6 +261,78 @@ alter table movimientos add column if not exists appointment_id bigint;
 alter table movimientos add column if not exists origen text;
 alter table movimientos add column if not exists referencia_id bigint;
 
+-- Market: catálogo de productos propios + pedidos ("solicitud de compra",
+-- confirmación manual). Si ya existían de una corrida anterior, estos
+-- create table no hacen nada (IF NOT EXISTS); los alter agregan las
+-- columnas nuevas de pago/comprobante sin tocar filas existentes.
+create table if not exists productos (
+  id bigserial primary key,
+  business_id bigint not null references businesses(id) on delete cascade,
+  nombre text not null,
+  descripcion text,
+  precio_base numeric not null default 0,
+  categoria text,
+  destacado boolean not null default false,
+  stock integer,
+  imagen_url text,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists pedidos (
+  id bigserial primary key,
+  business_id bigint not null references businesses(id) on delete cascade,
+  nombre text not null,
+  telefono text not null,
+  email text,
+  entrega_tipo text not null check (entrega_tipo in ('retiro','envio')),
+  entrega_direccion text,
+  notas text,
+  total numeric not null default 0,
+  estado text not null default 'pendiente' check (estado in ('pendiente','confirmado','cancelado')),
+  pago_metodo text,
+  comprobante_url text,
+  creado_en timestamptz not null default now()
+);
+alter table pedidos add column if not exists pago_metodo text;
+alter table pedidos add column if not exists comprobante_url text;
+
+create table if not exists pedido_items (
+  id bigserial primary key,
+  pedido_id bigint not null references pedidos(id) on delete cascade,
+  producto_id bigint,
+  nombre text not null,
+  cantidad integer not null,
+  precio_unitario numeric not null
+);
+create index if not exists idx_pedidos_biz on pedidos (business_id, estado);
+create index if not exists idx_pedido_items_pedido on pedido_items (pedido_id);
+
+-- Contenido de la landing gestionable desde el admin (sección "Contenido"):
+-- videos institucionales y galería "Pieles reales".
+create table if not exists videos_landing (
+  id bigserial primary key,
+  business_id bigint not null references businesses(id) on delete cascade,
+  titulo text,
+  url text not null,
+  seccion text,
+  orden integer not null default 0,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_videos_landing_biz on videos_landing (business_id, activo, orden);
+
+create table if not exists galeria_pieles (
+  id bigserial primary key,
+  business_id bigint not null references businesses(id) on delete cascade,
+  titulo text,
+  imagen_url text not null,
+  orden integer not null default 0,
+  activo boolean not null default true,
+  created_at timestamptz not null default now()
+);
+create index if not exists idx_galeria_pieles_biz on galeria_pieles (business_id, activo, orden);
+
 -- Tablas legado de la plataforma multi-negocio Nexo (superadmin, marketplace,
 -- suscripciones) — ya no las usa el server. Si vienen de una corrida vieja
 -- del setup anterior, se pueden borrar a mano:

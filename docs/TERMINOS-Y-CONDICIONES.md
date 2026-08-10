@@ -1,181 +1,108 @@
-# Términos y Condiciones de Uso — CMR Nexo
+# Términos y Condiciones de Uso — Canito Skin
 
-**Operador:** CMR Software Solutions  
-**Producto:** CMR Nexo  
-**Domicilio:** San Nicolás de los Arroyos, Provincia de Buenos Aires, República Argentina  
-**Contacto:** cmrsoftware.sn@gmail.com · WhatsApp +54 9 336 457-8599 · Instagram @cmrsoftware.sn  
-**Última actualización:** 2 de agosto de 2026
+**Operador:** Canito Skin
+**Domicilio:** Allurralde 314, San Nicolás de los Arroyos, Provincia de Buenos Aires, República Argentina
+**Contacto:** WhatsApp (ver botón "Escribinos por WhatsApp" en el sitio) · Instagram @canitoskin
+**Última actualización:** 10 de agosto de 2026
+
+> ⚠️ Este documento fue redactado a partir del modelo de negocio real de Canito Skin (reserva de turnos de estética y venta de su línea propia de skincare, con relación directa con sus clientes), pero no reemplaza la revisión de un abogado antes de considerarse definitivo.
 
 ---
 
 ## 1. Aceptación de los Términos
 
-1.1. El acceso y uso de la plataforma **CMR Nexo** (la “Plataforma”), operada por **CMR Software Solutions** (“CMR”), implica la aceptación plena de estos Términos y Condiciones de Uso (los “Términos”) y de la Política de Privacidad vigente.
+1.1. El acceso y uso de este sitio (el "Sitio"), operado por **Canito Skin**, implica la aceptación plena de estos Términos y Condiciones y de la Política de Privacidad vigente.
 
-1.2. El registro de un negocio requiere aceptación expresa mediante checkbox. Queda registrada la fecha, hora e dirección IP de dicha aceptación, junto con la versión de los documentos aceptados, como constancia del consentimiento.
+1.2. Quien no acepte estos Términos no debe utilizar el Sitio.
 
-1.3. Quien no acepte estos Términos no debe utilizar la Plataforma.
-
-1.4. El registro como negocio usuario está reservado a personas mayores de dieciocho (18) años con capacidad legal suficiente. Quien registra una cuenta en nombre de una persona jurídica declara contar con facultades para obligarla.
+1.3. Reservar un turno o comprar un producto a través del Sitio requiere ser mayor de edad, o contar con el consentimiento de un adulto responsable si quien reserva es menor.
 
 ---
 
 ## 2. Descripción del servicio
 
-2.1. CMR Nexo es una plataforma de software de gestión y reservas de turnos que permite a negocios de servicios —entre otros, peluquería, estética, masajes, psicología y servicios legales— administrar su agenda y recibir reservas de clientes finales.
+2.1. A través del Sitio, Canito Skin ofrece:
 
-2.2. CMR Nexo actúa exclusivamente como **proveedor de software**. CMR **no presta** los servicios ofrecidos por los negocios registrados. La relación de prestación del servicio concreto existe **exclusivamente entre el negocio y su cliente final**.
+- **Reserva de turnos** para tratamientos de estética (faciales, depilación, micropigmentación, corporales y otros publicados en el Sitio).
+- **Venta de su línea propia de productos de skincare**, con retiro en el local o envío, según se indique al momento de la compra.
 
-2.3. CMR no es parte de la relación comercial, profesional o de consumo entre el negocio y el cliente final, más allá de proveer la herramienta tecnológica que facilita la reserva y la gestión.
-
----
-
-## 3. Definiciones
-
-- **Negocio usuario:** titular de una cuenta en CMR Nexo que utiliza la Plataforma para gestionar turnos y atender a sus clientes.
-- **Cliente final:** persona que reserva un turno ante un negocio usuario a través de la Plataforma, generalmente sin cuenta propia en CMR Nexo.
-- **Suscripción:** el plan de acceso pago a la Plataforma contratado por el negocio usuario.
+2.2. Los tratamientos son prestados directamente por Canito Skin en Allurralde 314, San Nicolás de los Arroyos. No hay terceros negocios ni profesionales ajenos a Canito Skin operando a través de este Sitio.
 
 ---
 
-## 4. Obligaciones del negocio registrado
+## 3. Reserva de turnos
 
-El negocio usuario se obliga a:
+3.1. Al reservar, el cliente debe proporcionar nombre, teléfono y los demás datos que se soliciten, de forma veraz.
 
-4.1. Proporcionar y mantener datos veraces, completos y actualizados (identidad, contacto, localización, servicios, precios y horarios).
+3.2. Según el servicio, puede requerirse una seña o el pago del turno mediante transferencia, con presentación de comprobante.
 
-4.2. Cumplir sus obligaciones legales, fiscales, profesionales y de protección de datos personales frente a sus clientes finales y terceros.
+3.3. **Cancelaciones:** el cliente puede cancelar o reprogramar su turno contactando a Canito Skin por WhatsApp con la mayor antelación posible. Cancelaciones con poca anticipación o inasistencias reiteradas ("no-show") pueden implicar la pérdida de la seña abonada, a criterio de Canito Skin.
 
-4.3. Ser el único responsable de la calidad, idoneidad, puntualidad y ejecución del servicio que presta a sus clientes finales.
-
-4.4. Informar a sus clientes sobre el tratamiento de sus datos personales y atender sus derechos cuando corresponda, en su carácter de responsable primario de esos datos.
-
-4.5. Custodiar las credenciales de acceso y responder por el uso de la cuenta por parte de empleados, colaboradores o terceros a quienes facilite el acceso.
-
-4.6. No cargar contenidos ilícitos, engañosos o que vulneren derechos de terceros, ni utilizar la Plataforma de forma fraudulenta o abusiva.
+3.4. Canito Skin puede reprogramar un turno por causas de fuerza mayor, ausencia del profesional u otras razones operativas, notificando al cliente a la mayor brevedad posible.
 
 ---
 
-## 5. Obligaciones del cliente final
+## 4. Compra de productos
 
-El cliente final que reserva un turno se obliga a:
+4.1. Los precios publicados en el Sitio están expresados en pesos argentinos y pueden modificarse sin previo aviso; el precio válido es el vigente al momento de confirmar la compra.
 
-5.1. Proporcionar datos de contacto veraces al momento de la reserva.
+4.2. La compra se realiza como una **solicitud de pedido**: Canito Skin la confirma manualmente por WhatsApp una vez coordinado el pago (transferencia con comprobante, o efectivo al retirar, según lo indicado por el cliente al finalizar la compra).
 
-5.2. Asistir al turno reservado o cancelarlo con la antelación razonable que establezca la política del negocio correspondiente.
+4.3. El cliente elige retiro en el local o envío. Los costos y plazos de envío, si corresponde, se coordinan por WhatsApp.
 
-5.3. Dirigir al negocio cualquier reclamo relativo a la prestación del servicio, precios, reembolsos, calidad o puntualidad.
-
----
-
-## 6. Alcance de responsabilidad de CMR Software Solutions
-
-6.1. CMR actúa exclusivamente como **proveedor tecnológico intermediario**.
-
-6.2. CMR no responde por la calidad, resultado, puntualidad ni cumplimiento del servicio prestado por el negocio, ni por disputas entre el negocio y su cliente final, incluyendo señas, cancelaciones comerciales, devoluciones o reclamos de consumo derivados de esa relación.
-
-6.3. CMR no garantiza la veracidad de la información publicada por el negocio en la Plataforma.
+4.4. Ante un producto defectuoso o un error en el pedido, el cliente puede reclamar por WhatsApp dentro de un plazo razonable desde la entrega.
 
 ---
 
-## 7. Indemnidad
+## 5. Pagos
 
-7.1. El negocio usuario mantiene indemne a CMR Software Solutions frente a reclamos, denuncias, sanciones, costos de defensa y daños derivados de:
+5.1. Canito Skin acepta transferencia bancaria (con comprobante) y pago en efectivo, coordinado directamente por WhatsApp.
 
-- (a) el incumplimiento del negocio de sus obligaciones legales, fiscales o de protección de datos frente a sus clientes;
-- (b) el uso indebido de la Plataforma por el negocio o por quienes utilicen su cuenta;
-- (c) datos, contenidos o información falsos, incompletos o ilícitos cargados por el negocio.
+5.2. Canito Skin **no procesa ni almacena** números de tarjeta de crédito o débito, ni claves bancarias o CVV a través del Sitio.
 
----
-
-## 8. Límite de responsabilidad
-
-8.1. En los supuestos en que corresponda responsabilidad directa de CMR atribuible al funcionamiento de la Plataforma bajo su control, dicha responsabilidad se limita al monto efectivamente abonado por el usuario afectado en concepto de suscripción durante los **tres (3) meses** previos al hecho generador.
-
-8.2. CMR no responde por lucro cesante, pérdida de clientela, pérdida de chance comercial ni daños indirectos o consecuentes derivados del uso o de la imposibilidad de uso de la Plataforma.
+5.3. Canito Skin puede rechazar comprobantes que no puedan verificarse o que resulten inconsistentes, y no responde por errores del cliente al transferir (monto, alias, CBU incorrectos) ni por demoras bancarias ajenas a su control.
 
 ---
 
-## 9. Disponibilidad del servicio
+## 6. Disponibilidad del servicio
 
-9.1. La Plataforma se ofrece según disponibilidad. CMR no garantiza un servicio ininterrumpido ni libre de errores.
+6.1. El Sitio se ofrece según disponibilidad. Canito Skin no garantiza un funcionamiento ininterrumpido ni libre de errores.
 
-9.2. CMR no responde por interrupciones, demoras o fallas originadas en proveedores externos o factores ajenos a su control directo, incluyendo Supabase, WhatsApp, Vercel, redes de telecomunicaciones, proveedores de internet, fuerza mayor o caso fortuito.
-
-9.3. CMR puede realizar tareas de mantenimiento necesarias para el funcionamiento y la seguridad del servicio.
+6.2. Canito Skin no responde por interrupciones, demoras o fallas originadas en proveedores externos ajenos a su control directo (por ejemplo Supabase, WhatsApp, Vercel, o la conexión a internet del cliente).
 
 ---
 
-## 10. Planes, precios y verificación de pagos
+## 7. Propiedad intelectual
 
-10.1. El acceso a la Plataforma se ofrece mediante planes de suscripción cuyos precios, límites y funcionalidades se informan en el sitio o por los canales comerciales de CMR.
+7.1. La marca **Canito Skin**, su logotipo, contenidos, fotos y la línea de productos son propiedad de Canito Skin.
 
-10.2. El modelo de pago vigente es **transferencia bancaria** con presentación de **comprobante**, sujeto a **verificación manual** por CMR Software Solutions. La activación de la cuenta queda sujeta a esa verificación.
-
-10.3. CMR puede rechazar comprobantes que no puedan verificarse fehacientemente o que resulten inconsistentes. CMR no responde por errores del negocio al transferir (monto, alias, CBU o titular incorrectos) ni por demoras bancarias ajenas a su control.
-
-10.4. CMR Nexo no procesa ni almacena números de tarjeta de crédito o débito, ni claves bancarias o CVV.
-
-10.5. CMR puede modificar precios y funcionalidades de los planes, notificando a los usuarios activos con antelación razonable.
+7.2. El software que da soporte al Sitio (reservas, catálogo, panel administrativo) fue desarrollado por **CMR Software Solutions** para uso exclusivo de Canito Skin.
 
 ---
 
-## 11. Suspensión y baja de cuentas
+## 8. Uso aceptable
 
-11.1. CMR puede suspender o dar de baja, sin necesidad de preaviso, cualquier cuenta que incumpla estos Términos, la Política de Privacidad, o que sea utilizada de modo indebido, fraudulento o que genere riesgos relevantes para la Plataforma, para CMR o para terceros.
-
-11.2. El negocio puede solicitar la baja de su suscripción a través de los canales de contacto de CMR. Salvo disposición distinta acordada o legalmente aplicable, la baja no implica reembolso automático de períodos ya abonados.
-
-11.3. Tras la baja, CMR desactiva el acceso conforme sus procedimientos operativos y trata los datos según la Política de Privacidad.
+Queda prohibido intentar vulnerar la seguridad del Sitio, acceder a datos de terceros sin autorización, o hacer un uso fraudulento o abusivo del Sitio.
 
 ---
 
-## 12. Propiedad intelectual
+## 9. Modificaciones
 
-12.1. El software, código, diseño, documentación, contenidos propios y la marca **CMR Nexo** son propiedad exclusiva de CMR Software Solutions o de sus licenciantes.
-
-12.2. El uso de la Plataforma otorga una licencia limitada, no exclusiva, intransferible y revocable de uso conforme al plan contratado. No transfiere derecho de propiedad intelectual alguno al usuario.
-
-12.3. Los contenidos cargados por el negocio permanecen bajo la titularidad que les corresponda. El negocio otorga a CMR la licencia necesaria para alojarlos y tratarlos a los fines del servicio.
+Canito Skin puede modificar estos Términos. La versión vigente se publica en el Sitio con su fecha de actualización.
 
 ---
 
-## 13. Uso aceptable
+## 10. Ley aplicable y jurisdicción
 
-Queda prohibido: intentar vulnerar la seguridad de la Plataforma; acceder a datos de terceros sin autorización; sobrecargar deliberadamente el servicio; realizar usos ilícitos; o facilitar el acceso a personas no autorizadas.
+10.1. Estos Términos se rigen por las leyes de la República Argentina.
 
----
-
-## 14. Comunicaciones
-
-CMR puede enviar comunicaciones operativas, de facturación y de soporte a los datos de contacto registrados. Las comunicaciones comerciales cesan a solicitud del usuario, sin perjuicio de las comunicaciones necesarias para la ejecución del servicio.
+10.2. Toda controversia derivada de estos Términos o del uso del Sitio se somete a los tribunales ordinarios con competencia en **San Nicolás de los Arroyos, Provincia de Buenos Aires**, sin perjuicio de los fueros que resulten imperativos por ley (por ejemplo, los de protección al consumidor).
 
 ---
 
-## 15. Modificaciones
+## 11. Contacto
 
-CMR puede modificar estos Términos. La versión vigente se publica en la Plataforma con su fecha de actualización. Los cambios relevantes se comunican a los usuarios activos por medios razonables. El uso continuado de la Plataforma tras la publicación implica aceptación de la versión actualizada.
-
----
-
-## 16. Divisibilidad
-
-Si alguna cláusula fuera declarada inválida o inaplicable por autoridad competente, el resto de los Términos mantiene plena vigencia.
-
----
-
-## 17. Ley aplicable y jurisdicción
-
-17.1. Estos Términos se rigen por las leyes de la República Argentina.
-
-17.2. Toda controversia derivada de estos Términos o del uso de la Plataforma se somete a los tribunales ordinarios con competencia en **San Nicolás de los Arroyos, Provincia de Buenos Aires**, con renuncia a cualquier otro fuero, sin perjuicio de los fueros que resulten imperativos por ley.
-
----
-
-## 18. Contacto
-
-CMR Software Solutions  
-San Nicolás de los Arroyos, Buenos Aires, Argentina  
-Email: cmrsoftware.sn@gmail.com  
-WhatsApp: +54 9 336 457-8599  
-Instagram: @cmrsoftware.sn
+Canito Skin
+Allurralde 314, San Nicolás de los Arroyos, Buenos Aires, Argentina
+WhatsApp: ver botón "Escribinos por WhatsApp" en el Sitio
+Instagram: @canitoskin

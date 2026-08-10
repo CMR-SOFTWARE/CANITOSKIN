@@ -399,6 +399,8 @@
   let editingServiceId = null;
   let editingPlanId = null;
   let clientesQuery = "";
+  let videosCache = [];
+  let galeriaCache = [];
 
   // ---- API ----
   async function api(url, options = {}) {
@@ -666,6 +668,10 @@
       loadMovimientos()
         .then(() => renderMovimientos())
         .catch((e) => setMessage($("movFormMsg"), e.message, true));
+    }
+    if (view === "contenido") {
+      loadVideos().then(renderVideosAdmin).catch((e) => handleMigracionAviso(e.message));
+      loadGaleriaAdmin().then(renderGaleriaAdmin).catch((e) => handleMigracionAviso(e.message));
     }
     if (view === "estadisticas") {
       loadMovimientos().catch(() => { movimientosCache = []; }).finally(() => renderEstadisticas());
@@ -2236,6 +2242,166 @@
     }
   }
 
+  // ---- contenido (videos + galería) ----
+  function handleMigracionAviso(message) {
+    const el = $("contenidoMigracionAviso");
+    if (!el) return;
+    if (message) {
+      el.textContent = message;
+      el.classList.remove("hidden");
+    } else {
+      el.classList.add("hidden");
+    }
+  }
+
+  async function loadVideos() {
+    const data = await api(`/api/${SLUG}/admin/videos`);
+    videosCache = Array.isArray(data) ? data : [];
+    handleMigracionAviso(null);
+  }
+
+  function renderVideosAdmin() {
+    const list = $("videosAdminList");
+    const empty = $("videosAdminEmpty");
+    if (!list) return;
+    const items = videosCache || [];
+    empty?.classList.toggle("hidden", items.length > 0);
+    list.innerHTML = items.map((v) => `
+      <article class="ds-card p-4 flex flex-col gap-2">
+        <div class="flex items-start justify-between gap-2">
+          <p class="font-semibold truncate">${escapeHtml(v.titulo || "Sin título")}</p>
+          <span class="shrink-0 inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${v.activo ? "badge-success" : "badge-neutral"}">${v.activo ? "Activo" : "Oculto"}</span>
+        </div>
+        <a href="${escapeHtml(v.url)}" target="_blank" rel="noopener" class="text-xs text-business-accent hover:underline truncate">${escapeHtml(v.url)}</a>
+        <p class="text-meta-sm">Orden: ${escapeHtml(v.orden ?? 0)}</p>
+        <div class="mt-1 flex flex-wrap gap-2">
+          <button type="button" data-toggle-video="${escapeHtml(v.id)}" data-activo="${v.activo ? "0" : "1"}" class="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-neutral-bg">${v.activo ? "Ocultar" : "Mostrar"}</button>
+          <button type="button" data-del-video="${escapeHtml(v.id)}" class="rounded-lg border border-danger/30 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger-bg">Eliminar</button>
+        </div>
+      </article>`).join("");
+
+    list.querySelectorAll("[data-toggle-video]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-toggle-video");
+        const activo = btn.getAttribute("data-activo") === "1";
+        try {
+          await api(`/api/${SLUG}/admin/videos/${id}`, { method: "PUT", body: JSON.stringify({ activo }) });
+          await loadVideos();
+          renderVideosAdmin();
+        } catch (e) { setMessage($("videoFormMsg"), e.message, true); }
+      });
+    });
+    list.querySelectorAll("[data-del-video]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("¿Eliminar este video?")) return;
+        try {
+          await api(`/api/${SLUG}/admin/videos/${btn.getAttribute("data-del-video")}`, { method: "DELETE" });
+          await loadVideos();
+          renderVideosAdmin();
+        } catch (e) { setMessage($("videoFormMsg"), e.message, true); }
+      });
+    });
+  }
+
+  async function agregarVideo() {
+    const titulo = $("nuevoVideoTitulo")?.value?.trim() || "";
+    const url = $("nuevoVideoUrl")?.value?.trim() || "";
+    const orden = Number($("nuevoVideoOrden")?.value) || 0;
+    if (!url) {
+      setMessage($("videoFormMsg"), "Pegá el link del video.", true);
+      return;
+    }
+    try {
+      await api(`/api/${SLUG}/admin/videos`, { method: "POST", body: JSON.stringify({ titulo, url, orden }) });
+      ["nuevoVideoTitulo", "nuevoVideoUrl", "nuevoVideoOrden"].forEach((id) => { if ($(id)) $(id).value = ""; });
+      setMessage($("videoFormMsg"), "Video agregado.", false);
+      await loadVideos();
+      renderVideosAdmin();
+    } catch (e) {
+      setMessage($("videoFormMsg"), e.message, true);
+    }
+  }
+
+  async function loadGaleriaAdmin() {
+    const data = await api(`/api/${SLUG}/admin/galeria`);
+    galeriaCache = Array.isArray(data) ? data : [];
+    handleMigracionAviso(null);
+  }
+
+  function renderGaleriaAdmin() {
+    const list = $("galeriaAdminList");
+    const empty = $("galeriaAdminEmpty");
+    if (!list) return;
+    const items = galeriaCache || [];
+    empty?.classList.toggle("hidden", items.length > 0);
+    list.innerHTML = items.map((f) => `
+      <article class="ds-card overflow-hidden">
+        <div class="aspect-square bg-neutral-bg">
+          <img src="${escapeHtml(f.imagenUrl)}" alt="${escapeHtml(f.titulo || "")}" class="h-full w-full object-cover" loading="lazy" />
+        </div>
+        <div class="p-2.5 flex flex-col gap-1.5">
+          <p class="text-xs font-semibold truncate">${escapeHtml(f.titulo || "Sin título")}</p>
+          <span class="inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-semibold ${f.activo ? "badge-success" : "badge-neutral"}">${f.activo ? "Activa" : "Oculta"}</span>
+          <div class="flex flex-wrap gap-1.5">
+            <button type="button" data-toggle-foto="${escapeHtml(f.id)}" data-activo="${f.activo ? "0" : "1"}" class="rounded-lg border border-border px-2 py-1 text-xs font-semibold hover:bg-neutral-bg">${f.activo ? "Ocultar" : "Mostrar"}</button>
+            <button type="button" data-del-foto="${escapeHtml(f.id)}" class="rounded-lg border border-danger/30 px-2 py-1 text-xs font-semibold text-danger hover:bg-danger-bg">Eliminar</button>
+          </div>
+        </div>
+      </article>`).join("");
+
+    list.querySelectorAll("[data-toggle-foto]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-toggle-foto");
+        const activo = btn.getAttribute("data-activo") === "1";
+        try {
+          await api(`/api/${SLUG}/admin/galeria/${id}`, { method: "PATCH", body: JSON.stringify({ activo }) });
+          await loadGaleriaAdmin();
+          renderGaleriaAdmin();
+        } catch (e) { setMessage($("fotoFormMsg"), e.message, true); }
+      });
+    });
+    list.querySelectorAll("[data-del-foto]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("¿Eliminar esta foto?")) return;
+        try {
+          await api(`/api/${SLUG}/admin/galeria/${btn.getAttribute("data-del-foto")}`, { method: "DELETE" });
+          await loadGaleriaAdmin();
+          renderGaleriaAdmin();
+        } catch (e) { setMessage($("fotoFormMsg"), e.message, true); }
+      });
+    });
+  }
+
+  async function agregarFoto() {
+    const fileInput = $("nuevaFotoArchivo");
+    const file = fileInput?.files?.[0];
+    if (!file) {
+      setMessage($("fotoFormMsg"), "Elegí una foto para subir.", true);
+      return;
+    }
+    const titulo = $("nuevaFotoTitulo")?.value?.trim() || "";
+    const orden = Number($("nuevaFotoOrden")?.value) || 0;
+    const btn = $("btnAgregarFoto");
+    if (btn) { btn.disabled = true; btn.textContent = "Subiendo…"; }
+    try {
+      const prepared = await compressImageFile(file);
+      const form = new FormData();
+      form.append("foto", prepared);
+      form.append("titulo", titulo);
+      form.append("orden", String(orden));
+      await api(`/api/${SLUG}/admin/galeria`, { method: "POST", body: form });
+      ["nuevaFotoTitulo", "nuevaFotoOrden"].forEach((id) => { if ($(id)) $(id).value = ""; });
+      if (fileInput) fileInput.value = "";
+      setMessage($("fotoFormMsg"), "Foto subida.", false);
+      await loadGaleriaAdmin();
+      renderGaleriaAdmin();
+    } catch (e) {
+      setMessage($("fotoFormMsg"), e.message, true);
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = "Subir foto"; }
+    }
+  }
+
   // ---- movimientos (caja) ----
   const MOV_CATS = {
     ingreso: ["Turnos", "Señas", "Productos", "Otros"],
@@ -3158,6 +3324,8 @@
       form?.classList.toggle("hidden");
     });
     $("btnAgregarPlanCliente")?.addEventListener("click", agregarPlan);
+    $("btnAgregarVideo")?.addEventListener("click", agregarVideo);
+    $("btnAgregarFoto")?.addEventListener("click", agregarFoto);
 
     $("clientesSearch")?.addEventListener("input", (e) => {
       clientesQuery = e.target.value || "";

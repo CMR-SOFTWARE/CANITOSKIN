@@ -95,6 +95,23 @@
             <textarea id="notas" name="notas" rows="2" class="field-input" placeholder="Alguna aclaración para tu pedido"></textarea>
           </div>
 
+          <div>
+            <span class="field-label">Pago</span>
+            <div class="flex gap-3">
+              <label class="flex flex-1 items-center gap-2 rounded-xl border border-border p-3 text-sm">
+                <input type="radio" name="pagoMetodo" value="transferencia" checked /> Ya transferí
+              </label>
+              <label class="flex flex-1 items-center gap-2 rounded-xl border border-border p-3 text-sm">
+                <input type="radio" name="pagoMetodo" value="efectivo" /> Pago en efectivo
+              </label>
+            </div>
+          </div>
+
+          <div id="comprobanteField">
+            <label class="field-label" for="comprobante">Comprobante de transferencia</label>
+            <input id="comprobante" name="comprobante" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="field-input" />
+          </div>
+
           <p id="checkoutError" class="hidden text-sm font-medium text-red-600"></p>
 
           <button type="submit" id="btnSubmitPedido" class="btn-accent">Enviar pedido</button>

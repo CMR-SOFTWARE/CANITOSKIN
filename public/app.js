@@ -672,6 +672,73 @@ async function loadProductosDestacados() {
   }
 }
 
+/* ── Videos institucionales (landing) ── */
+const VIDEOS_FALLBACK = [
+  { titulo: "Nuestro espacio — próximamente", bg: "bg-canito-oliva", ink: "text-canito-crema/70" },
+  { titulo: "Tratamientos — próximamente", bg: "bg-canito-taupe", ink: "text-canito-carbon/60" },
+  { titulo: "Comunidad — próximamente", bg: "bg-canito-crema", ink: "text-canito-carbon/60" },
+];
+const PLAY_ICON = `<svg viewBox="0 0 24 24" class="h-9 w-9" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
+
+async function loadVideos() {
+  const container = document.getElementById("videosList");
+  if (!container) return;
+  const renderFallback = () => {
+    container.innerHTML = VIDEOS_FALLBACK.map((v) => `
+      <div class="canito-service-card">
+        <div class="canito-service-card__media flex items-center justify-center !aspect-video ${v.bg} ${v.ink}">${PLAY_ICON}</div>
+        <p class="px-3 py-2 text-meta-sm text-canito-carbon">${escapeHtml(v.titulo)}</p>
+      </div>`).join("");
+  };
+  try {
+    const response = await fetch(`/api/${SLUG}/videos`, { cache: "no-store" });
+    if (!response.ok) throw new Error("No se pudieron cargar los videos.");
+    const videos = await response.json();
+    if (!Array.isArray(videos) || !videos.length) return renderFallback();
+    container.innerHTML = videos.map((v, i) => `
+      <a href="${escapeHtml(v.url)}" target="_blank" rel="noopener noreferrer" class="canito-service-card">
+        <div class="canito-service-card__media flex items-center justify-center !aspect-video ${i % 2 === 0 ? "bg-canito-oliva text-canito-crema/70" : "bg-canito-taupe text-canito-carbon/60"}">${PLAY_ICON}</div>
+        <p class="px-3 py-2 text-meta-sm text-canito-carbon">${escapeHtml(v.titulo || "Ver video")}</p>
+      </a>`).join("");
+  } catch (error) {
+    renderFallback();
+  }
+}
+
+/* ── Galería "Pieles reales" (landing) ── */
+const PIELES_FALLBACK_ICONS = [
+  { bg: "bg-canito-oliva", ink: "text-canito-crema/70", path: `<path d="M50 85c0-20 15-25 15-45a15 15 0 00-30 0c0 20 15 25 15 45z" /><path d="M50 40V15" />` },
+  { bg: "bg-canito-carbon", ink: "text-canito-crema/70", path: `<circle cx="50" cy="50" r="16" /><path d="M50 20v10M50 70v10M20 50h10M70 50h10M29 29l7 7M64 64l7 7M71 29l-7 7M36 64l-7 7" />` },
+  { bg: "bg-canito-crema", ink: "text-canito-carbon/60", path: `<path d="M50 20c14 12 22 26 22 40a22 22 0 01-44 0c0-14 8-28 22-40z" />` },
+  { bg: "bg-canito-oliva", ink: "text-canito-crema/70", path: `<path d="M50 82C28 68 15 52 15 36a20 20 0 0135-13 20 20 0 0135 13c0 16-13 32-35 46z" />` },
+];
+
+async function loadGaleria() {
+  const container = document.getElementById("pielesGaleriaList");
+  const nota = document.getElementById("pielesGaleriaNota");
+  if (!container) return;
+  const renderFallback = () => {
+    container.innerHTML = PIELES_FALLBACK_ICONS.map((t) => `
+      <div class="canito-pieles-tile aspect-square rounded-card ${t.bg} ${t.ink}">
+        <svg viewBox="0 0 100 100" class="h-10 w-10" fill="none" stroke="currentColor" stroke-width="2">${t.path}</svg>
+      </div>`).join("");
+    if (nota) nota.classList.remove("hidden");
+  };
+  try {
+    const response = await fetch(`/api/${SLUG}/galeria`, { cache: "no-store" });
+    if (!response.ok) throw new Error("No se pudo cargar la galería.");
+    const fotos = await response.json();
+    if (!Array.isArray(fotos) || !fotos.length) return renderFallback();
+    if (nota) nota.classList.add("hidden");
+    container.innerHTML = fotos.map((f) => `
+      <div class="aspect-square overflow-hidden rounded-card bg-canito-taupe">
+        <img src="${escapeHtml(f.imagenUrl)}" alt="${escapeHtml(f.titulo || "Canito Skin")}" class="h-full w-full object-cover" loading="lazy" />
+      </div>`).join("");
+  } catch (error) {
+    renderFallback();
+  }
+}
+
 function setNavLogo() {
   const navLogo = document.getElementById("navLogo");
   if (!navLogo) return;
@@ -962,6 +1029,8 @@ function validarDatos() {
 }
 
 function buildWhatsAppUrl(reserva) {
+  const wa = String(config?.whatsappNumero || "").replace(/\D/g, "");
+  if (!wa) return null;
   const comprobanteTexto = reserva.comprobanteUrl
     ? `Comprobante: ${reserva.comprobanteUrl}`
     : "Comprobante: cargado en la web";
@@ -977,7 +1046,7 @@ function buildWhatsAppUrl(reserva) {
     comprobanteTexto,
     "Ya realicé la transferencia.",
   ].filter(Boolean).join("\n");
-  return `https://wa.me/${config.whatsappNumero}?text=${encodeURIComponent(text)}`;
+  return `https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
 }
 
 function buildCancelacionWhatsAppUrl() {
@@ -1007,7 +1076,15 @@ function showConfirmacion(reserva) {
     ].filter(Boolean).join("");
   }
   const btnWa = document.getElementById("btnWhatsAppConfirm");
-  if (btnWa) btnWa.href = buildWhatsAppUrl(reserva);
+  if (btnWa) {
+    const waUrl = buildWhatsAppUrl(reserva);
+    if (waUrl) {
+      btnWa.href = waUrl;
+      btnWa.classList.remove("hidden");
+    } else {
+      btnWa.classList.add("hidden");
+    }
+  }
   showWizardStep("confirmacion");
   setMensaje("");
 }
@@ -1213,6 +1290,8 @@ async function init() {
     serviciosList.innerHTML = `<p class="text-sm text-danger">${escapeHtml(error.message || "Error inicializando.")}</p>`;
   }
   loadProductosDestacados().catch(() => {});
+  loadVideos().catch(() => {});
+  loadGaleria().catch(() => {});
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && wizardStep === "fecha") pollSlotsSilent();
   });

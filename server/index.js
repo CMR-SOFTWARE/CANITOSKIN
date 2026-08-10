@@ -126,6 +126,54 @@ async function uploadProfessionalFotoFile(businessId, professionalId, file) {
   throw new Error("No hay backend disponible.");
 }
 
+async function uploadGaleriaFotoFile(businessId, galeriaId, file) {
+  const ext = path.extname(file.originalname) || ".jpg";
+  const filename = `galeria_${businessId}_${galeriaId}_${Date.now()}${ext}`;
+  const storagePath = `galeria/${filename}`;
+  const { error: uploadErr } = await supabase.storage
+    .from(SUPABASE_BUCKET)
+    .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: true });
+  if (uploadErr) throw new Error(uploadErr.message);
+  const { data: { publicUrl } } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
+  return publicUrl;
+}
+
+async function removeGaleriaFotoFile(imagenUrl) {
+  if (!imagenUrl) return;
+  const marker = `/storage/v1/object/public/${SUPABASE_BUCKET}/`;
+  const idx = imagenUrl.indexOf(marker);
+  if (idx === -1) return;
+  const storagePath = imagenUrl.slice(idx + marker.length);
+  await supabase.storage.from(SUPABASE_BUCKET).remove([storagePath]).catch(() => {});
+}
+
+// Devuelve true si el error de Supabase es "la tabla no existe" (42P01) —
+// pasa mientras no se corrió la migración de videos_landing/galeria_pieles.
+function isMissingTableError(error) {
+  return error?.code === "42P01";
+}
+
+function mapVideoRow(row) {
+  return {
+    id: row.id,
+    titulo: row.titulo || null,
+    url: row.url,
+    seccion: row.seccion || null,
+    orden: row.orden ?? 0,
+    activo: row.activo !== false,
+  };
+}
+
+function mapGaleriaRow(row) {
+  return {
+    id: row.id,
+    titulo: row.titulo || null,
+    imagenUrl: row.imagen_url,
+    orden: row.orden ?? 0,
+    activo: row.activo !== false,
+  };
+}
+
 function parseProfessionalProfile(body = {}) {
   const nombre = String(body.nombre || "").trim();
   const especialidad = String(body.especialidad || "").trim().slice(0, 80) || null;
@@ -167,6 +215,11 @@ function parseProfessionalSchedule(body = {}) {
     horaFin2 = scheduleValueToMinutes(rawF2);
     if (!Number.isFinite(horaInicio2) || !Number.isFinite(horaFin2) || horaInicio2 >= horaFin2) {
       const err = new Error("Franja 2 inválida.");
+      err.status = 400;
+      throw err;
+    }
+    if (horaInicio2 < horaFin) {
+      const err = new Error("La franja 2 debe empezar después de que termine la franja 1.");
       err.status = 400;
       throw err;
     }
@@ -1047,12 +1100,17 @@ async function createIngresoTurnoMovimiento({
     }).select().single();
 
     if (error) {
+      console.warn("[movimientos] intento 1 (con appointment_id) falló:", JSON.stringify({
+        message: error.message, code: error.code, details: error.details, hint: error.hint, businessId, appointmentId, monto: amount,
+      }));
       // Intento 2: sin appointment_id (migración pendiente)
       const retry = await supabase.from("movimientos").insert(base).select().single();
       if (retry.error) {
-        const msg = retry.error.message || error.message;
-        console.warn("[movimientos] No se pudo crear ingreso de turno:", msg);
-        const err = new Error(msg);
+        const rErr = retry.error;
+        console.warn("[movimientos] intento 2 (sin appointment_id) también falló:", JSON.stringify({
+          message: rErr.message, code: rErr.code, details: rErr.details, hint: rErr.hint, businessId, appointmentId, monto: amount,
+        }));
+        const err = new Error(rErr.message || error.message);
         err.code = "MOVIMIENTO_INSERT";
         throw err;
       }
@@ -1984,10 +2042,46 @@ app.get("/api/:slug/productos-destacados", resolveBusiness, async (req, res, nex
   } catch (error) { next(error); }
 });
 
+// Videos institucionales de la landing, gestionados desde el admin.
+app.get("/api/:slug/videos", resolveBusiness, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.json([]);
+    const { data, error } = await supabase
+      .from("videos_landing")
+      .select("id, titulo, url, seccion, orden")
+      .eq("business_id", req.business.id)
+      .eq("activo", true)
+      .order("orden", { ascending: true });
+    if (error) {
+      if (isMissingTableError(error)) return res.json([]);
+      throw new Error(error.message);
+    }
+    res.json((data || []).map(mapVideoRow));
+  } catch (error) { next(error); }
+});
+
+// Galería "Pieles reales" de la landing, gestionada desde el admin.
+app.get("/api/:slug/galeria", resolveBusiness, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.json([]);
+    const { data, error } = await supabase
+      .from("galeria_pieles")
+      .select("id, titulo, imagen_url, orden")
+      .eq("business_id", req.business.id)
+      .eq("activo", true)
+      .order("orden", { ascending: true });
+    if (error) {
+      if (isMissingTableError(error)) return res.json([]);
+      throw new Error(error.message);
+    }
+    res.json((data || []).map(mapGaleriaRow));
+  } catch (error) { next(error); }
+});
+
 // Crea un pedido del market ("solicitud de compra", confirmación manual).
 // El precio SIEMPRE se recalcula desde productos.precio_base — nunca se
 // confía en el precio que manda el cliente.
-app.post("/api/:slug/pedidos", resolveBusiness, async (req, res, next) => {
+app.post("/api/:slug/pedidos", resolveBusiness, upload.single("comprobante"), async (req, res, next) => {
   try {
     if (!USE_SUPABASE) {
       return res.status(501).json({ error: "El carrito de compras todavía no está disponible en este entorno." });
@@ -1999,7 +2093,14 @@ app.post("/api/:slug/pedidos", resolveBusiness, async (req, res, next) => {
     const entregaTipo = req.body?.entregaTipo === "envio" ? "envio" : "retiro";
     const entregaDireccion = entregaTipo === "envio" ? (req.body?.entregaDireccion || "").trim() : null;
     const notas = (req.body?.notas || "").trim().slice(0, 500) || null;
-    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    const pagoMetodo = req.body?.pagoMetodo === "efectivo" ? "efectivo" : "transferencia";
+    let items = [];
+    try {
+      items = JSON.parse(req.body?.items || "[]");
+    } catch (_) {
+      return res.status(400).json({ error: "Carrito inválido." });
+    }
+    if (!Array.isArray(items)) items = [];
 
     if (!nombre || nombre.length < 3) return res.status(400).json({ error: "El nombre es obligatorio." });
     if (nombre.length > 100) return res.status(400).json({ error: "El nombre no puede superar 100 caracteres." });
@@ -2008,8 +2109,23 @@ app.post("/api/:slug/pedidos", resolveBusiness, async (req, res, next) => {
     if (entregaTipo === "envio" && !entregaDireccion) {
       return res.status(400).json({ error: "Ingresá la dirección de envío." });
     }
+    if (pagoMetodo === "transferencia" && !req.file) {
+      return res.status(400).json({ error: "Subí el comprobante de la transferencia o elegí pagar en efectivo." });
+    }
     if (!items.length) return res.status(400).json({ error: "El carrito está vacío." });
     if (items.length > 50) return res.status(400).json({ error: "Carrito inválido." });
+
+    let comprobanteUrl = null;
+    if (req.file) {
+      const validMagic = await validateFileMagicBytes(req.file);
+      if (!validMagic) return res.status(400).json({ error: "El comprobante no es válido. Solo JPG, PNG, WEBP o PDF." });
+      const ext = path.extname(req.file.originalname).toLowerCase() || ".jpg";
+      const storagePath = `pedidos/${req.business.id}-${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from(SUPABASE_BUCKET).upload(storagePath, req.file.buffer, { contentType: req.file.mimetype, upsert: false });
+      if (uploadError) throw new Error(uploadError.message);
+      comprobanteUrl = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+    }
 
     const productoIds = [...new Set(items.map((it) => Number(it?.productoId)).filter(Number.isFinite))];
     if (!productoIds.length) return res.status(400).json({ error: "Carrito inválido." });
@@ -2049,6 +2165,8 @@ app.post("/api/:slug/pedidos", resolveBusiness, async (req, res, next) => {
       entrega_direccion: entregaDireccion,
       notas,
       total,
+      pago_metodo: pagoMetodo,
+      comprobante_url: comprobanteUrl,
     }).select().single();
     if (pedidoError) throw new Error(pedidoError.message);
 
@@ -2057,7 +2175,7 @@ app.post("/api/:slug/pedidos", resolveBusiness, async (req, res, next) => {
     );
     if (itemsError) throw new Error(itemsError.message);
 
-    res.json({ id: pedido.id, total, items: pedidoItems });
+    res.json({ id: pedido.id, total, items: pedidoItems, pagoMetodo, comprobanteUrl });
   } catch (error) { next(error); }
 });
 
@@ -3019,17 +3137,7 @@ app.post("/api/:slug/admin/professionals", resolveBusiness, requireAdmin, async 
       return res.status(400).json({ error: "Seleccioná al menos un servicio para este profesional." });
     }
 
-    const maxPros = await getMaxProfessionals(req.business.plan);
-    const planInfo = await getPlanInfo(req.business.plan);
-
     if (USE_SUPABASE) {
-      const { count } = await supabase.from("professionals").select("id", { count: "exact", head: true })
-        .eq("business_id", req.business.id).eq("activo", true);
-      if (Number.isFinite(maxPros) && (count || 0) >= maxPros) {
-        return res.status(403).json({
-          error: `Tu plan ${planInfo.nombre} permite hasta ${maxPros} profesional${maxPros === 1 ? "" : "es"}. Mejorá tu plan para agregar más.`,
-        });
-      }
       const { data, error } = await supabase.from("professionals")
         .insert({
           business_id: req.business.id,
@@ -3047,15 +3155,6 @@ app.post("/api/:slug/admin/professionals", resolveBusiness, requireAdmin, async 
       if (error) throw new Error(error.message);
       const linked = await syncProfessionalServices(req.business.id, data.id, serviceIds);
       return res.status(201).json({ ...mapProfessionalRow(data), serviceIds: linked });
-    }
-    const countRow = await dbGet(
-      "SELECT COUNT(*) as cnt FROM professionals WHERE business_id = ? AND activo = 1",
-      [req.business.id]
-    );
-    if (Number.isFinite(maxPros) && (countRow?.cnt || 0) >= maxPros) {
-      return res.status(403).json({
-        error: `Tu plan ${planInfo.nombre} permite hasta ${maxPros} profesional${maxPros === 1 ? "" : "es"}. Mejorá tu plan para agregar más.`,
-      });
     }
     const result = await dbRun(
       `INSERT INTO professionals (
@@ -3473,6 +3572,150 @@ app.delete("/api/:slug/admin/plans/:id", resolveBusiness, requireAdmin, async (r
     if (!row) return res.status(404).json({ error: "Plan no encontrado." });
     await dbRun("DELETE FROM plans WHERE id = ? AND business_id = ?", [id, req.business.id]);
     return res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+// ============================================================
+// ADMIN: CONTENIDO (videos institucionales + galería "pieles reales")
+// ============================================================
+const MISSING_CONTENIDO_TABLE_MSG =
+  "Todavía no corriste la migración de contenido en Supabase. Pedile a soporte el SQL de videos_landing / galeria_pieles.";
+
+app.get("/api/:slug/admin/videos", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.json([]);
+    const { data, error } = await supabase.from("videos_landing").select("*")
+      .eq("business_id", req.business.id)
+      .order("orden", { ascending: true });
+    if (error) {
+      if (isMissingTableError(error)) return res.status(409).json({ error: MISSING_CONTENIDO_TABLE_MSG });
+      throw new Error(error.message);
+    }
+    res.json((data || []).map(mapVideoRow));
+  } catch (error) { next(error); }
+});
+
+app.post("/api/:slug/admin/videos", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const titulo = (req.body?.titulo || "").trim().slice(0, 120) || null;
+    const url = (req.body?.url || "").trim();
+    const orden = Number.isFinite(Number(req.body?.orden)) ? Number(req.body.orden) : 0;
+    if (!url) return res.status(400).json({ error: "El link del video es obligatorio." });
+    if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "El link tiene que empezar con http:// o https://" });
+
+    const { data, error } = await supabase.from("videos_landing").insert({
+      business_id: req.business.id, titulo, url, seccion: "videos", orden, activo: true,
+    }).select().single();
+    if (error) {
+      if (isMissingTableError(error)) return res.status(409).json({ error: MISSING_CONTENIDO_TABLE_MSG });
+      throw new Error(error.message);
+    }
+    res.status(201).json(mapVideoRow(data));
+  } catch (error) { next(error); }
+});
+
+app.put("/api/:slug/admin/videos/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const patch = {};
+    if (typeof req.body?.titulo === "string") patch.titulo = req.body.titulo.trim().slice(0, 120) || null;
+    if (typeof req.body?.url === "string") {
+      const url = req.body.url.trim();
+      if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "El link tiene que empezar con http:// o https://" });
+      patch.url = url;
+    }
+    if (Number.isFinite(Number(req.body?.orden))) patch.orden = Number(req.body.orden);
+    if (typeof req.body?.activo === "boolean") patch.activo = req.body.activo;
+
+    const { error } = await supabase.from("videos_landing").update(patch)
+      .eq("id", req.params.id).eq("business_id", req.business.id);
+    if (error) throw new Error(error.message);
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/:slug/admin/videos/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const { error } = await supabase.from("videos_landing").delete()
+      .eq("id", req.params.id).eq("business_id", req.business.id);
+    if (error) throw new Error(error.message);
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+app.get("/api/:slug/admin/galeria", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.json([]);
+    const { data, error } = await supabase.from("galeria_pieles").select("*")
+      .eq("business_id", req.business.id)
+      .order("orden", { ascending: true });
+    if (error) {
+      if (isMissingTableError(error)) return res.status(409).json({ error: MISSING_CONTENIDO_TABLE_MSG });
+      throw new Error(error.message);
+    }
+    res.json((data || []).map(mapGaleriaRow));
+  } catch (error) { next(error); }
+});
+
+app.post(
+  "/api/:slug/admin/galeria",
+  resolveBusiness,
+  requireAdmin,
+  logoUpload.single("foto"),
+  async (req, res, next) => {
+    try {
+      if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+      if (!req.file) return res.status(400).json({ error: "Subí una imagen." });
+      const validMagic = await validateFileMagicBytes(req.file);
+      if (!validMagic) return res.status(400).json({ error: "La imagen no es válida. Solo JPG, PNG o WEBP." });
+
+      const titulo = (req.body?.titulo || "").trim().slice(0, 120) || null;
+      const orden = Number.isFinite(Number(req.body?.orden)) ? Number(req.body.orden) : 0;
+
+      const { data: inserted, error: insertError } = await supabase.from("galeria_pieles").insert({
+        business_id: req.business.id, titulo, imagen_url: "", orden, activo: true,
+      }).select().single();
+      if (insertError) {
+        if (isMissingTableError(insertError)) return res.status(409).json({ error: MISSING_CONTENIDO_TABLE_MSG });
+        throw new Error(insertError.message);
+      }
+
+      const imagenUrl = await uploadGaleriaFotoFile(req.business.id, inserted.id, req.file);
+      const { error: updateError } = await supabase.from("galeria_pieles")
+        .update({ imagen_url: imagenUrl }).eq("id", inserted.id);
+      if (updateError) throw new Error(updateError.message);
+
+      res.status(201).json({ ...mapGaleriaRow(inserted), imagenUrl });
+    } catch (error) { next(error); }
+  }
+);
+
+app.patch("/api/:slug/admin/galeria/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const patch = {};
+    if (typeof req.body?.activo === "boolean") patch.activo = req.body.activo;
+    if (Number.isFinite(Number(req.body?.orden))) patch.orden = Number(req.body.orden);
+    if (typeof req.body?.titulo === "string") patch.titulo = req.body.titulo.trim().slice(0, 120) || null;
+    const { error } = await supabase.from("galeria_pieles").update(patch)
+      .eq("id", req.params.id).eq("business_id", req.business.id);
+    if (error) throw new Error(error.message);
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/:slug/admin/galeria/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const { data: row } = await supabase.from("galeria_pieles").select("imagen_url")
+      .eq("id", req.params.id).eq("business_id", req.business.id).maybeSingle();
+    const { error } = await supabase.from("galeria_pieles").delete()
+      .eq("id", req.params.id).eq("business_id", req.business.id);
+    if (error) throw new Error(error.message);
+    await removeGaleriaFotoFile(row?.imagen_url);
+    res.json({ ok: true });
   } catch (error) { next(error); }
 });
 

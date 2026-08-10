@@ -154,27 +154,8 @@
           <div class="relative z-[1] mx-auto max-w-3xl">
             <p class="text-serif text-canito-crema/80">Conocé Canito</p>
             <h2 id="videosTitle" class="mt-2 font-display text-2xl uppercase text-canito-crema">Videos institucionales</h2>
-            <div class="mt-6 grid gap-4 text-left sm:grid-cols-3">
-              <div class="canito-service-card">
-                <div class="canito-service-card__media flex items-center justify-center !aspect-video bg-canito-oliva">
-                  <svg viewBox="0 0 24 24" class="h-9 w-9 text-canito-crema/70" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-                </div>
-                <p class="px-3 py-2 text-meta-sm text-canito-carbon">Nuestro espacio — próximamente</p>
-              </div>
-              <div class="canito-service-card">
-                <div class="canito-service-card__media flex items-center justify-center !aspect-video bg-canito-taupe">
-                  <svg viewBox="0 0 24 24" class="h-9 w-9 text-canito-carbon/60" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-                </div>
-                <p class="px-3 py-2 text-meta-sm text-canito-carbon">Tratamientos — próximamente</p>
-              </div>
-              <div class="canito-service-card">
-                <div class="canito-service-card__media flex items-center justify-center !aspect-video bg-canito-carbon">
-                  <svg viewBox="0 0 24 24" class="h-9 w-9 text-canito-crema/70" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-                </div>
-                <p class="px-3 py-2 text-meta-sm text-canito-carbon">Comunidad — próximamente</p>
-              </div>
-            </div>
-            <p class="mt-4 text-meta-sm text-canito-crema/60">Esta sección se va a poder gestionar desde el panel de Canito, sin tocar código.</p>
+            <div id="videosList" class="mt-6 grid gap-4 text-left sm:grid-cols-3"></div>
+            <p class="mt-4 text-meta-sm text-canito-crema/60">Esta sección se gestiona desde el panel de Canito, sin tocar código.</p>
           </div>
         </section>
 
@@ -200,21 +181,8 @@
               Nada de fotos de stock: acá van a ir resultados y gabinete reales de Canito.
               Mientras sumamos el contenido definitivo, así se va a ver la grilla (imágenes de ejemplo).
             </p>
-            <div class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div class="canito-pieles-tile aspect-square rounded-card bg-canito-oliva">
-                <svg viewBox="0 0 100 100" class="h-10 w-10 text-canito-crema/70" fill="none" stroke="currentColor" stroke-width="2"><path d="M50 85c0-20 15-25 15-45a15 15 0 00-30 0c0 20 15 25 15 45z" /><path d="M50 40V15" /></svg>
-              </div>
-              <div class="canito-pieles-tile aspect-square rounded-card bg-canito-carbon">
-                <svg viewBox="0 0 100 100" class="h-10 w-10 text-canito-crema/70" fill="none" stroke="currentColor" stroke-width="2"><circle cx="50" cy="50" r="16" /><path d="M50 20v10M50 70v10M20 50h10M70 50h10M29 29l7 7M64 64l7 7M71 29l-7 7M36 64l-7 7" /></svg>
-              </div>
-              <div class="canito-pieles-tile aspect-square rounded-card bg-canito-taupe">
-                <svg viewBox="0 0 100 100" class="h-10 w-10 text-canito-carbon/60" fill="none" stroke="currentColor" stroke-width="2"><path d="M50 20c14 12 22 26 22 40a22 22 0 01-44 0c0-14 8-28 22-40z" /></svg>
-              </div>
-              <div class="canito-pieles-tile aspect-square rounded-card bg-canito-oliva/70">
-                <svg viewBox="0 0 100 100" class="h-10 w-10 text-canito-crema/70" fill="none" stroke="currentColor" stroke-width="2"><path d="M50 82C28 68 15 52 15 36a20 20 0 0135-13 20 20 0 0135 13c0 16-13 32-35 46z" /></svg>
-              </div>
-            </div>
-            <p class="mt-3 text-[11px] font-medium uppercase tracking-wide text-canito-carbon/50">Ilustraciones de ejemplo — se reemplazan por fotos reales</p>
+            <div id="pielesGaleriaList" class="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4"></div>
+            <p id="pielesGaleriaNota" class="mt-3 text-[11px] font-medium uppercase tracking-wide text-canito-carbon/50 hidden">Ilustraciones de ejemplo — se reemplazan por fotos reales</p>
           </div>
         </section>
 

@@ -123,6 +123,9 @@
     const wa = String(config?.whatsappNumero || "").replace(/\D/g, "");
     if (!wa) return "#";
     const lineas = pedido.items.map((it) => `- ${it.cantidad}x ${it.nombre}`).join("\n");
+    const pagoTexto = pedido.pagoMetodo === "efectivo"
+      ? "Pago: efectivo al retirar"
+      : `Comprobante: ${pedido.comprobanteUrl || "ya lo subí en la web"}`;
     const text = [
       "Hola, quiero coordinar mi pedido:",
       `Nombre: ${nombre}`,
@@ -131,6 +134,7 @@
       lineas,
       "",
       `Total: ${formatPrice(pedido.total)}`,
+      pagoTexto,
       `N° de pedido: ${pedido.id}`,
     ].join("\n");
     return `https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
@@ -146,6 +150,23 @@
     });
   }
 
+  function initPagoToggle() {
+    const radios = document.querySelectorAll('input[name="pagoMetodo"]');
+    const comprobanteField = document.getElementById("comprobanteField");
+    const comprobanteInput = document.getElementById("comprobante");
+    radios.forEach((r) => {
+      r.addEventListener("change", () => {
+        const esTransferencia = form_currentPago() === "transferencia";
+        comprobanteField.classList.toggle("hidden", !esTransferencia);
+        if (comprobanteInput) comprobanteInput.required = esTransferencia;
+      });
+    });
+    function form_currentPago() {
+      return document.querySelector('input[name="pagoMetodo"]:checked')?.value || "transferencia";
+    }
+    if (comprobanteInput) comprobanteInput.required = true;
+  }
+
   function initCheckoutForm() {
     const form = document.getElementById("checkoutForm");
     const errorEl = document.getElementById("checkoutError");
@@ -154,29 +175,36 @@
       errorEl.classList.add("hidden");
       const btn = document.getElementById("btnSubmitPedido");
       const entregaTipo = form.querySelector('input[name="entregaTipo"]:checked')?.value || "retiro";
+      const pagoMetodo = form.querySelector('input[name="pagoMetodo"]:checked')?.value || "transferencia";
       const nombre = form.nombre.value.trim();
       const telefono = form.telefono.value.trim();
+      const comprobanteFile = form.comprobante?.files?.[0] || null;
       const cart = window.CanitoCart.getCart();
 
       if (!cart.length) return;
+      if (pagoMetodo === "transferencia" && !comprobanteFile) {
+        errorEl.textContent = "Subí el comprobante o elegí pagar en efectivo.";
+        errorEl.classList.remove("hidden");
+        return;
+      }
 
-      const payload = {
-        nombre,
-        telefono,
-        email: form.email.value.trim(),
-        entregaTipo,
-        entregaDireccion: form.entregaDireccion.value.trim(),
-        notas: form.notas.value.trim(),
-        items: cart.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad, nombre: it.nombre })),
-      };
+      const formData = new FormData();
+      formData.append("nombre", nombre);
+      formData.append("telefono", telefono);
+      formData.append("email", form.email.value.trim());
+      formData.append("entregaTipo", entregaTipo);
+      formData.append("entregaDireccion", form.entregaDireccion.value.trim());
+      formData.append("notas", form.notas.value.trim());
+      formData.append("pagoMetodo", pagoMetodo);
+      formData.append("items", JSON.stringify(cart.map((it) => ({ productoId: it.productoId, cantidad: it.cantidad, nombre: it.nombre }))));
+      if (comprobanteFile) formData.append("comprobante", comprobanteFile);
 
       btn.disabled = true;
       btn.textContent = "Enviando…";
       try {
         const res = await fetch(`/api/${SLUG}/pedidos`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: formData,
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data?.error || "No pudimos enviar tu pedido.");
@@ -204,6 +232,7 @@
     loadConfig();
     renderCart();
     initEntregaToggle();
+    initPagoToggle();
     initCheckoutForm();
   });
   window.addEventListener("canito-cart-change", renderCart);

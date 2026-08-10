@@ -57,13 +57,10 @@ Negocio único, sin multi-tenant.
 - Login con `ADMIN_PASSWORD`
 - Secciones: Agenda, Servicios, Equipo, Clientes, Planes, Movimientos, Estadísticas, Configuración
 
-## ⚠️ Pendiente: Términos y Política de Privacidad
+## Términos y Política de Privacidad
 
-`docs/TERMINOS-Y-CONDICIONES.md` y `docs/POLITICA-DE-PRIVACIDAD.md` todavía
-describen el modelo **multi-tenant** de la plataforma anterior (CMR Nexo):
-"negocio usuario" vs. "cliente final", CMR como responsable/encargado del
-tratamiento de datos de terceros, suscripciones, aislamiento multi-tenant,
-etc. Ese modelo ya no existe — Canito Skin es un único negocio con relación
-directa con sus clientes. Estos documentos necesitan una reescritura legal
-sustantiva (no solo cambiar el nombre de marca) antes de considerarse
-vigentes para Canito Skin.
+`docs/TERMINOS-Y-CONDICIONES.md` y `docs/POLITICA-DE-PRIVACIDAD.md` ya están
+adaptados al modelo real de Canito Skin (un solo negocio, relación directa
+con sus clientes). Se generan a `public/terminos.html` / `public/privacidad.html`
+corriendo `node scripts/build-legal-html.js` después de editarlos. Siguen
+siendo un borrador razonable, no un reemplazo de la revisión de un abogado.
