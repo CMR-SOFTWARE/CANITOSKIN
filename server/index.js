@@ -3578,6 +3578,134 @@ app.delete("/api/:slug/admin/plans/:id", resolveBusiness, requireAdmin, async (r
 });
 
 // ============================================================
+// ADMIN: PRODUCTOS (market — línea propia Canito)
+// ============================================================
+const MISSING_PRODUCTOS_TABLE_MSG =
+  "Todavía no corriste la migración del market en Supabase. Pedile a soporte el SQL de productos/pedidos.";
+
+function parseProductoBody(body = {}) {
+  const nombre = String(body.nombre || "").trim().slice(0, 120);
+  const descripcion = String(body.descripcion || "").trim().slice(0, 1000) || null;
+  const precioBase = parseMoneyAmount(body.precioBase ?? body.precio_base);
+  const categoria = String(body.categoria || "").trim().slice(0, 60) || null;
+  const stock = body.stock === "" || body.stock == null ? null : Math.max(0, Math.trunc(Number(body.stock) || 0));
+  const destacado = body.destacado === true || body.destacado === "true";
+  return { nombre, descripcion, precioBase, categoria, stock, destacado };
+}
+
+function mapProductoRow(row) {
+  return {
+    id: row.id,
+    nombre: row.nombre,
+    descripcion: row.descripcion || null,
+    precioBase: Number(row.precio_base) || 0,
+    categoria: row.categoria || null,
+    stock: row.stock ?? null,
+    destacado: row.destacado === true,
+    imagenUrl: row.imagen_url || null,
+    activo: row.activo !== false,
+  };
+}
+
+app.get("/api/:slug/admin/productos", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.json([]);
+    const { data, error } = await supabase.from("productos").select("*")
+      .eq("business_id", req.business.id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      if (isMissingTableError(error)) return res.status(409).json({ error: MISSING_PRODUCTOS_TABLE_MSG });
+      throw new Error(error.message);
+    }
+    res.json((data || []).map(mapProductoRow));
+  } catch (error) { next(error); }
+});
+
+app.post("/api/:slug/admin/productos", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const { nombre, descripcion, precioBase, categoria, stock, destacado } = parseProductoBody(req.body);
+    if (!nombre || nombre.length < 2) return res.status(400).json({ error: "El nombre es obligatorio." });
+    if (!(precioBase > 0)) return res.status(400).json({ error: "El precio tiene que ser mayor a 0." });
+    const imagenUrl = (req.body?.imagenUrl || "").trim() || null;
+
+    const { data, error } = await supabase.from("productos").insert({
+      business_id: req.business.id,
+      nombre,
+      descripcion,
+      precio_base: precioBase,
+      categoria,
+      stock,
+      destacado,
+      imagen_url: imagenUrl,
+      activo: true,
+    }).select().single();
+    if (error) {
+      if (isMissingTableError(error)) return res.status(409).json({ error: MISSING_PRODUCTOS_TABLE_MSG });
+      throw new Error(error.message);
+    }
+    res.status(201).json(mapProductoRow(data));
+  } catch (error) { next(error); }
+});
+
+app.put("/api/:slug/admin/productos/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const { nombre, descripcion, precioBase, categoria, stock, destacado } = parseProductoBody(req.body);
+    if (!nombre || nombre.length < 2) return res.status(400).json({ error: "El nombre es obligatorio." });
+    if (!(precioBase > 0)) return res.status(400).json({ error: "El precio tiene que ser mayor a 0." });
+
+    const patch = {
+      nombre, descripcion, precio_base: precioBase, categoria, stock, destacado,
+    };
+    if (typeof req.body?.activo === "boolean") patch.activo = req.body.activo;
+    if (typeof req.body?.imagenUrl === "string" && req.body.imagenUrl.trim()) {
+      patch.imagen_url = req.body.imagenUrl.trim();
+    }
+
+    const { error } = await supabase.from("productos").update(patch)
+      .eq("id", req.params.id).eq("business_id", req.business.id);
+    if (error) throw new Error(error.message);
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+app.patch("/api/:slug/admin/productos/:id/foto", resolveBusiness, requireAdmin, logoUpload.single("foto"), async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    if (!req.file) return res.status(400).json({ error: "No se recibió imagen." });
+    const validMagic = await validateFileMagicBytes(req.file);
+    if (!validMagic) return res.status(400).json({ error: "Imagen inválida. Solo JPG, PNG, WEBP." });
+
+    const { data: prod } = await supabase.from("productos").select("id")
+      .eq("id", req.params.id).eq("business_id", req.business.id).maybeSingle();
+    if (!prod) return res.status(404).json({ error: "Producto no encontrado." });
+
+    const ext = path.extname(req.file.originalname).toLowerCase() || ".jpg";
+    const storagePath = `productos/prod_${req.business.id}_${req.params.id}_${Date.now()}${ext}`;
+    const { error: uploadErr } = await supabase.storage
+      .from(SUPABASE_BUCKET).upload(storagePath, req.file.buffer, { contentType: req.file.mimetype, upsert: true });
+    if (uploadErr) throw new Error(uploadErr.message);
+    const imagenUrl = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+
+    const { error } = await supabase.from("productos").update({ imagen_url: imagenUrl })
+      .eq("id", req.params.id).eq("business_id", req.business.id);
+    if (error) throw new Error(error.message);
+    res.json({ ok: true, imagenUrl });
+  } catch (error) { next(error); }
+});
+
+app.delete("/api/:slug/admin/productos/:id", resolveBusiness, requireAdmin, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const { error } = await supabase.from("productos").delete()
+      .eq("id", req.params.id).eq("business_id", req.business.id);
+    if (error) throw new Error(error.message);
+    res.json({ ok: true });
+  } catch (error) { next(error); }
+});
+
+// ============================================================
 // ADMIN: CONTENIDO (videos institucionales + galería "pieles reales")
 // ============================================================
 const MISSING_CONTENIDO_TABLE_MSG =

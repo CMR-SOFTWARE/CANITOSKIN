@@ -341,6 +341,10 @@
             <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/></svg>
             Planes
           </button>
+          <button type="button" data-view="productos" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
+            <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+            Productos
+          </button>
           <button type="button" data-view="movimientos" class="nav-item ds-sidebar__item flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-white/5">
             <svg class="h-4 w-4 shrink-0 opacity-80" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
             Movimientos
@@ -906,6 +910,80 @@
             <p id="cfgPlanClienteMsg" class="mt-2 min-h-5 text-sm font-semibold"></p>
           </div>
           <div id="planesClienteList" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"></div>
+        </section>
+
+        <!-- PRODUCTOS -->
+        <section id="view-productos" class="view">
+          <header class="mb-6 flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h1 class="text-h1">Productos</h1>
+              <p id="productosMeta" class="text-meta mt-1">0 productos</p>
+            </div>
+            <button id="btnToggleProdForm" type="button" class="btn-primary">+ Nuevo producto</button>
+          </header>
+
+          <div id="formProducto" class="ds-card p-4 md:p-5 mb-4 hidden">
+            <input type="hidden" id="editingProdId" value="" />
+            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <input id="prodNombre" type="text" placeholder="Nombre del producto" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              <input id="prodCategoria" type="text" placeholder="Categoría (ej: Sueros, Cremas)" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+            </div>
+            <textarea id="prodDescripcion" rows="2" placeholder="Descripción (opcional)" class="mt-3 w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent"></textarea>
+            <div class="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div class="flex flex-col gap-1">
+                <label class="label" for="prodPrecio">Precio ($)</label>
+                <input id="prodPrecio" type="number" min="0" step="1" placeholder="0" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+              <div class="flex flex-col gap-1">
+                <label class="label" for="prodStock">Stock (vacío = sin control de stock)</label>
+                <input id="prodStock" type="number" min="0" step="1" placeholder="opcional" class="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+              </div>
+            </div>
+            <div class="mt-3 flex items-center gap-2">
+              <input id="prodDestacado" type="checkbox" class="h-4 w-4" style="accent-color: var(--business-accent)" />
+              <label for="prodDestacado" class="label">Destacado (aparece en la landing)</label>
+            </div>
+
+            <div class="mt-4">
+              <label class="label">Imagen</label>
+              <div class="flex flex-wrap items-center gap-3">
+                <label class="cursor-pointer rounded-lg border border-border px-3 py-2 text-sm font-semibold hover:bg-neutral-bg">
+                  Subir desde mi PC
+                  <input id="prodFotoArchivo" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
+                </label>
+                <span class="text-meta-sm">JPG, PNG o WEBP · máx 5 MB</span>
+              </div>
+              <img id="prodFotoPreview" class="mt-2 hidden h-24 w-24 rounded-lg object-cover" alt="" />
+              <input id="prodImagenUrl" type="text" placeholder="O pegá una URL de imagen" class="mt-2 w-full rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-business-accent" />
+            </div>
+
+            <div class="mt-4 flex items-center gap-2">
+              <button id="btnGuardarProducto" type="button" class="btn-primary">Guardar</button>
+              <button id="btnCancelarProducto" type="button" class="rounded-lg border border-border px-4 py-2 text-sm font-semibold hover:bg-neutral-bg">Cancelar</button>
+              <p id="prodFormMsg" class="min-h-5 text-sm font-semibold"></p>
+            </div>
+          </div>
+
+          <p id="productosMigracionAviso" class="hidden mb-4 rounded-xl border border-danger/30 bg-danger-bg p-4 text-sm text-danger"></p>
+
+          <div class="ds-card overflow-hidden">
+            <div class="overflow-x-auto">
+              <table class="admin-table w-full text-left text-sm">
+                <thead class="bg-content border-b border-border">
+                  <tr>
+                    <th class="px-4 py-3">Producto</th>
+                    <th class="px-4 py-3">Categoría</th>
+                    <th class="px-4 py-3">Precio</th>
+                    <th class="px-4 py-3">Stock</th>
+                    <th class="px-4 py-3">Estado</th>
+                    <th class="px-4 py-3 text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody id="productosAdminList"></tbody>
+              </table>
+            </div>
+            <p id="productosEmpty" class="hidden p-6 text-meta text-center">Todavía no hay productos. Agregá el primero.</p>
+          </div>
         </section>
 
         <!-- MOVIMIENTOS -->

@@ -398,6 +398,9 @@
   let mobileNavOpen = false;
   let editingServiceId = null;
   let editingPlanId = null;
+  let productosCache = [];
+  let editingProdId = null;
+  let prodFotoPendiente = null;
   let clientesQuery = "";
   let videosCache = [];
   let galeriaCache = [];
@@ -672,6 +675,9 @@
     if (view === "contenido") {
       loadVideos().then(renderVideosAdmin).catch((e) => handleMigracionAviso(e.message));
       loadGaleriaAdmin().then(renderGaleriaAdmin).catch((e) => handleMigracionAviso(e.message));
+    }
+    if (view === "productos") {
+      loadProductos().then(renderProductos).catch((e) => handleProductosMigracionAviso(e.message));
     }
     if (view === "estadisticas") {
       loadMovimientos().catch(() => { movimientosCache = []; }).finally(() => renderEstadisticas());
@@ -2451,6 +2457,176 @@
     }
   }
 
+  // ---- productos (market) ----
+  function handleProductosMigracionAviso(message) {
+    const el = $("productosMigracionAviso");
+    if (!el) return;
+    if (message) {
+      el.textContent = message;
+      el.classList.remove("hidden");
+    } else {
+      el.classList.add("hidden");
+    }
+  }
+
+  async function loadProductos() {
+    const data = await api(`/api/${SLUG}/admin/productos`);
+    productosCache = Array.isArray(data) ? data : [];
+    handleProductosMigracionAviso(null);
+  }
+
+  function resetProductoForm() {
+    editingProdId = null;
+    prodFotoPendiente = null;
+    ["prodNombre", "prodCategoria", "prodDescripcion", "prodPrecio", "prodStock", "prodImagenUrl"].forEach((id) => {
+      if ($(id)) $(id).value = "";
+    });
+    if ($("prodDestacado")) $("prodDestacado").checked = false;
+    if ($("prodFotoArchivo")) $("prodFotoArchivo").value = "";
+    $("prodFotoPreview")?.classList.add("hidden");
+    const btn = $("btnGuardarProducto");
+    if (btn) btn.textContent = "Guardar";
+  }
+
+  function fillProductoForm(p) {
+    editingProdId = p.id;
+    prodFotoPendiente = null;
+    if ($("prodNombre")) $("prodNombre").value = p.nombre || "";
+    if ($("prodCategoria")) $("prodCategoria").value = p.categoria || "";
+    if ($("prodDescripcion")) $("prodDescripcion").value = p.descripcion || "";
+    if ($("prodPrecio")) $("prodPrecio").value = p.precioBase || "";
+    if ($("prodStock")) $("prodStock").value = p.stock ?? "";
+    if ($("prodDestacado")) $("prodDestacado").checked = !!p.destacado;
+    if ($("prodImagenUrl")) $("prodImagenUrl").value = "";
+    const preview = $("prodFotoPreview");
+    if (preview) {
+      if (p.imagenUrl) { preview.src = p.imagenUrl; preview.classList.remove("hidden"); }
+      else preview.classList.add("hidden");
+    }
+    const btn = $("btnGuardarProducto");
+    if (btn) btn.textContent = "Actualizar";
+    $("formProducto")?.classList.remove("hidden");
+    $("formProducto")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  function renderProductos() {
+    const tbody = $("productosAdminList");
+    const empty = $("productosEmpty");
+    const meta = $("productosMeta");
+    if (!tbody) return;
+    const items = productosCache || [];
+    if (meta) meta.textContent = `${items.length} producto${items.length === 1 ? "" : "s"}`;
+    empty?.classList.toggle("hidden", items.length > 0);
+
+    tbody.innerHTML = items.map((p) => {
+      const stockTexto = p.stock == null ? "—" : (p.stock <= 0 ? "Sin stock" : p.stock);
+      const img = p.imagenUrl
+        ? `<img src="${escapeHtml(p.imagenUrl)}" alt="" class="h-10 w-10 rounded-lg object-cover" />`
+        : `<div class="h-10 w-10 rounded-lg bg-neutral-bg"></div>`;
+      return `
+      <tr class="border-b border-border last:border-0">
+        <td class="px-4 py-3">
+          <div class="flex items-center gap-3 min-w-0">
+            ${img}
+            <div class="min-w-0">
+              <p class="font-medium truncate">${escapeHtml(p.nombre)}</p>
+              ${p.destacado ? `<span class="text-xs font-semibold text-business-accent">★ destacado</span>` : ""}
+            </div>
+          </div>
+        </td>
+        <td class="px-4 py-3 text-meta">${escapeHtml(p.categoria || "—")}</td>
+        <td class="px-4 py-3 font-medium">${escapeHtml(formatMoney(p.precioBase))}</td>
+        <td class="px-4 py-3 text-meta">${escapeHtml(stockTexto)}</td>
+        <td class="px-4 py-3">
+          <span class="inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${p.activo ? "badge-success" : "badge-neutral"}">${p.activo ? "Activo" : "Inactivo"}</span>
+        </td>
+        <td class="px-4 py-3 text-right whitespace-nowrap">
+          <button type="button" data-edit-prod="${escapeHtml(p.id)}" class="rounded-lg border border-border px-2 py-1 text-xs font-semibold hover:bg-neutral-bg">Editar</button>
+          <button type="button" data-toggle-prod="${escapeHtml(p.id)}" data-activo="${p.activo ? "0" : "1"}" class="ml-1 rounded-lg border border-border px-2 py-1 text-xs font-semibold hover:bg-neutral-bg">${p.activo ? "Desactivar" : "Activar"}</button>
+          <button type="button" data-del-prod="${escapeHtml(p.id)}" class="ml-1 rounded-lg border border-danger/30 px-2 py-1 text-xs font-semibold text-danger hover:bg-danger-bg">Eliminar</button>
+        </td>
+      </tr>`;
+    }).join("");
+
+    tbody.querySelectorAll("[data-edit-prod]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const p = productosCache.find((x) => String(x.id) === btn.getAttribute("data-edit-prod"));
+        if (p) fillProductoForm(p);
+      });
+    });
+    tbody.querySelectorAll("[data-toggle-prod]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.getAttribute("data-toggle-prod");
+        const activo = btn.getAttribute("data-activo") === "1";
+        try {
+          const p = productosCache.find((x) => String(x.id) === id);
+          await api(`/api/${SLUG}/admin/productos/${id}`, {
+            method: "PUT",
+            body: JSON.stringify({ nombre: p.nombre, precioBase: p.precioBase, categoria: p.categoria, stock: p.stock, destacado: p.destacado, activo }),
+          });
+          await loadProductos();
+          renderProductos();
+        } catch (e) { setMessage($("prodFormMsg"), e.message, true); }
+      });
+    });
+    tbody.querySelectorAll("[data-del-prod]").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        if (!confirm("¿Eliminar este producto?")) return;
+        try {
+          await api(`/api/${SLUG}/admin/productos/${btn.getAttribute("data-del-prod")}`, { method: "DELETE" });
+          await loadProductos();
+          renderProductos();
+        } catch (e) { setMessage($("prodFormMsg"), e.message, true); }
+      });
+    });
+  }
+
+  async function guardarProducto() {
+    const nombre = $("prodNombre")?.value?.trim() || "";
+    const categoria = $("prodCategoria")?.value?.trim() || "";
+    const descripcion = $("prodDescripcion")?.value?.trim() || "";
+    const precioBase = Number($("prodPrecio")?.value) || 0;
+    const stockRaw = $("prodStock")?.value?.trim() || "";
+    const stock = stockRaw === "" ? null : Number(stockRaw);
+    const destacado = !!$("prodDestacado")?.checked;
+    const imagenUrl = $("prodImagenUrl")?.value?.trim() || "";
+
+    if (!nombre) { setMessage($("prodFormMsg"), "El nombre es obligatorio.", true); return; }
+    if (!(precioBase > 0)) { setMessage($("prodFormMsg"), "Ingresá un precio mayor a 0.", true); return; }
+
+    const btn = $("btnGuardarProducto");
+    if (btn) btn.disabled = true;
+    try {
+      const body = { nombre, categoria, descripcion, precioBase, stock, destacado };
+      if (imagenUrl) body.imagenUrl = imagenUrl;
+
+      let prod;
+      if (editingProdId) {
+        await api(`/api/${SLUG}/admin/productos/${editingProdId}`, { method: "PUT", body: JSON.stringify(body) });
+        prod = { id: editingProdId };
+      } else {
+        prod = await api(`/api/${SLUG}/admin/productos`, { method: "POST", body: JSON.stringify(body) });
+      }
+
+      if (prodFotoPendiente) {
+        const prepared = await compressImageFile(prodFotoPendiente);
+        const form = new FormData();
+        form.append("foto", prepared);
+        await api(`/api/${SLUG}/admin/productos/${prod.id}/foto`, { method: "PATCH", body: form });
+      }
+
+      setMessage($("prodFormMsg"), "Producto guardado.", false);
+      resetProductoForm();
+      $("formProducto")?.classList.add("hidden");
+      await loadProductos();
+      renderProductos();
+    } catch (e) {
+      setMessage($("prodFormMsg"), e.message, true);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
   // ---- movimientos (caja) ----
   const MOV_CATS = {
     ingreso: ["Turnos", "Señas", "Productos", "Otros"],
@@ -3375,6 +3551,27 @@
     $("btnAgregarPlanCliente")?.addEventListener("click", agregarPlan);
     $("btnAgregarVideo")?.addEventListener("click", agregarVideo);
     $("btnAgregarFoto")?.addEventListener("click", agregarFoto);
+
+    $("btnToggleProdForm")?.addEventListener("click", () => {
+      const form = $("formProducto");
+      const willOpen = form?.classList.contains("hidden");
+      if (willOpen) resetProductoForm();
+      form?.classList.toggle("hidden");
+    });
+    $("btnCancelarProducto")?.addEventListener("click", () => {
+      resetProductoForm();
+      $("formProducto")?.classList.add("hidden");
+    });
+    $("btnGuardarProducto")?.addEventListener("click", guardarProducto);
+    $("prodFotoArchivo")?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0] || null;
+      prodFotoPendiente = file;
+      const preview = $("prodFotoPreview");
+      if (file && preview) {
+        preview.src = URL.createObjectURL(file);
+        preview.classList.remove("hidden");
+      }
+    });
 
     $("clientesSearch")?.addEventListener("input", (e) => {
       clientesQuery = e.target.value || "";
