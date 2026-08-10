@@ -22,7 +22,7 @@
 
         <nav class="nav-links items-center gap-6 text-meta font-semibold text-secondary" aria-label="Secciones">
           <a href="/#servicios" class="hover:text-business-accent">Tratamientos</a>
-          <a href="/#productos-destacados" class="hover:text-business-accent">Productos</a>
+          <a href="/market" class="hover:text-business-accent">Productos</a>
           <a href="/#sobre-canito" class="hover:text-business-accent">Nosotros</a>
           <a href="/#ubicacion" class="hover:text-business-accent">Ubicación</a>
         </nav>
@@ -59,7 +59,7 @@
             <p id="heroTagline" class="mt-2 text-sm text-canito-crema/70"></p>
             <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <a href="#servicios" class="btn-accent !w-auto px-6">Reservar turno</a>
-              <a href="#productos-destacados" class="!w-auto rounded-xl border border-canito-crema/40 px-6 py-3 text-sm font-semibold text-canito-crema transition hover:bg-canito-crema/10">
+              <a href="/market" class="!w-auto rounded-xl border border-canito-crema/40 px-6 py-3 text-sm font-semibold text-canito-crema transition hover:bg-canito-crema/10">
                 Ver productos
               </a>
             </div>
@@ -154,8 +154,30 @@
           <div class="relative z-[1] mx-auto max-w-3xl">
             <p class="text-serif text-canito-crema/80">Conocé Canito</p>
             <h2 id="videosTitle" class="mt-2 font-display text-2xl uppercase text-canito-crema">Videos institucionales</h2>
-            <div id="videosList" class="mt-6 grid gap-4 text-left sm:grid-cols-3"></div>
-            <p class="mt-4 text-meta-sm text-canito-crema/60">Esta sección se gestiona desde el panel de Canito, sin tocar código.</p>
+            <div id="videosReelWrap" class="mx-auto mt-6 w-full max-w-[340px]">
+              <div id="videosReel" class="relative overflow-hidden rounded-2xl bg-black" style="aspect-ratio: 9 / 16;">
+                <video id="reelVideoEl" class="hidden h-full w-full object-cover" muted loop playsinline></video>
+                <a id="reelLinkSlide" href="#" target="_blank" rel="noopener noreferrer" class="hidden absolute inset-0 flex-col items-center justify-center gap-3 bg-canito-oliva px-6 text-center text-canito-crema">
+                  <svg viewBox="0 0 24 24" class="h-10 w-10" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                  <span id="reelLinkTitulo" class="text-sm font-semibold"></span>
+                  <span class="text-xs text-canito-crema/70">Ver video</span>
+                </a>
+
+                <div id="reelDots" class="absolute left-0 right-0 top-2 flex justify-center gap-1 px-3"></div>
+
+                <button type="button" id="reelPrev" aria-label="Video anterior" class="absolute left-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60">
+                  <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
+                </button>
+                <button type="button" id="reelNext" aria-label="Video siguiente" class="absolute right-2 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60">
+                  <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6" /></svg>
+                </button>
+                <button type="button" id="reelMute" aria-label="Activar/silenciar sonido" class="absolute bottom-3 right-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white hover:bg-black/60">
+                  <svg id="reelMuteIcon" viewBox="0 0 24 24" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5L6 9H2v6h4l5 4V5z" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" /></svg>
+                </button>
+                <p id="reelTitulo" class="pointer-events-none absolute bottom-3 left-3 right-14 truncate text-sm font-semibold text-white"></p>
+              </div>
+            </div>
+            <p id="videosVacio" class="mt-4 text-meta-sm text-canito-crema/60 hidden">Esta sección se gestiona desde el panel de Canito, sin tocar código.</p>
           </div>
         </section>
 
@@ -168,7 +190,7 @@
             <div id="productosDestacadosList" class="mt-6 grid gap-4 sm:grid-cols-2">
               <p class="text-sm text-secondary">Cargando productos…</p>
             </div>
-            <p class="mt-6 text-meta text-secondary">Catálogo completo con carrito de compra: muy pronto.</p>
+            <a href="/market" class="mt-6 inline-block text-meta font-semibold text-business-accent hover:underline">Ver catálogo completo →</a>
           </div>
         </section>
 
@@ -373,7 +395,7 @@
           </div>
           <nav class="flex flex-wrap gap-x-5 gap-y-2 text-meta text-secondary">
             <a href="#servicios" class="hover:text-business-accent">Turnos</a>
-            <a href="#productos-destacados" class="hover:text-business-accent">Productos</a>
+            <a href="/market" class="hover:text-business-accent">Productos</a>
             <a href="https://www.instagram.com/canitoskin/" target="_blank" rel="noopener noreferrer" class="hover:text-business-accent">Instagram</a>
             <a href="/privacidad" class="hover:text-business-accent">Privacidad</a>
             <a href="/terminos" class="hover:text-business-accent">Términos</a>

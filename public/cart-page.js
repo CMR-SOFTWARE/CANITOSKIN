@@ -119,23 +119,30 @@
     });
   }
 
-  function buildPedidoWhatsAppUrl(pedido, nombre, telefono) {
+  function buildPedidoWhatsAppUrl(pedido, { nombre, telefono, entregaTipo, entregaDireccion }) {
     const wa = String(config?.whatsappNumero || "").replace(/\D/g, "");
     if (!wa) return "#";
-    const lineas = pedido.items.map((it) => `- ${it.cantidad}x ${it.nombre}`).join("\n");
+    const negocio = config?.nombre || "Canito Skin";
+    const lineas = pedido.items.map(
+      (it) => `• ${it.cantidad}x ${it.nombre} = ${formatPrice(it.cantidad * (it.precioUnitario ?? it.precio_unitario ?? 0))}`
+    ).join("\n");
+    const entregaTexto = entregaTipo === "envio"
+      ? `Envío: ${entregaDireccion || "(coordinar dirección)"}`
+      : "Retiro en el local";
     const pagoTexto = pedido.pagoMetodo === "efectivo"
-      ? "Pago: efectivo al retirar"
+      ? "Efectivo al retirar"
       : `Comprobante: ${pedido.comprobanteUrl || "ya lo subí en la web"}`;
     const text = [
-      "Hola, quiero coordinar mi pedido:",
-      `Nombre: ${nombre}`,
-      `Teléfono: ${telefono}`,
-      "",
+      `*Nuevo pedido — ${negocio}*`,
+      "──────────────",
+      `*Cliente:* ${nombre}`,
+      `*Teléfono:* ${telefono}`,
+      `*Entrega:* ${entregaTexto}`,
+      "*Productos:*",
       lineas,
-      "",
-      `Total: ${formatPrice(pedido.total)}`,
-      pagoTexto,
-      `N° de pedido: ${pedido.id}`,
+      `*Total:* ${formatPrice(pedido.total)}`,
+      `*Pago:* ${pagoTexto}`,
+      `*N° de pedido:* ${pedido.id}`,
     ].join("\n");
     return `https://wa.me/${wa}?text=${encodeURIComponent(text)}`;
   }
@@ -214,7 +221,7 @@
         confirmacion.classList.remove("hidden");
         confirmacion.classList.add("flex");
         const btnWa = document.getElementById("btnWhatsAppPedido");
-        const waUrl = buildPedidoWhatsAppUrl(data, nombre, telefono);
+        const waUrl = buildPedidoWhatsAppUrl(data, { nombre, telefono, entregaTipo, entregaDireccion: form.entregaDireccion.value.trim() });
         if (waUrl === "#") btnWa.classList.add("hidden");
         else btnWa.href = waUrl;
         window.CanitoCart.clear();

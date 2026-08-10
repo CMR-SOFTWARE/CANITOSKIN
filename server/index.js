@@ -2044,6 +2044,34 @@ app.get("/api/:slug/productos-destacados", resolveBusiness, async (req, res, nex
   } catch (error) { next(error); }
 });
 
+// Catálogo público completo del market (no solo destacados).
+app.get("/api/:slug/productos", resolveBusiness, async (req, res, next) => {
+  try {
+    if (!USE_SUPABASE) return res.json([]);
+    const { data, error } = await supabase
+      .from("productos")
+      .select("id, nombre, descripcion, precio_base, imagen_url, categoria, destacado, stock, created_at")
+      .eq("business_id", req.business.id)
+      .eq("activo", true)
+      .order("created_at", { ascending: false });
+    if (error) {
+      if (isMissingTableError(error)) return res.json([]);
+      throw new Error(error.message);
+    }
+    res.json((data || []).map((p) => ({
+      id: p.id,
+      nombre: p.nombre,
+      descripcion: p.descripcion,
+      precio: p.precio_base,
+      imagenUrl: p.imagen_url,
+      categoria: p.categoria,
+      destacado: p.destacado === true,
+      stock: p.stock ?? null,
+      createdAt: p.created_at,
+    })));
+  } catch (error) { next(error); }
+});
+
 // Videos institucionales de la landing, gestionados desde el admin.
 app.get("/api/:slug/videos", resolveBusiness, async (req, res, next) => {
   try {
@@ -4170,6 +4198,14 @@ app.get("/cart", (_req, res) => {
   const cartPage = path.join(ROOT_DIR, "public", "cart.html");
   if (fsSync.existsSync(cartPage)) {
     return res.sendFile(cartPage);
+  }
+  return res.redirect("/");
+});
+
+app.get("/market", (_req, res) => {
+  const marketPage = path.join(ROOT_DIR, "public", "market.html");
+  if (fsSync.existsSync(marketPage)) {
+    return res.sendFile(marketPage);
   }
   return res.redirect("/");
 });

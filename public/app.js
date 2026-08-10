@@ -673,46 +673,109 @@ async function loadProductosDestacados() {
 }
 
 /* ── Videos institucionales (landing) ── */
-const VIDEOS_FALLBACK = [
-  { titulo: "Nuestro espacio — próximamente", bg: "bg-canito-oliva", ink: "text-canito-crema/70" },
-  { titulo: "Tratamientos — próximamente", bg: "bg-canito-taupe", ink: "text-canito-carbon/60" },
-  { titulo: "Comunidad — próximamente", bg: "bg-canito-crema", ink: "text-canito-carbon/60" },
-];
-const PLAY_ICON = `<svg viewBox="0 0 24 24" class="h-9 w-9" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>`;
+/* ── Reel de videos institucionales: autoplay al entrar en pantalla,
+   navegación con flechas, tipo Instagram Reels ── */
+let reelVideos = [];
+let reelIndex = 0;
+let reelObserver = null;
+let reelInView = false;
+let reelMuted = true;
+
+function reelIsArchivoDirecto(url) {
+  return /\.(mp4|webm|mov|m4v)(\?|$)/i.test(url || "");
+}
+
+function reelShow(index) {
+  if (!reelVideos.length) return;
+  reelIndex = ((index % reelVideos.length) + reelVideos.length) % reelVideos.length;
+  const v = reelVideos[reelIndex];
+  const videoEl = document.getElementById("reelVideoEl");
+  const linkSlide = document.getElementById("reelLinkSlide");
+  const linkTitulo = document.getElementById("reelLinkTitulo");
+  const titulo = document.getElementById("reelTitulo");
+  const dots = document.getElementById("reelDots");
+
+  if (dots) {
+    dots.innerHTML = reelVideos.map((_, i) =>
+      `<span class="h-1 flex-1 rounded-full ${i === reelIndex ? "bg-white" : "bg-white/30"}"></span>`
+    ).join("");
+  }
+  if (titulo) titulo.textContent = v.titulo || "";
+
+  if (reelIsArchivoDirecto(v.url)) {
+    linkSlide?.classList.add("hidden");
+    linkSlide?.classList.remove("flex");
+    if (videoEl) {
+      videoEl.classList.remove("hidden");
+      videoEl.muted = reelMuted;
+      if (videoEl.src !== v.url) videoEl.src = v.url;
+      if (reelInView) videoEl.play().catch(() => {});
+    }
+  } else {
+    videoEl?.classList.add("hidden");
+    videoEl?.pause?.();
+    if (linkSlide) {
+      linkSlide.href = v.url;
+      linkSlide.classList.remove("hidden");
+      linkSlide.classList.add("flex");
+    }
+    if (linkTitulo) linkTitulo.textContent = v.titulo || "Ver video";
+  }
+}
+
+function reelSetInView(inView) {
+  reelInView = inView;
+  const videoEl = document.getElementById("reelVideoEl");
+  if (!videoEl || videoEl.classList.contains("hidden")) return;
+  if (inView) videoEl.play().catch(() => {});
+  else videoEl.pause();
+}
+
+function initReelControls() {
+  document.getElementById("reelPrev")?.addEventListener("click", () => reelShow(reelIndex - 1));
+  document.getElementById("reelNext")?.addEventListener("click", () => reelShow(reelIndex + 1));
+  document.getElementById("reelMute")?.addEventListener("click", () => {
+    reelMuted = !reelMuted;
+    const videoEl = document.getElementById("reelVideoEl");
+    if (videoEl) videoEl.muted = reelMuted;
+    const icon = document.getElementById("reelMuteIcon");
+    if (icon) {
+      icon.innerHTML = reelMuted
+        ? `<path d="M11 5L6 9H2v6h4l5 4V5z" /><line x1="23" y1="9" x2="17" y2="15" /><line x1="17" y1="9" x2="23" y2="15" />`
+        : `<path d="M11 5L6 9H2v6h4l5 4V5z" /><path d="M15.54 8.46a5 5 0 010 7.07" /><path d="M18.36 5.64a9 9 0 010 12.73" />`;
+    }
+  });
+
+  const wrap = document.getElementById("videosReelWrap");
+  if (wrap && "IntersectionObserver" in window) {
+    reelObserver = new IntersectionObserver(
+      (entries) => entries.forEach((e) => reelSetInView(e.isIntersecting)),
+      { threshold: 0.6 }
+    );
+    reelObserver.observe(wrap);
+  }
+}
 
 async function loadVideos() {
-  const container = document.getElementById("videosList");
-  if (!container) return;
-  const renderFallback = () => {
-    container.innerHTML = VIDEOS_FALLBACK.map((v) => `
-      <div class="canito-service-card">
-        <div class="canito-service-card__media flex items-center justify-center !aspect-video ${v.bg} ${v.ink}">${PLAY_ICON}</div>
-        <p class="px-3 py-2 text-meta-sm text-canito-carbon">${escapeHtml(v.titulo)}</p>
-      </div>`).join("");
-  };
+  const wrap = document.getElementById("videosReelWrap");
+  const vacio = document.getElementById("videosVacio");
+  if (!wrap) return;
   try {
     const response = await fetch(`/api/${SLUG}/videos`, { cache: "no-store" });
     if (!response.ok) throw new Error("No se pudieron cargar los videos.");
     const videos = await response.json();
-    if (!Array.isArray(videos) || !videos.length) return renderFallback();
-    container.innerHTML = videos.map((v, i) => {
-      const esArchivoDirecto = /\.(mp4|webm|mov|m4v)(\?|$)/i.test(v.url || "");
-      if (esArchivoDirecto) {
-        return `
-      <div class="canito-service-card">
-        <video class="canito-service-card__media !aspect-video" style="background:var(--canito-carbon)" controls preload="metadata" playsinline src="${escapeHtml(v.url)}"></video>
-        <p class="px-3 py-2 text-meta-sm text-canito-carbon">${escapeHtml(v.titulo || "Video")}</p>
-      </div>`;
-      }
-      return `
-      <a href="${escapeHtml(v.url)}" target="_blank" rel="noopener noreferrer" class="canito-service-card">
-        <div class="canito-service-card__media flex items-center justify-center !aspect-video ${i % 2 === 0 ? "bg-canito-oliva text-canito-crema/70" : "bg-canito-taupe text-canito-carbon/60"}">${PLAY_ICON}</div>
-        <p class="px-3 py-2 text-meta-sm text-canito-carbon">${escapeHtml(v.titulo || "Ver video")}</p>
-      </a>`;
-    }).join("");
+    reelVideos = Array.isArray(videos) ? videos : [];
   } catch (error) {
-    renderFallback();
+    reelVideos = [];
   }
+  if (!reelVideos.length) {
+    wrap.classList.add("hidden");
+    vacio?.classList.remove("hidden");
+    return;
+  }
+  wrap.classList.remove("hidden");
+  vacio?.classList.add("hidden");
+  reelShow(0);
 }
 
 /* ── Galería "Pieles reales" (landing) ── */
@@ -1300,6 +1363,7 @@ async function init() {
     serviciosList.innerHTML = `<p class="text-sm text-danger">${escapeHtml(error.message || "Error inicializando.")}</p>`;
   }
   loadProductosDestacados().catch(() => {});
+  initReelControls();
   loadVideos().catch(() => {});
   loadGaleria().catch(() => {});
   document.addEventListener("visibilitychange", () => {

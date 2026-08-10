@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Productos — Canito Skin</title>
+    <meta name="description" content="Línea propia de skincare Canito: sueros, cremas y más. Retiro en el local o envío." />
+    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="stylesheet" href="/globals.css" />
+    <link rel="stylesheet" href="/booking.css?v=20260807-landing" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/tailwind-theme.js"></script>
+  </head>
+  <body class="scope-business booking-page font-sans text-primary">
+    <!-- Header -->
+    <header class="booking-header">
+      <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <a href="/" class="flex min-w-0 shrink-0 items-center gap-3 text-left" aria-label="Volver al inicio">
+          <div id="navLogo" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-business-accent text-sm font-bold text-white select-none"></div>
+          <span id="navBusinessName" class="truncate text-sm font-semibold text-primary sm:text-base"></span>
+        </a>
+
+        <nav class="nav-links items-center gap-6 text-meta font-semibold text-secondary" aria-label="Secciones">
+          <a href="/#servicios" class="hover:text-business-accent">Tratamientos</a>
+          <a href="/market" class="text-business-accent" aria-current="page">Productos</a>
+          <a href="/#sobre-canito" class="hover:text-business-accent">Nosotros</a>
+          <a href="/#ubicacion" class="hover:text-business-accent">Ubicación</a>
+        </nav>
+
+        <div class="flex shrink-0 items-center gap-2">
+          <a href="/cart" class="cart-link" aria-label="Ver carrito">
+            <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
+              <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+            </svg>
+            <span data-cart-count class="cart-badge hidden">0</span>
+          </a>
+        </div>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl px-4 py-10 sm:px-6">
+      <p class="text-serif text-business-accent">Línea propia</p>
+      <h1 class="mt-1 font-display text-2xl uppercase text-canito-carbon">Productos Canito</h1>
+      <p class="mt-2 max-w-xl text-sm text-secondary">Skincare pensado para seguir el cuidado en casa. Retiro en el local o envío, coordinado por WhatsApp.</p>
+
+      <!-- Category chips -->
+      <div id="categoriaChips" class="mt-6 flex flex-wrap gap-2"></div>
+
+      <!-- Search + sort -->
+      <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <input id="buscarInput" type="search" placeholder="Buscar productos…" class="field-input sm:max-w-xs" />
+        <select id="ordenSelect" class="field-input sm:max-w-[200px]">
+          <option value="destacados">Destacados</option>
+          <option value="precio_asc">Precio: menor</option>
+          <option value="precio_desc">Precio: mayor</option>
+          <option value="novedades">Novedades</option>
+        </select>
+      </div>
+
+      <!-- Destacados -->
+      <section id="destacadosSection" class="mt-9 hidden">
+        <h2 class="text-lg font-semibold text-primary">Los más pedidos</h2>
+        <div id="destacadosList" class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"></div>
+      </section>
+
+      <!-- Catálogo -->
+      <div class="mt-9 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-primary">Catálogo</h2>
+        <p id="catalogoCount" class="text-meta-sm text-secondary"></p>
+      </div>
+      <div id="catalogoList" class="mt-3 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4"></div>
+      <p id="catalogoVacio" class="hidden mt-8 text-center text-sm text-secondary">Todavía no hay productos cargados. Muy pronto vas a ver acá nuestra línea completa.</p>
+      <p id="catalogoSinResultados" class="hidden mt-8 text-center text-sm text-secondary">No encontramos productos con ese filtro.</p>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-canito-taupe bg-canito-crema">
+      <div class="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-10 sm:px-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p class="font-display text-lg uppercase text-canito-carbon">Canito Skin</p>
+            <p class="mt-1 text-meta-sm text-secondary">Allurralde 314, San Nicolás de los Arroyos</p>
+          </div>
+          <nav class="flex flex-wrap gap-x-5 gap-y-2 text-meta text-secondary">
+            <a href="/#servicios" class="hover:text-business-accent">Turnos</a>
+            <a href="/market" class="hover:text-business-accent">Productos</a>
+            <a href="https://www.instagram.com/canitoskin/" target="_blank" rel="noopener noreferrer" class="hover:text-business-accent">Instagram</a>
+            <a href="/privacidad" class="hover:text-business-accent">Privacidad</a>
+            <a href="/terminos" class="hover:text-business-accent">Términos</a>
+          </nav>
+        </div>
+        <p class="text-meta-sm text-secondary/70">© 2026 Canito Skin · Sistema desarrollado por CMR Software Solutions</p>
+      </div>
+    </footer>
+
+    <script src="/cart.js?v=20260807-cart"></script>
+    <script src="/market.js?v=20260810-market"></script>
+  </body>
+</html>
