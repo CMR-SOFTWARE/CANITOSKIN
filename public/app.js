@@ -1,5 +1,5 @@
 function getSlug() {
-  const reserved = new Set(["admin", "cart", "privacidad", "terminos"]);
+  const reserved = new Set(["admin", "cart", "market", "privacidad", "terminos"]);
   const parts = window.location.pathname.split("/").filter(Boolean);
   const first = parts[0] || "";
   if (!first || reserved.has(first)) return "canito";
