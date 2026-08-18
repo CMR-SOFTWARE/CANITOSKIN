@@ -919,14 +919,13 @@ function isServiceAvailableOnDate(service, fechaIso) {
   return parseDiasAtencion(service.dias_atencion).includes(dow);
 }
 
-// El paso entre horarios ofrecidos depende de la duración del servicio:
-// nunca menor a SLOT_STEP_MIN (15 min, para no ofrecer huecos imposibles
-// de encontrar) ni mayor a 60 (para no dejar muy pocas opciones en
-// servicios largos).
+// El paso entre horarios ofrecidos es la propia duración del servicio
+// (nunca menor a SLOT_STEP_MIN, 15 min), sin techo — un servicio de
+// 1h30 ofrece horarios cada 1h30, no cada 1h.
 function slotStepForDuration(duracionMin) {
   const d = Number(duracionMin);
   if (!Number.isFinite(d) || d <= 0) return SLOT_STEP_MIN;
-  return Math.min(60, Math.max(SLOT_STEP_MIN, d));
+  return Math.max(SLOT_STEP_MIN, d);
 }
 
 /**
