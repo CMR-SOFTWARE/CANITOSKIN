@@ -16,7 +16,7 @@
     <header class="booking-header">
       <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
         <button type="button" id="btnHome" class="flex min-w-0 shrink-0 items-center gap-3 text-left" aria-label="Volver al inicio">
-          <div id="navLogo" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-business-accent text-sm font-bold text-white select-none"></div>
+          <div id="navLogo" class="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-business-accent text-sm font-bold text-white select-none"></div>
           <span id="navBusinessName" class="truncate text-sm font-semibold text-primary sm:text-base"></span>
         </button>
 
@@ -24,6 +24,8 @@
           <a href="/#servicios" class="hover:text-business-accent">Tratamientos</a>
           <a href="/market" class="hover:text-business-accent">Productos</a>
           <a href="/#sobre-canito" class="hover:text-business-accent">Nosotros</a>
+          <a href="/#videos" class="hover:text-business-accent">Conocé</a>
+          <a href="/#pieles-reales" class="hover:text-business-accent">Trabajos</a>
           <a href="/#ubicacion" class="hover:text-business-accent">Ubicación</a>
         </nav>
 
@@ -84,9 +86,8 @@
                 <li class="canito-sticker canito-sticker--promo">Comunidad</li>
               </ul>
             </div>
-            <div class="relative flex aspect-[4/5] items-center justify-center overflow-hidden rounded-card bg-canito-taupe">
-              <img src="/images/logo-canito-nav.png" alt="Canito Skin" class="h-2/3 w-2/3 object-contain opacity-90" />
-              <span class="absolute bottom-3 right-3 rounded-full bg-canito-crema/85 px-3 py-1 text-[11px] font-semibold text-canito-carbon/70">Foto real: pendiente</span>
+            <div id="sobreFotoWrap" class="relative flex aspect-[4/5] items-center justify-center overflow-hidden rounded-card bg-canito-taupe">
+              <img id="sobreFotoImg" src="/images/logo-canito-nav.png" alt="Canito Skin" class="h-2/3 w-2/3 object-contain opacity-90" />
             </div>
           </div>
         </section>
@@ -154,7 +155,9 @@
           <div class="relative z-[1] mx-auto max-w-3xl">
             <p class="text-serif text-canito-crema/80">Conocé Canito</p>
             <h2 id="videosTitle" class="mt-2 font-display text-2xl uppercase text-canito-crema">Videos institucionales</h2>
-            <div id="videosReelWrap" class="mx-auto mt-6 w-full max-w-[340px]">
+            <div class="mt-6 flex flex-col items-center gap-6 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:gap-6">
+              <img src="/images/logo-canito-script-crema.png" alt="" class="w-44 shrink-0 opacity-90 sm:w-56 sm:justify-self-end" aria-hidden="true" />
+              <div id="videosReelWrap" class="w-full max-w-[340px]">
               <div id="videosReel" class="relative overflow-hidden rounded-2xl bg-black" style="aspect-ratio: 9 / 16;">
                 <video id="reelVideoEl" class="hidden h-full w-full object-cover" muted loop playsinline></video>
                 <a id="reelLinkSlide" href="#" target="_blank" rel="noopener noreferrer" class="hidden absolute inset-0 flex-col items-center justify-center gap-3 bg-canito-oliva px-6 text-center text-canito-crema">
@@ -176,6 +179,7 @@
                 </button>
                 <p id="reelTitulo" class="pointer-events-none absolute bottom-3 left-3 right-14 truncate text-sm font-semibold text-white"></p>
               </div>
+              </div>
             </div>
             <p id="videosVacio" class="mt-4 text-meta-sm text-canito-crema/60 hidden">Esta sección se gestiona desde el panel de Canito, sin tocar código.</p>
           </div>
@@ -184,7 +188,7 @@
         <!-- 5. PRODUCTOS DESTACADOS -->
         <section id="productos-destacados" class="canito-section-body" aria-labelledby="productosTitle">
           <div class="mx-auto max-w-3xl">
-            <p class="text-serif text-business-accent">Línea propia</p>
+            <p class="text-serif text-business-accent">Nuestros productos</p>
             <h2 id="productosTitle" class="mt-2 text-2xl">Productos Canito</h2>
             <p class="mt-2 max-w-md text-sm text-secondary">Skincare pensado para seguir el cuidado en casa.</p>
             <div id="productosDestacadosList" class="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-3">
@@ -401,7 +405,7 @@
             <a href="/terminos" class="hover:text-business-accent">Términos</a>
           </nav>
         </div>
-        <p class="text-meta-sm text-secondary/70">© 2026 Canito Skin · Sistema desarrollado por CMR Software Solutions</p>
+        <p class="text-meta-sm text-secondary/70">© 2026 Canito Skin · Sistema desarrollado por <a href="https://www.instagram.com/cmrsoftware.sn/" target="_blank" rel="noopener noreferrer" class="hover:text-business-accent">CMR Software Solutions</a></p>
       </div>
     </footer>
 

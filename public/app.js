@@ -154,6 +154,11 @@ function isDiaAtencion(fechaIso) {
   } else {
     days = [1, 2, 3, 4, 5];
   }
+  const service = getSelectedService();
+  if (Array.isArray(service?.diasAtencion) && service.diasAtencion.length) {
+    const serviceDays = service.diasAtencion.map(Number);
+    days = days.filter((d) => serviceDays.includes(d));
+  }
   const [y, m, d] = String(fechaIso).split("-").map(Number);
   if (!y || !m || !d) return false;
   return days.includes(new Date(y, m - 1, d).getDay());
@@ -792,7 +797,7 @@ async function loadGaleria() {
   if (!container) return;
   const renderFallback = () => {
     container.innerHTML = PIELES_FALLBACK_ICONS.map((t) => `
-      <div class="canito-pieles-tile aspect-square rounded-card ${t.bg} ${t.ink}">
+      <div class="canito-pieles-tile aspect-[4/5] rounded-card ${t.bg} ${t.ink}">
         <svg viewBox="0 0 100 100" class="h-10 w-10" fill="none" stroke="currentColor" stroke-width="2">${t.path}</svg>
       </div>`).join("");
     if (nota) nota.classList.remove("hidden");
@@ -804,7 +809,7 @@ async function loadGaleria() {
     if (!Array.isArray(fotos) || !fotos.length) return renderFallback();
     if (nota) nota.classList.add("hidden");
     container.innerHTML = fotos.map((f) => `
-      <div class="aspect-square overflow-hidden rounded-card bg-canito-taupe">
+      <div class="aspect-[4/5] overflow-hidden rounded-card bg-canito-taupe">
         <img src="${escapeHtml(f.imagenUrl)}" alt="${escapeHtml(f.titulo || "Canito Skin")}" class="h-full w-full object-cover" loading="lazy" />
       </div>`).join("");
   } catch (error) {
@@ -812,11 +817,20 @@ async function loadGaleria() {
   }
 }
 
+function setAboutFoto() {
+  const img = document.getElementById("sobreFotoImg");
+  if (!img || !config.aboutImageUrl) return;
+  img.src = config.aboutImageUrl;
+  img.alt = config.nombre || "Canito Skin";
+  img.classList.remove("h-2/3", "w-2/3", "object-contain", "opacity-90");
+  img.classList.add("h-full", "w-full", "object-cover");
+}
+
 function setNavLogo() {
   const navLogo = document.getElementById("navLogo");
   if (!navLogo) return;
   if (config.logoUrl) {
-    navLogo.outerHTML = `<img id="navLogo" src="${escapeHtml(config.logoUrl)}" alt="${escapeHtml(config.nombre)}" class="h-10 w-10 shrink-0 rounded-full object-contain bg-white p-0.5 ring-1 ring-border" crossorigin="anonymous" />`;
+        navLogo.outerHTML = `<img id="navLogo" src="${escapeHtml(config.logoUrl)}" alt="${escapeHtml(config.nombre)}" class="h-16 w-16 shrink-0 rounded-full object-contain bg-white p-0.5 ring-1 ring-border" crossorigin="anonymous" />`;
     const img = document.getElementById("navLogo");
     if (img) {
       const apply = () => {
@@ -841,7 +855,7 @@ function setNavLogo() {
       else img.addEventListener("load", apply, { once: true });
     }
   } else {
-    navLogo.outerHTML = `<img id="navLogo" src="/images/logo-canito-nav.png" alt="${escapeHtml(config.nombre || "Canito Skin")}" class="h-10 w-auto max-w-[7rem] shrink-0 object-contain" />`;
+    navLogo.outerHTML = `<img id="navLogo" src="/images/logo-canito-nav.png" alt="${escapeHtml(config.nombre || "Canito Skin")}" class="h-16 w-auto max-w-[9rem] shrink-0 object-contain" />`;
   }
 }
 
@@ -1349,6 +1363,7 @@ async function loadConfig() {
     : "Reservá online en minutos";
 
   setNavLogo();
+  setAboutFoto();
   renderBusinessMeta();
   renderServicios();
   renderPlanes();

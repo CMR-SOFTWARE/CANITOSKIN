@@ -57,9 +57,9 @@
       const navLogo = document.getElementById("navLogo");
       if (navLogo) {
         if (config.logoUrl) {
-          navLogo.outerHTML = `<img id="navLogo" src="${escapeHtml(config.logoUrl)}" alt="${escapeHtml(config.nombre)}" class="h-10 w-10 shrink-0 rounded-full object-contain bg-white p-0.5 ring-1 ring-border" crossorigin="anonymous" />`;
+          navLogo.outerHTML = `<img id="navLogo" src="${escapeHtml(config.logoUrl)}" alt="${escapeHtml(config.nombre)}" class="h-16 w-16 shrink-0 rounded-full object-contain bg-white p-0.5 ring-1 ring-border" crossorigin="anonymous" />`;
         } else {
-          navLogo.outerHTML = `<img id="navLogo" src="/images/logo-canito-nav.png" alt="${escapeHtml(config.nombre || "Canito Skin")}" class="h-10 w-auto max-w-[7rem] shrink-0 object-contain" />`;
+          navLogo.outerHTML = `<img id="navLogo" src="/images/logo-canito-nav.png" alt="${escapeHtml(config.nombre || "Canito Skin")}" class="h-16 w-auto max-w-[9rem] shrink-0 object-contain" />`;
         }
       }
     } catch (_) { /* branding por defecto */ }

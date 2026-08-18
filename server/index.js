@@ -40,6 +40,8 @@ const SUPABASE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || "comprobantes";
 const USE_SQLITE = !USE_SUPABASE && Boolean(sqlite3);
 
 const SLOT_STEP_MIN = 15;
+const MAX_VIDEOS_LANDING = 4;
+const MAX_GALERIA_FOTOS = 4;
 const CATEGORIAS = new Set(["estetica"]);
 const ESTADOS_TURNO = new Set(["pendiente", "confirmada", "cancelada"]);
 
@@ -88,6 +90,31 @@ async function uploadBusinessLogoFile(businessId, file) {
     if (uploadErr) throw new Error(uploadErr.message);
     const { data: { publicUrl } } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
     const { error } = await supabase.from("businesses").update({ logo_url: publicUrl }).eq("id", businessId);
+    if (error) throw new Error(error.message);
+    return publicUrl;
+  }
+  throw new Error("No hay backend disponible.");
+}
+
+async function uploadBusinessAboutImageFile(businessId, file) {
+  const ext = path.extname(file.originalname) || ".jpg";
+  const filename = `${businessId}_${Date.now()}${ext}`;
+
+  if (USE_SQLITE) {
+    await fs.mkdir(LOGOS_DIR, { recursive: true });
+    await fs.writeFile(path.join(LOGOS_DIR, filename), file.buffer);
+    const aboutImageUrl = `/uploads/logos/${filename}`;
+    await dbRun("UPDATE businesses SET about_image_url = ? WHERE id = ?", [aboutImageUrl, businessId]);
+    return aboutImageUrl;
+  }
+  if (USE_SUPABASE) {
+    const storagePath = `about/${filename}`;
+    const { error: uploadErr } = await supabase.storage
+      .from(SUPABASE_BUCKET)
+      .upload(storagePath, file.buffer, { contentType: file.mimetype, upsert: true });
+    if (uploadErr) throw new Error(uploadErr.message);
+    const { data: { publicUrl } } = supabase.storage.from(SUPABASE_BUCKET).getPublicUrl(storagePath);
+    const { error } = await supabase.from("businesses").update({ about_image_url: publicUrl }).eq("id", businessId);
     if (error) throw new Error(error.message);
     return publicUrl;
   }
@@ -153,6 +180,29 @@ function isMissingTableError(error) {
   if (!error) return false;
   if (error.code === "42P01" || error.code === "PGRST205" || error.code === "PGRST202") return true;
   return /could not find the table|schema cache|does not exist/i.test(error.message || "");
+}
+
+// Evita dos videos con el mismo "orden" (se superpondrían en el reel).
+// Si ya hay otro video con ese orden: si el que se está moviendo tenía
+// una posición previa, se la cede (swap prolijo); si es nuevo, el que
+// estaba ahí pasa al final.
+async function resolverColisionOrdenVideo(businessId, videoId, ordenDeseado, ordenAnterior) {
+  const { data: colision } = await supabase.from("videos_landing")
+    .select("id, orden")
+    .eq("business_id", businessId)
+    .eq("orden", ordenDeseado)
+    .neq("id", videoId ?? -1)
+    .maybeSingle();
+  if (!colision) return;
+
+  if (ordenAnterior != null && ordenAnterior !== ordenDeseado) {
+    await supabase.from("videos_landing").update({ orden: ordenAnterior }).eq("id", colision.id);
+    return;
+  }
+  const { data: maxRow } = await supabase.from("videos_landing")
+    .select("orden").eq("business_id", businessId).order("orden", { ascending: false }).limit(1).maybeSingle();
+  const ordenFinal = (maxRow?.orden ?? 0) + 1;
+  await supabase.from("videos_landing").update({ orden: ordenFinal }).eq("id", colision.id);
 }
 
 function mapVideoRow(row) {
@@ -390,6 +440,7 @@ async function initDb() {
       direccion TEXT,
       color_marca TEXT DEFAULT '#5b5f51',
       logo_url TEXT,
+      about_image_url TEXT,
       whatsapp TEXT NOT NULL DEFAULT '',
       transfer_alias TEXT NOT NULL DEFAULT '',
       transfer_cbu TEXT NOT NULL DEFAULT '',
@@ -409,6 +460,7 @@ async function initDb() {
   try {
     const bizCols = await dbAll("PRAGMA table_info(businesses)");
     const bizNames = new Set(bizCols.map((c) => c.name));
+    if (!bizNames.has("about_image_url")) await dbRun("ALTER TABLE businesses ADD COLUMN about_image_url TEXT");
     if (!bizNames.has("hora_inicio_2")) await dbRun("ALTER TABLE businesses ADD COLUMN hora_inicio_2 INTEGER");
     if (!bizNames.has("hora_fin_2")) await dbRun("ALTER TABLE businesses ADD COLUMN hora_fin_2 INTEGER");
     if (!bizNames.has("dias_atencion")) {
@@ -490,6 +542,7 @@ async function initDb() {
     const svcCols = await dbAll("PRAGMA table_info(services)");
     const svcNames = new Set(svcCols.map((c) => c.name));
     if (!svcNames.has("sena")) await dbRun("ALTER TABLE services ADD COLUMN sena TEXT NOT NULL DEFAULT '0'");
+    if (!svcNames.has("dias_atencion")) await dbRun("ALTER TABLE services ADD COLUMN dias_atencion TEXT");
   } catch (_) { /* ignore */ }
 
   await dbRun(`
@@ -855,6 +908,17 @@ function isBusinessOpenOnDate(business, fechaIso, professionalId = null) {
   return days.includes(dow);
 }
 
+// Si el servicio tiene días propios (dias_atencion), solo se puede reservar
+// esos días, sin importar que el local o el profesional atiendan ese día.
+// Sin días propios = "igual al local", no agrega ninguna restricción.
+function isServiceAvailableOnDate(service, fechaIso) {
+  if (!service?.dias_atencion) return true;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(fechaIso || ""))) return false;
+  const [y, m, d] = String(fechaIso).split("-").map(Number);
+  const dow = new Date(y, m - 1, d).getDay();
+  return parseDiasAtencion(service.dias_atencion).includes(dow);
+}
+
 /**
  * Genera slots HH:MM cada SLOT_STEP_MIN donde cabe un servicio de duracionMin.
  * Soporta una o dos franjas horarias (ej. 9-13 y 16-20).
@@ -957,6 +1021,7 @@ function mapBusinessRow(row, professionals = [], services = [], clientPlans = []
     direccion: row.direccion || null,
     colorMarca: row.color_marca || "#5b5f51",
     logoUrl: row.logo_url || null,
+    aboutImageUrl: row.about_image_url || null,
     whatsapp: row.whatsapp || "",
     transferencia: {
       alias: row.transfer_alias || "",
@@ -997,6 +1062,7 @@ function mapServiceRow(row) {
     categoria: row.categoria || null,
     activo: Boolean(row.activo),
     professionalId: row.professional_id ?? null,
+    diasAtencion: row.dias_atencion ? parseDiasAtencion(row.dias_atencion) : null,
   };
 }
 
@@ -1973,6 +2039,7 @@ app.get("/api/:slug/config", resolveBusiness, async (req, res, next) => {
       direccion: b.direccion || null,
       colorMarca: b.colorMarca,
       logoUrl: b.logoUrl,
+      aboutImageUrl: b.aboutImageUrl,
       horaInicio: b.horaInicio,
       horaFin: b.horaFin,
       horaInicio2: b.horaInicio2,
@@ -1995,6 +2062,7 @@ app.get("/api/:slug/config", resolveBusiness, async (req, res, next) => {
         professionalIds: Array.isArray(s.professionalIds)
           ? s.professionalIds
           : (s.professionalId != null ? [Number(s.professionalId)] : []),
+        diasAtencion: s.diasAtencion || null,
       })),
       plans: b.plans,
       requiereProfesional: activePros.length > 1,
@@ -2232,7 +2300,7 @@ app.get("/api/:slug/disponibilidad", resolveBusiness, async (req, res, next) => 
     );
     if (proError) return res.status(400).json({ error: proError });
 
-    if (!isBusinessOpenOnDate(req.business, fecha, professionalId)) {
+    if (!isBusinessOpenOnDate(req.business, fecha, professionalId) || !isServiceAvailableOnDate(service, fecha)) {
       return res.json({
         fecha,
         serviceId,
@@ -2373,6 +2441,9 @@ app.post("/api/:slug/reservas", resolveBusiness, upload.single("comprobante"), a
           ? "Ese día el local no atiende."
           : "Ese día no hay atención para el profesional elegido.",
       });
+    }
+    if (!isServiceAvailableOnDate(service, fecha)) {
+      return res.status(400).json({ error: "Ese día no se realiza este servicio." });
     }
 
     const duracionMin = Number(service.duracion_min);
@@ -2667,6 +2738,9 @@ app.post("/api/:slug/admin/reservas", resolveBusiness, requireAdmin, async (req,
           : "Ese día no hay atención para el profesional elegido.",
       });
     }
+    if (!isServiceAvailableOnDate(service, fecha)) {
+      return res.status(400).json({ error: "Ese día no se realiza este servicio." });
+    }
 
     const duracionMin = Number(service.duracion_min);
     if (!Number.isFinite(duracionMin) || duracionMin <= 0) {
@@ -2858,6 +2932,9 @@ app.patch("/api/:slug/admin/reservas/:id/horario", resolveBusiness, requireAdmin
     const professionalId = appt.professionalId ?? null;
     if (!isBusinessOpenOnDate(req.business, fecha, professionalId)) {
       return res.status(400).json({ error: "Ese día no hay atención para el profesional del turno." });
+    }
+    if (!isServiceAvailableOnDate(service, fecha)) {
+      return res.status(400).json({ error: "Ese día no se realiza este servicio." });
     }
 
     const duracionMin = Number(service.duracion_min) || Number(appt.duracionMin) || 30;
@@ -3371,6 +3448,8 @@ app.post("/api/:slug/admin/services", resolveBusiness, requireAdmin, async (req,
     const professionalId = req.body?.professionalId != null && req.body.professionalId !== ""
       ? Number(req.body.professionalId)
       : null;
+    const diasAtencionInput = Array.isArray(req.body?.diasAtencion) ? req.body.diasAtencion : null;
+    const diasAtencion = diasAtencionInput && diasAtencionInput.length ? serializeDiasAtencion(diasAtencionInput) : null;
 
     if (!nombre) return res.status(400).json({ error: "El nombre del servicio es obligatorio." });
     if (!Number.isFinite(duracionMin) || duracionMin < SLOT_STEP_MIN) {
@@ -3380,21 +3459,22 @@ app.post("/api/:slug/admin/services", resolveBusiness, requireAdmin, async (req,
     if (USE_SUPABASE) {
       const { data, error } = await supabase.from("services").insert({
         business_id: req.business.id, nombre, descripcion, duracion_min: duracionMin,
-        precio, sena, categoria, professional_id: professionalId, activo: true,
+        precio, sena, categoria, professional_id: professionalId, dias_atencion: diasAtencion, activo: true,
       }).select().single();
       if (error) throw new Error(error.message);
       if (professionalId) await ensureProfessionalServiceLink(req.business.id, data.id, professionalId);
       return res.status(201).json(mapServiceRow(data));
     }
     const result = await dbRun(
-      `INSERT INTO services (business_id, nombre, descripcion, duracion_min, precio, sena, categoria, professional_id, activo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-      [req.business.id, nombre, descripcion, duracionMin, precio, sena, categoria, professionalId]
+      `INSERT INTO services (business_id, nombre, descripcion, duracion_min, precio, sena, categoria, professional_id, dias_atencion, activo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      [req.business.id, nombre, descripcion, duracionMin, precio, sena, categoria, professionalId, diasAtencion]
     );
     if (professionalId) await ensureProfessionalServiceLink(req.business.id, result.lastID, professionalId);
     return res.status(201).json({
       id: result.lastID, businessId: req.business.id, nombre, descripcion,
       duracionMin, precio, sena, categoria, professionalId, activo: true,
+      diasAtencion: diasAtencion ? parseDiasAtencion(diasAtencion) : null,
     });
   } catch (error) { next(error); }
 });
@@ -3412,6 +3492,9 @@ app.put("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (r
     const professionalId = req.body?.professionalId != null && req.body.professionalId !== ""
       ? Number(req.body.professionalId)
       : null;
+    const hasDiasAtencion = Object.prototype.hasOwnProperty.call(req.body || {}, "diasAtencion");
+    const diasAtencionInput = Array.isArray(req.body?.diasAtencion) ? req.body.diasAtencion : null;
+    const diasAtencion = diasAtencionInput && diasAtencionInput.length ? serializeDiasAtencion(diasAtencionInput) : null;
 
     if (!nombre) return res.status(400).json({ error: "El nombre es obligatorio." });
     if (!Number.isFinite(duracionMin) || duracionMin < SLOT_STEP_MIN) {
@@ -3423,21 +3506,34 @@ app.put("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (r
         nombre, descripcion, duracion_min: duracionMin, precio, sena, categoria, professional_id: professionalId,
       };
       if (typeof activo === "boolean") patch.activo = activo;
+      if (hasDiasAtencion) patch.dias_atencion = diasAtencion;
       const { error } = await supabase.from("services").update(patch)
         .eq("id", id).eq("business_id", req.business.id);
       if (error) throw new Error(error.message);
       if (professionalId) await ensureProfessionalServiceLink(req.business.id, id, professionalId);
       return res.json({ ok: true });
     }
-    await dbRun(
-      `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, sena=?, categoria=?, professional_id=?, activo=?
-       WHERE id=? AND business_id=?`,
-      [
-        nombre, descripcion, duracionMin, precio, sena, categoria, professionalId,
-        typeof activo === "boolean" ? (activo ? 1 : 0) : 1,
-        id, req.business.id,
-      ]
-    );
+    if (hasDiasAtencion) {
+      await dbRun(
+        `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, sena=?, categoria=?, professional_id=?, dias_atencion=?, activo=?
+         WHERE id=? AND business_id=?`,
+        [
+          nombre, descripcion, duracionMin, precio, sena, categoria, professionalId, diasAtencion,
+          typeof activo === "boolean" ? (activo ? 1 : 0) : 1,
+          id, req.business.id,
+        ]
+      );
+    } else {
+      await dbRun(
+        `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, sena=?, categoria=?, professional_id=?, activo=?
+         WHERE id=? AND business_id=?`,
+        [
+          nombre, descripcion, duracionMin, precio, sena, categoria, professionalId,
+          typeof activo === "boolean" ? (activo ? 1 : 0) : 1,
+          id, req.business.id,
+        ]
+      );
+    }
     if (professionalId) await ensureProfessionalServiceLink(req.business.id, id, professionalId);
     return res.json({ ok: true });
   } catch (error) { next(error); }
@@ -3765,6 +3861,11 @@ const VIDEO_MIME_EXT = {
 app.post("/api/:slug/admin/videos/upload-url", resolveBusiness, requireAdmin, async (req, res, next) => {
   try {
     if (!USE_SUPABASE) return res.status(501).json({ error: "No disponible en este entorno." });
+    const { count: videoCount } = await supabase.from("videos_landing")
+      .select("id", { count: "exact", head: true }).eq("business_id", req.business.id);
+    if ((videoCount || 0) >= MAX_VIDEOS_LANDING) {
+      return res.status(400).json({ error: `Ya llegaste al máximo de ${MAX_VIDEOS_LANDING} videos. Eliminá uno para agregar otro.` });
+    }
     const mimetype = String(req.body?.mimetype || "");
     const ext = VIDEO_MIME_EXT[mimetype];
     if (!ext) return res.status(400).json({ error: "Formato de video no soportado. Usá MP4, WEBM o MOV." });
@@ -3788,6 +3889,17 @@ app.post("/api/:slug/admin/videos", resolveBusiness, requireAdmin, async (req, r
     if (!url) return res.status(400).json({ error: "El link del video es obligatorio." });
     if (!/^https?:\/\//i.test(url)) return res.status(400).json({ error: "El link tiene que empezar con http:// o https://" });
 
+    const { count: videoCount, error: countError } = await supabase.from("videos_landing")
+      .select("id", { count: "exact", head: true }).eq("business_id", req.business.id);
+    if (countError) {
+      if (isMissingTableError(countError)) return res.status(409).json({ error: MISSING_CONTENIDO_TABLE_MSG });
+      throw new Error(countError.message);
+    }
+    if ((videoCount || 0) >= MAX_VIDEOS_LANDING) {
+      return res.status(400).json({ error: `Ya llegaste al máximo de ${MAX_VIDEOS_LANDING} videos. Eliminá uno para agregar otro.` });
+    }
+
+    await resolverColisionOrdenVideo(req.business.id, null, orden, null);
     const { data, error } = await supabase.from("videos_landing").insert({
       business_id: req.business.id, titulo, url, seccion: "videos", orden, activo: true,
     }).select().single();
@@ -3811,6 +3923,14 @@ app.put("/api/:slug/admin/videos/:id", resolveBusiness, requireAdmin, async (req
     }
     if (Number.isFinite(Number(req.body?.orden))) patch.orden = Number(req.body.orden);
     if (typeof req.body?.activo === "boolean") patch.activo = req.body.activo;
+
+    if (patch.orden != null) {
+      const { data: actual } = await supabase.from("videos_landing").select("orden")
+        .eq("id", req.params.id).eq("business_id", req.business.id).maybeSingle();
+      if (actual && actual.orden !== patch.orden) {
+        await resolverColisionOrdenVideo(req.business.id, req.params.id, patch.orden, actual.orden);
+      }
+    }
 
     const { error } = await supabase.from("videos_landing").update(patch)
       .eq("id", req.params.id).eq("business_id", req.business.id);
@@ -3854,6 +3974,16 @@ app.post(
       if (!req.file) return res.status(400).json({ error: "Subí una imagen." });
       const validMagic = await validateFileMagicBytes(req.file);
       if (!validMagic) return res.status(400).json({ error: "La imagen no es válida. Solo JPG, PNG o WEBP." });
+
+      const { count: fotoCount, error: countError } = await supabase.from("galeria_pieles")
+        .select("id", { count: "exact", head: true }).eq("business_id", req.business.id);
+      if (countError) {
+        if (isMissingTableError(countError)) return res.status(409).json({ error: MISSING_CONTENIDO_TABLE_MSG });
+        throw new Error(countError.message);
+      }
+      if ((fotoCount || 0) >= MAX_GALERIA_FOTOS) {
+        return res.status(400).json({ error: `Ya llegaste al máximo de ${MAX_GALERIA_FOTOS} fotos. Eliminá una para subir otra.` });
+      }
 
       const titulo = (req.body?.titulo || "").trim().slice(0, 120) || null;
       const orden = Number.isFinite(Number(req.body?.orden)) ? Number(req.body.orden) : 0;
@@ -4119,6 +4249,18 @@ app.patch("/api/:slug/admin/logo", resolveBusiness, requireAdmin, logoUpload.sin
   } catch (error) { next(error); }
 });
 
+app.patch("/api/:slug/admin/about-image", resolveBusiness, requireAdmin, logoUpload.single("foto"), async (req, res, next) => {
+  try {
+    if (!req.file) return res.status(400).json({ error: "No se recibió imagen." });
+    const validMagic = await validateFileMagicBytes(req.file);
+    if (!validMagic) return res.status(400).json({ error: "Imagen inválida." });
+
+    const aboutImageUrl = await uploadBusinessAboutImageFile(req.business.id, req.file);
+    req.business.aboutImageUrl = aboutImageUrl;
+    return res.json({ ok: true, aboutImageUrl });
+  } catch (error) { next(error); }
+});
+
 app.post("/api/:slug/admin/password", resolveBusiness, requireAdmin, async (req, res, next) => {
   try {
     const passwordActual = (req.body?.passwordActual || "").trim();
@@ -4200,6 +4342,62 @@ app.get("/cart", (_req, res) => {
     return res.sendFile(cartPage);
   }
   return res.redirect("/");
+});
+
+// Cron diario (ver vercel.json): borra los comprobantes de turnos con
+// más de 7 días de antigüedad (fecha del turno, no de carga). El turno
+// en sí queda en el historial — solo se limpia el archivo y su referencia,
+// para no acumular fotos/PDF de pago vencidos en el storage.
+app.get("/api/cron/limpiar-comprobantes", async (req, res, next) => {
+  try {
+    const secret = process.env.CRON_SECRET;
+    const auth = req.headers.authorization || "";
+    if (!secret || auth !== `Bearer ${secret}`) {
+      return res.status(401).json({ error: "No autorizado." });
+    }
+
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - 7);
+    const cutoffStr = cutoff.toISOString().split("T")[0];
+
+    let limpiados = 0;
+    if (USE_SUPABASE) {
+      const { data: appts, error } = await supabase.from("appointments")
+        .select("id, comprobante_archivo")
+        .lt("fecha", cutoffStr)
+        .not("comprobante_archivo", "is", null);
+      if (error) throw new Error(error.message);
+      for (const appt of appts || []) {
+        if (appt.comprobante_archivo) {
+          await supabase.storage.from(SUPABASE_BUCKET).remove([appt.comprobante_archivo]).catch(() => {});
+        }
+        await supabase.from("appointments").update({
+          comprobante_archivo: null,
+          comprobante_nombre_original: null,
+          comprobante_mimetype: null,
+          comprobante_size: null,
+        }).eq("id", appt.id);
+        limpiados++;
+      }
+    } else {
+      const rows = await dbAll(
+        "SELECT id, comprobante_archivo FROM appointments WHERE fecha < ? AND comprobante_archivo IS NOT NULL",
+        [cutoffStr]
+      );
+      for (const row of rows) {
+        if (row.comprobante_archivo) {
+          await fs.unlink(path.join(UPLOADS_DIR, row.comprobante_archivo)).catch(() => {});
+        }
+        await dbRun(
+          `UPDATE appointments SET comprobante_archivo = NULL, comprobante_nombre_original = NULL,
+             comprobante_mimetype = NULL, comprobante_size = NULL WHERE id = ?`,
+          [row.id]
+        );
+        limpiados++;
+      }
+    }
+    res.json({ ok: true, limpiados, antesDe: cutoffStr });
+  } catch (error) { next(error); }
 });
 
 app.get("/market", (_req, res) => {

@@ -25,6 +25,7 @@ create table if not exists businesses (
   direccion text,
   color_marca text default '#5b5f51',
   logo_url text,
+  about_image_url text,
   whatsapp text not null default '',
   transfer_alias text not null default '',
   transfer_cbu text not null default '',
@@ -257,6 +258,7 @@ alter table professionals add column if not exists hora_inicio_2 integer;
 alter table professionals add column if not exists hora_fin_2 integer;
 alter table professionals add column if not exists dias_atencion text;
 alter table services add column if not exists sena text;
+alter table services add column if not exists dias_atencion text;
 alter table movimientos add column if not exists appointment_id bigint;
 alter table movimientos add column if not exists origen text;
 alter table movimientos add column if not exists referencia_id bigint;

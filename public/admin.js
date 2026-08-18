@@ -403,7 +403,10 @@
   let prodFotoPendiente = null;
   let clientesQuery = "";
   let videosCache = [];
+  let editingVideoId = null;
   let galeriaCache = [];
+  const MAX_VIDEOS_LANDING = 4;
+  const MAX_GALERIA_FOTOS = 4;
 
   // ---- API ----
   async function api(url, options = {}) {
@@ -578,6 +581,12 @@
     const preview = $("cfgLogoPreview");
     if (!preview) return;
     setAvatarEl(preview, config?.nombre || "Negocio", config?.logoUrl || null);
+  }
+
+  function updateAboutPreview() {
+    const preview = $("cfgAboutPreview");
+    if (!preview) return;
+    setAvatarEl(preview, config?.nombre || "Negocio", config?.aboutImageUrl || null);
   }
 
   function updateBrandUI() {
@@ -1624,14 +1633,33 @@
   }
 
   // ---- servicios ----
+  function setServDiasPropios(enabled, dias) {
+    const check = $("servDiasPropios");
+    if (check) check.checked = !!enabled;
+    $("servDiasBlock")?.classList.toggle("hidden", !enabled);
+    const selected = new Set((Array.isArray(dias) && dias.length ? dias : [1, 2, 3, 4, 5]).map(Number));
+    document.querySelectorAll("#servDiasAtencion .dia-chip").forEach((btn) => {
+      btn.classList.toggle("is-active", selected.has(Number(btn.dataset.dia)));
+    });
+  }
+
+  function getSelectedServDias() {
+    return [...document.querySelectorAll("#servDiasAtencion .dia-chip.is-active")]
+      .map((btn) => Number(btn.dataset.dia))
+      .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
+      .sort((a, b) => a - b);
+  }
+
   function resetServicioForm() {
     editingServiceId = null;
     ["nuevoServNombre", "nuevoServDesc", "nuevoServDuracion", "nuevoServPrecio", "nuevoServSena", "nuevoServCat"].forEach((id) => {
       if ($(id)) $(id).value = "";
     });
     fillServicioProfessionalSelect("");
+    setServDiasPropios(false, null);
     const btn = $("btnAgregarServicio");
     if (btn) btn.textContent = "Guardar servicio";
+    $("btnCancelarEditServ")?.classList.add("hidden");
   }
 
   function fillServicioForm(s) {
@@ -1646,8 +1674,10 @@
       Array.isArray(p.serviceIds) && p.serviceIds.map(Number).includes(Number(s.id))
     );
     fillServicioProfessionalSelect(fromLinks?.id ?? s.professionalId ?? "");
+    setServDiasPropios(Array.isArray(s.diasAtencion) && s.diasAtencion.length > 0, s.diasAtencion);
     const btn = $("btnAgregarServicio");
     if (btn) btn.textContent = "Actualizar servicio";
+    $("btnCancelarEditServ")?.classList.remove("hidden");
     $("formServicio")?.classList.remove("hidden");
     $("formServicio")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
@@ -1700,6 +1730,7 @@
   }
 
   async function agregarServicio() {
+    const diasPropios = Boolean($("servDiasPropios")?.checked);
     const body = {
       nombre: $("nuevoServNombre")?.value?.trim(),
       descripcion: $("nuevoServDesc")?.value?.trim() || "",
@@ -1708,7 +1739,12 @@
       sena: $("nuevoServSena")?.value?.trim() || "0",
       categoria: $("nuevoServCat")?.value?.trim() || null,
       professionalId: $("nuevoServProfesional")?.value || null,
+      diasAtencion: diasPropios ? getSelectedServDias() : [],
     };
+    if (diasPropios && !body.diasAtencion.length) {
+      setMessage($("cfgServMsg"), "Elegí al menos un día para este servicio.", true);
+      return;
+    }
     try {
       if (editingServiceId) {
         await api(`/api/${SLUG}/admin/services/${editingServiceId}`, {
@@ -2266,12 +2302,31 @@
     handleMigracionAviso(null);
   }
 
+  function updateVideoFormLimit() {
+    const count = (videosCache || []).length;
+    const limitReached = count >= MAX_VIDEOS_LANDING && !editingVideoId;
+    const hint = $("videosCountHint");
+    if (hint) {
+      hint.textContent = limitReached
+        ? `Llegaste al máximo de ${MAX_VIDEOS_LANDING} videos. Eliminá uno para poder agregar otro.`
+        : `${count}/${MAX_VIDEOS_LANDING} videos cargados.`;
+      hint.classList.toggle("text-danger", limitReached);
+    }
+    ["nuevoVideoTitulo", "nuevoVideoUrl", "nuevoVideoOrden", "nuevoVideoArchivo"].forEach((id) => {
+      const el = $(id);
+      if (el) el.disabled = limitReached;
+    });
+    const btn = $("btnAgregarVideo");
+    if (btn) btn.disabled = limitReached;
+  }
+
   function renderVideosAdmin() {
     const list = $("videosAdminList");
     const empty = $("videosAdminEmpty");
     if (!list) return;
     const items = videosCache || [];
     empty?.classList.toggle("hidden", items.length > 0);
+    updateVideoFormLimit();
     list.innerHTML = items.map((v) => `
       <article class="ds-card p-4 flex flex-col gap-2">
         <div class="flex items-start justify-between gap-2">
@@ -2281,11 +2336,18 @@
         <a href="${escapeHtml(v.url)}" target="_blank" rel="noopener" class="text-xs text-business-accent hover:underline truncate">${escapeHtml(v.url)}</a>
         <p class="text-meta-sm">Orden: ${escapeHtml(v.orden ?? 0)}</p>
         <div class="mt-1 flex flex-wrap gap-2">
+          <button type="button" data-edit-video="${escapeHtml(v.id)}" class="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-neutral-bg">Editar</button>
           <button type="button" data-toggle-video="${escapeHtml(v.id)}" data-activo="${v.activo ? "0" : "1"}" class="rounded-lg border border-border px-3 py-1.5 text-xs font-semibold hover:bg-neutral-bg">${v.activo ? "Ocultar" : "Mostrar"}</button>
           <button type="button" data-del-video="${escapeHtml(v.id)}" class="rounded-lg border border-danger/30 px-3 py-1.5 text-xs font-semibold text-danger hover:bg-danger-bg">Eliminar</button>
         </div>
       </article>`).join("");
 
+    list.querySelectorAll("[data-edit-video]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const v = videosCache.find((x) => String(x.id) === btn.getAttribute("data-edit-video"));
+        if (v) fillVideoForm(v);
+      });
+    });
     list.querySelectorAll("[data-toggle-video]").forEach((btn) => {
       btn.addEventListener("click", async () => {
         const id = btn.getAttribute("data-toggle-video");
@@ -2302,11 +2364,35 @@
         if (!confirm("¿Eliminar este video?")) return;
         try {
           await api(`/api/${SLUG}/admin/videos/${btn.getAttribute("data-del-video")}`, { method: "DELETE" });
+          if (editingVideoId === btn.getAttribute("data-del-video")) resetVideoForm();
           await loadVideos();
           renderVideosAdmin();
         } catch (e) { setMessage($("videoFormMsg"), e.message, true); }
       });
     });
+  }
+
+  function resetVideoForm() {
+    editingVideoId = null;
+    ["nuevoVideoTitulo", "nuevoVideoUrl", "nuevoVideoOrden"].forEach((id) => { if ($(id)) $(id).value = ""; });
+    if ($("nuevoVideoArchivo")) $("nuevoVideoArchivo").value = "";
+    const btn = $("btnAgregarVideo");
+    if (btn) btn.textContent = "Guardar video";
+    $("btnCancelarEditVideo")?.classList.add("hidden");
+    updateVideoFormLimit();
+  }
+
+  function fillVideoForm(v) {
+    editingVideoId = v.id;
+    if ($("nuevoVideoTitulo")) $("nuevoVideoTitulo").value = v.titulo || "";
+    if ($("nuevoVideoUrl")) $("nuevoVideoUrl").value = v.url || "";
+    if ($("nuevoVideoOrden")) $("nuevoVideoOrden").value = v.orden ?? "";
+    if ($("nuevoVideoArchivo")) $("nuevoVideoArchivo").value = "";
+    const btn = $("btnAgregarVideo");
+    if (btn) btn.textContent = "Actualizar video";
+    $("btnCancelarEditVideo")?.classList.remove("hidden");
+    $("formVideoTop")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    updateVideoFormLimit();
   }
 
   function uploadVideoDirectoASupabase(file, onProgress) {
@@ -2363,10 +2449,14 @@
           if (progressBar) progressBar.style.width = pct + "%";
         });
       }
-      await api(`/api/${SLUG}/admin/videos`, { method: "POST", body: JSON.stringify({ titulo, url: finalUrl, orden }) });
-      ["nuevoVideoTitulo", "nuevoVideoUrl", "nuevoVideoOrden"].forEach((id) => { if ($(id)) $(id).value = ""; });
-      if (fileInput) fileInput.value = "";
-      setMessage($("videoFormMsg"), "Video agregado.", false);
+      if (editingVideoId) {
+        await api(`/api/${SLUG}/admin/videos/${editingVideoId}`, { method: "PUT", body: JSON.stringify({ titulo, url: finalUrl, orden }) });
+        setMessage($("videoFormMsg"), "Video actualizado.", false);
+      } else {
+        await api(`/api/${SLUG}/admin/videos`, { method: "POST", body: JSON.stringify({ titulo, url: finalUrl, orden }) });
+        setMessage($("videoFormMsg"), "Video agregado.", false);
+      }
+      resetVideoForm();
       await loadVideos();
       renderVideosAdmin();
     } catch (e) {
@@ -2383,15 +2473,34 @@
     handleMigracionAviso(null);
   }
 
+  function updateFotoFormLimit() {
+    const count = (galeriaCache || []).length;
+    const limitReached = count >= MAX_GALERIA_FOTOS;
+    const hint = $("fotosCountHint");
+    if (hint) {
+      hint.textContent = limitReached
+        ? `Llegaste al máximo de ${MAX_GALERIA_FOTOS} fotos. Eliminá una para poder subir otra.`
+        : `${count}/${MAX_GALERIA_FOTOS} fotos cargadas.`;
+      hint.classList.toggle("text-danger", limitReached);
+    }
+    ["nuevaFotoTitulo", "nuevaFotoOrden", "nuevaFotoArchivo"].forEach((id) => {
+      const el = $(id);
+      if (el) el.disabled = limitReached;
+    });
+    const btn = $("btnAgregarFoto");
+    if (btn) btn.disabled = limitReached;
+  }
+
   function renderGaleriaAdmin() {
     const list = $("galeriaAdminList");
     const empty = $("galeriaAdminEmpty");
     if (!list) return;
     const items = galeriaCache || [];
     empty?.classList.toggle("hidden", items.length > 0);
+    updateFotoFormLimit();
     list.innerHTML = items.map((f) => `
       <article class="ds-card overflow-hidden">
-        <div class="aspect-square bg-neutral-bg">
+        <div class="aspect-[4/5] bg-neutral-bg">
           <img src="${escapeHtml(f.imagenUrl)}" alt="${escapeHtml(f.titulo || "")}" class="h-full w-full object-cover" loading="lazy" />
         </div>
         <div class="p-2.5 flex flex-col gap-1.5">
@@ -3124,6 +3233,32 @@
       }`;
     }
     updateLogoPreview();
+    updateAboutPreview();
+  }
+
+  async function subirAboutImage(file) {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setMessage($("cfgAboutMsg"), "Solo se permiten imágenes.", true);
+      return;
+    }
+    try {
+      setMessage($("cfgAboutMsg"), "Preparando imagen…", false);
+      const prepared = await compressImageFile(file);
+      if (prepared.size > 5 * 1024 * 1024) {
+        setMessage($("cfgAboutMsg"), "La imagen supera 5 MB. Probá otra foto más liviana.", true);
+        return;
+      }
+      const form = new FormData();
+      form.append("foto", prepared);
+      setMessage($("cfgAboutMsg"), "Subiendo…", false);
+      const data = await api(`/api/${SLUG}/admin/about-image`, { method: "PATCH", body: form });
+      if (config) config.aboutImageUrl = data.aboutImageUrl;
+      updateAboutPreview();
+      setMessage($("cfgAboutMsg"), "Foto actualizada.", false);
+    } catch (e) {
+      setMessage($("cfgAboutMsg"), e.message || "No se pudo subir la foto.", true);
+    }
   }
 
   async function subirLogo(file) {
@@ -3495,6 +3630,18 @@
       form?.classList.toggle("hidden");
     });
     $("btnAgregarServicio")?.addEventListener("click", agregarServicio);
+    $("btnCancelarEditServ")?.addEventListener("click", () => {
+      resetServicioForm();
+      $("formServicio")?.classList.add("hidden");
+    });
+    $("servDiasPropios")?.addEventListener("change", (e) => {
+      setServDiasPropios(e.target.checked, config?.diasAtencion);
+    });
+    $("servDiasAtencion")?.addEventListener("click", (e) => {
+      const btn = e.target.closest?.(".dia-chip");
+      if (!btn) return;
+      btn.classList.toggle("is-active");
+    });
 
     $("btnAgregarPro")?.addEventListener("click", () => {
       if (atProfessionalLimit()) {
@@ -3550,6 +3697,7 @@
     });
     $("btnAgregarPlanCliente")?.addEventListener("click", agregarPlan);
     $("btnAgregarVideo")?.addEventListener("click", agregarVideo);
+    $("btnCancelarEditVideo")?.addEventListener("click", resetVideoForm);
     $("btnAgregarFoto")?.addEventListener("click", agregarFoto);
 
     $("btnToggleProdForm")?.addEventListener("click", () => {
@@ -3612,6 +3760,11 @@
     $("cfgLogoInput")?.addEventListener("change", (e) => {
       const file = e.target.files?.[0];
       if (file) subirLogo(file);
+      e.target.value = "";
+    });
+    $("cfgAboutInput")?.addEventListener("change", (e) => {
+      const file = e.target.files?.[0];
+      if (file) subirAboutImage(file);
       e.target.value = "";
     });
     $("btnCambiarPass")?.addEventListener("click", cambiarPassword);

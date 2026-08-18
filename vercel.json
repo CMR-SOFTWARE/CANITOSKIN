@@ -11,5 +11,11 @@
       "src": "/(.*)",
       "dest": "server/index.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron/limpiar-comprobantes",
+      "schedule": "0 6 * * *"
+    }
   ]
 }
