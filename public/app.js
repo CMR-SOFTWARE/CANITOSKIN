@@ -492,7 +492,10 @@ function renderServicios() {
           <div class="svc-card__top">
             <div class="min-w-0 flex-1">
               <h3 class="font-semibold text-primary leading-snug">${escapeHtml(s.nombre)}</h3>
-              ${s.descripcion ? `<p class="mt-1 text-meta text-secondary">${escapeHtml(s.descripcion)}</p>` : ""}
+              ${s.descripcion ? `
+                <p class="mt-1 text-meta text-secondary svc-card__desc">${escapeHtml(s.descripcion)}</p>
+                ${s.descripcion.length > 100 ? `<button type="button" class="svc-card__desc-toggle" data-desc-toggle>Leer todo</button>` : ""}
+              ` : ""}
             </div>
             <div class="svc-card__prices shrink-0 text-right">
               ${precio ? `<span class="svc-card__price">${escapeHtml(precio)}</span>` : ""}
@@ -517,6 +520,14 @@ function renderServicios() {
       ev.preventDefault();
       ev.stopPropagation();
       startBooking(btn.getAttribute("data-service-id"));
+    });
+  });
+  serviciosList.querySelectorAll("[data-desc-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const desc = btn.previousElementSibling;
+      if (!desc) return;
+      const expanded = desc.classList.toggle("is-expanded");
+      btn.textContent = expanded ? "Leer menos" : "Leer todo";
     });
   });
 }
