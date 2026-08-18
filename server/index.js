@@ -919,8 +919,19 @@ function isServiceAvailableOnDate(service, fechaIso) {
   return parseDiasAtencion(service.dias_atencion).includes(dow);
 }
 
+// El paso entre horarios ofrecidos depende de la duración del servicio:
+// nunca menor a SLOT_STEP_MIN (15 min, para no ofrecer huecos imposibles
+// de encontrar) ni mayor a 60 (para no dejar muy pocas opciones en
+// servicios largos).
+function slotStepForDuration(duracionMin) {
+  const d = Number(duracionMin);
+  if (!Number.isFinite(d) || d <= 0) return SLOT_STEP_MIN;
+  return Math.min(60, Math.max(SLOT_STEP_MIN, d));
+}
+
 /**
- * Genera slots HH:MM cada SLOT_STEP_MIN donde cabe un servicio de duracionMin.
+ * Genera slots HH:MM donde cabe un servicio de duracionMin. El paso entre
+ * horarios ofrecidos escala con esa duración (ver slotStepForDuration).
  * Soporta una o dos franjas horarias (ej. 9-13 y 16-20).
  */
 function generateAvailableSlots(duracionMin, appointments, bloqueos, professionalId, business, options = {}) {
@@ -931,10 +942,11 @@ function generateAvailableSlots(duracionMin, appointments, bloqueos, professiona
   const ranges = getBusinessOpenRanges(schedule);
   if (!ranges.length) return [];
   const excludeId = options.excludeAppointmentId != null ? Number(options.excludeAppointmentId) : null;
+  const step = slotStepForDuration(duration);
 
   const slots = [];
   for (const range of ranges) {
-    for (let start = range.start; start + duration <= range.end; start += SLOT_STEP_MIN) {
+    for (let start = range.start; start + duration <= range.end; start += step) {
       const end = start + duration;
 
       const conflictAppt = (appointments || []).some((a) => {
