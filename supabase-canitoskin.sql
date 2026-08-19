@@ -259,6 +259,7 @@ alter table professionals add column if not exists hora_fin_2 integer;
 alter table professionals add column if not exists dias_atencion text;
 alter table services add column if not exists sena text;
 alter table services add column if not exists dias_atencion text;
+alter table services add column if not exists destacado boolean not null default false;
 alter table movimientos add column if not exists appointment_id bigint;
 alter table movimientos add column if not exists origen text;
 alter table movimientos add column if not exists referencia_id bigint;

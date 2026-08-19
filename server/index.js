@@ -543,6 +543,7 @@ async function initDb() {
     const svcNames = new Set(svcCols.map((c) => c.name));
     if (!svcNames.has("sena")) await dbRun("ALTER TABLE services ADD COLUMN sena TEXT NOT NULL DEFAULT '0'");
     if (!svcNames.has("dias_atencion")) await dbRun("ALTER TABLE services ADD COLUMN dias_atencion TEXT");
+    if (!svcNames.has("destacado")) await dbRun("ALTER TABLE services ADD COLUMN destacado INTEGER NOT NULL DEFAULT 0");
   } catch (_) { /* ignore */ }
 
   await dbRun(`
@@ -1074,6 +1075,7 @@ function mapServiceRow(row) {
     activo: Boolean(row.activo),
     professionalId: row.professional_id ?? null,
     diasAtencion: row.dias_atencion ? parseDiasAtencion(row.dias_atencion) : null,
+    destacado: row.destacado === true || row.destacado === 1,
   };
 }
 
@@ -2074,6 +2076,7 @@ app.get("/api/:slug/config", resolveBusiness, async (req, res, next) => {
           ? s.professionalIds
           : (s.professionalId != null ? [Number(s.professionalId)] : []),
         diasAtencion: s.diasAtencion || null,
+        destacado: s.destacado === true,
       })),
       plans: b.plans,
       requiereProfesional: activePros.length > 1,
@@ -3461,6 +3464,7 @@ app.post("/api/:slug/admin/services", resolveBusiness, requireAdmin, async (req,
       : null;
     const diasAtencionInput = Array.isArray(req.body?.diasAtencion) ? req.body.diasAtencion : null;
     const diasAtencion = diasAtencionInput && diasAtencionInput.length ? serializeDiasAtencion(diasAtencionInput) : null;
+    const destacado = req.body?.destacado === true || req.body?.destacado === "true";
 
     if (!nombre) return res.status(400).json({ error: "El nombre del servicio es obligatorio." });
     if (!Number.isFinite(duracionMin) || duracionMin < SLOT_STEP_MIN) {
@@ -3470,22 +3474,24 @@ app.post("/api/:slug/admin/services", resolveBusiness, requireAdmin, async (req,
     if (USE_SUPABASE) {
       const { data, error } = await supabase.from("services").insert({
         business_id: req.business.id, nombre, descripcion, duracion_min: duracionMin,
-        precio, sena, categoria, professional_id: professionalId, dias_atencion: diasAtencion, activo: true,
+        precio, sena, categoria, professional_id: professionalId, dias_atencion: diasAtencion,
+        destacado, activo: true,
       }).select().single();
       if (error) throw new Error(error.message);
       if (professionalId) await ensureProfessionalServiceLink(req.business.id, data.id, professionalId);
       return res.status(201).json(mapServiceRow(data));
     }
     const result = await dbRun(
-      `INSERT INTO services (business_id, nombre, descripcion, duracion_min, precio, sena, categoria, professional_id, dias_atencion, activo)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
-      [req.business.id, nombre, descripcion, duracionMin, precio, sena, categoria, professionalId, diasAtencion]
+      `INSERT INTO services (business_id, nombre, descripcion, duracion_min, precio, sena, categoria, professional_id, dias_atencion, destacado, activo)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      [req.business.id, nombre, descripcion, duracionMin, precio, sena, categoria, professionalId, diasAtencion, destacado ? 1 : 0]
     );
     if (professionalId) await ensureProfessionalServiceLink(req.business.id, result.lastID, professionalId);
     return res.status(201).json({
       id: result.lastID, businessId: req.business.id, nombre, descripcion,
       duracionMin, precio, sena, categoria, professionalId, activo: true,
       diasAtencion: diasAtencion ? parseDiasAtencion(diasAtencion) : null,
+      destacado,
     });
   } catch (error) { next(error); }
 });
@@ -3506,6 +3512,7 @@ app.put("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (r
     const hasDiasAtencion = Object.prototype.hasOwnProperty.call(req.body || {}, "diasAtencion");
     const diasAtencionInput = Array.isArray(req.body?.diasAtencion) ? req.body.diasAtencion : null;
     const diasAtencion = diasAtencionInput && diasAtencionInput.length ? serializeDiasAtencion(diasAtencionInput) : null;
+    const destacado = req.body?.destacado === true || req.body?.destacado === "true";
 
     if (!nombre) return res.status(400).json({ error: "El nombre es obligatorio." });
     if (!Number.isFinite(duracionMin) || duracionMin < SLOT_STEP_MIN) {
@@ -3515,6 +3522,7 @@ app.put("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (r
     if (USE_SUPABASE) {
       const patch = {
         nombre, descripcion, duracion_min: duracionMin, precio, sena, categoria, professional_id: professionalId,
+        destacado,
       };
       if (typeof activo === "boolean") patch.activo = activo;
       if (hasDiasAtencion) patch.dias_atencion = diasAtencion;
@@ -3526,20 +3534,20 @@ app.put("/api/:slug/admin/services/:id", resolveBusiness, requireAdmin, async (r
     }
     if (hasDiasAtencion) {
       await dbRun(
-        `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, sena=?, categoria=?, professional_id=?, dias_atencion=?, activo=?
+        `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, sena=?, categoria=?, professional_id=?, dias_atencion=?, destacado=?, activo=?
          WHERE id=? AND business_id=?`,
         [
-          nombre, descripcion, duracionMin, precio, sena, categoria, professionalId, diasAtencion,
+          nombre, descripcion, duracionMin, precio, sena, categoria, professionalId, diasAtencion, destacado ? 1 : 0,
           typeof activo === "boolean" ? (activo ? 1 : 0) : 1,
           id, req.business.id,
         ]
       );
     } else {
       await dbRun(
-        `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, sena=?, categoria=?, professional_id=?, activo=?
+        `UPDATE services SET nombre=?, descripcion=?, duracion_min=?, precio=?, sena=?, categoria=?, professional_id=?, destacado=?, activo=?
          WHERE id=? AND business_id=?`,
         [
-          nombre, descripcion, duracionMin, precio, sena, categoria, professionalId,
+          nombre, descripcion, duracionMin, precio, sena, categoria, professionalId, destacado ? 1 : 0,
           typeof activo === "boolean" ? (activo ? 1 : 0) : 1,
           id, req.business.id,
         ]

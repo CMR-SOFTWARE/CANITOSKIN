@@ -459,6 +459,71 @@ function renderBusinessMeta() {
   businessMeta.innerHTML = bits.join("");
 }
 
+function buildServiceCardHtml(s) {
+  const dur = formatDuracion(s.duracionMin ?? s.duracion_min);
+  const precio = s.precio != null && s.precio !== "" ? formatPrice(s.precio) : "";
+  const senaVal = s.sena != null && String(s.sena).trim() !== "" && Number(String(s.sena).replace(/[^\d.-]/g, "")) > 0
+    ? formatPrice(s.sena)
+    : "";
+  return `
+    <article class="svc-card">
+      <div class="svc-card__top">
+        <div class="min-w-0 flex-1">
+          <h3 class="font-semibold text-primary leading-snug">${escapeHtml(s.nombre)}</h3>
+          ${s.descripcion ? `
+            <p class="mt-1 text-meta text-secondary svc-card__desc">${escapeHtml(s.descripcion)}</p>
+            ${s.descripcion.length > 100 ? `<button type="button" class="svc-card__desc-toggle" data-desc-toggle>Leer todo</button>` : ""}
+          ` : ""}
+        </div>
+        <div class="svc-card__prices shrink-0 text-right">
+          ${precio ? `<span class="svc-card__price">${escapeHtml(precio)}</span>` : ""}
+          ${senaVal ? `<p class="svc-card__sena">Seña ${escapeHtml(senaVal)}</p>` : ""}
+        </div>
+      </div>
+      <div class="svc-card__footer">
+        ${dur ? `<span class="svc-card__dur">
+          <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          ${escapeHtml(dur)}
+        </span>` : `<span></span>`}
+        <button type="button" data-service-id="${escapeHtml(s.id)}" class="svc-card__btn">
+          Reservar
+        </button>
+      </div>
+    </article>`;
+}
+
+function wireServiceCardEvents(container) {
+  container.querySelectorAll("[data-service-id]").forEach((btn) => {
+    btn.addEventListener("click", (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      startBooking(btn.getAttribute("data-service-id"));
+    });
+  });
+  container.querySelectorAll("[data-desc-toggle]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const desc = btn.previousElementSibling;
+      if (!desc) return;
+      const expanded = desc.classList.toggle("is-expanded");
+      btn.textContent = expanded ? "Leer menos" : "Leer todo";
+    });
+  });
+}
+
+function renderServiciosDestacados() {
+  const wrap = document.getElementById("serviciosDestacadosWrap");
+  const list = document.getElementById("serviciosDestacadosList");
+  if (!wrap || !list) return;
+  const destacados = (config?.services || []).filter((s) => s.activo !== false && s.destacado === true);
+  if (!destacados.length) {
+    wrap.classList.add("hidden");
+    return;
+  }
+  wrap.classList.remove("hidden");
+  list.innerHTML = destacados.slice(0, 4).map(buildServiceCardHtml).join("");
+  wireServiceCardEvents(list);
+}
+
 function renderServicios() {
   const services = (config?.services || []).filter((s) => s.activo !== false);
   if (!services.length) {
@@ -482,54 +547,11 @@ function renderServicios() {
       html += `<p class="svc-section-label">${escapeHtml(categoriaLabel(key))}</p>`;
     }
     groups[key].forEach((s) => {
-      const dur = formatDuracion(s.duracionMin ?? s.duracion_min);
-      const precio = s.precio != null && s.precio !== "" ? formatPrice(s.precio) : "";
-      const senaVal = s.sena != null && String(s.sena).trim() !== "" && Number(String(s.sena).replace(/[^\d.-]/g, "")) > 0
-        ? formatPrice(s.sena)
-        : "";
-      html += `
-        <article class="svc-card">
-          <div class="svc-card__top">
-            <div class="min-w-0 flex-1">
-              <h3 class="font-semibold text-primary leading-snug">${escapeHtml(s.nombre)}</h3>
-              ${s.descripcion ? `
-                <p class="mt-1 text-meta text-secondary svc-card__desc">${escapeHtml(s.descripcion)}</p>
-                ${s.descripcion.length > 100 ? `<button type="button" class="svc-card__desc-toggle" data-desc-toggle>Leer todo</button>` : ""}
-              ` : ""}
-            </div>
-            <div class="svc-card__prices shrink-0 text-right">
-              ${precio ? `<span class="svc-card__price">${escapeHtml(precio)}</span>` : ""}
-              ${senaVal ? `<p class="svc-card__sena">Seña ${escapeHtml(senaVal)}</p>` : ""}
-            </div>
-          </div>
-          <div class="svc-card__footer">
-            ${dur ? `<span class="svc-card__dur">
-              <svg viewBox="0 0 24 24" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
-              ${escapeHtml(dur)}
-            </span>` : `<span></span>`}
-            <button type="button" data-service-id="${escapeHtml(s.id)}" class="svc-card__btn">
-              Reservar
-            </button>
-          </div>
-        </article>`;
+      html += buildServiceCardHtml(s);
     });
   });
   serviciosList.innerHTML = html;
-  serviciosList.querySelectorAll("[data-service-id]").forEach((btn) => {
-    btn.addEventListener("click", (ev) => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      startBooking(btn.getAttribute("data-service-id"));
-    });
-  });
-  serviciosList.querySelectorAll("[data-desc-toggle]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const desc = btn.previousElementSibling;
-      if (!desc) return;
-      const expanded = desc.classList.toggle("is-expanded");
-      btn.textContent = expanded ? "Leer menos" : "Leer todo";
-    });
-  });
+  wireServiceCardEvents(serviciosList);
 }
 
 function buildPlanWhatsAppUrl(plan) {
@@ -1376,6 +1398,7 @@ async function loadConfig() {
   setNavLogo();
   setAboutFoto();
   renderBusinessMeta();
+  renderServiciosDestacados();
   renderServicios();
   renderPlanes();
   renderEquipo();

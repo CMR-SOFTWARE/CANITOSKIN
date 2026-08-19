@@ -1657,6 +1657,7 @@
     });
     fillServicioProfessionalSelect("");
     setServDiasPropios(false, null);
+    if ($("servDestacado")) $("servDestacado").checked = false;
     const btn = $("btnAgregarServicio");
     if (btn) btn.textContent = "Guardar servicio";
     $("btnCancelarEditServ")?.classList.add("hidden");
@@ -1670,6 +1671,7 @@
     if ($("nuevoServPrecio")) $("nuevoServPrecio").value = s.precio || "";
     if ($("nuevoServSena")) $("nuevoServSena").value = s.sena ?? "";
     if ($("nuevoServCat")) $("nuevoServCat").value = s.categoria || "";
+    if ($("servDestacado")) $("servDestacado").checked = !!s.destacado;
     const fromLinks = (professionalsCache || []).find((p) =>
       Array.isArray(p.serviceIds) && p.serviceIds.map(Number).includes(Number(s.id))
     );
@@ -1709,7 +1711,7 @@
         return `
         <tr class="border-b border-border last:border-0 align-top">
           <td class="px-4 py-3">
-            <p class="font-semibold">${escapeHtml(s.nombre)}</p>
+            <p class="font-semibold">${escapeHtml(s.nombre)} ${s.destacado ? `<span class="text-xs font-semibold text-business-accent">★ destacado</span>` : ""}</p>
             <p class="text-meta-sm mt-0.5">${escapeHtml(s.descripcion || "Sin descripción")}</p>
             <p class="text-meta-sm mt-0.5">Profesional: ${escapeHtml(proLabel)}</p>
           </td>
@@ -1740,6 +1742,7 @@
       categoria: $("nuevoServCat")?.value?.trim() || null,
       professionalId: $("nuevoServProfesional")?.value || null,
       diasAtencion: diasPropios ? getSelectedServDias() : [],
+      destacado: Boolean($("servDestacado")?.checked),
     };
     if (diasPropios && !body.diasAtencion.length) {
       setMessage($("cfgServMsg"), "Elegí al menos un día para este servicio.", true);
