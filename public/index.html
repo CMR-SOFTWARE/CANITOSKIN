@@ -103,22 +103,25 @@
               <a href="/tratamientos" class="mt-6 inline-block text-meta font-semibold text-business-accent hover:underline">Ver todos los tratamientos →</a>
             </div>
 
-            <p class="text-serif text-canito-carbon mt-10">Tu turno</p>
-            <h2 id="serviciosTitle" class="mt-2 text-2xl">Gestioná tu turno</h2>
+            <div class="mt-10 border-t border-canito-carbon/10 pt-8 space-y-8">
+              <div>
+                <p class="text-serif text-canito-carbon">Tu turno</p>
+                <h2 id="serviciosTitle" class="mt-2 text-2xl">Gestioná tu turno</h2>
+                <div id="businessMeta" class="booking-meta-row mt-4"></div>
+              </div>
+              <div id="serviciosList" class="svc-grid hidden"></div>
 
-            <div id="businessMeta" class="booking-meta-row mt-4 mb-2"></div>
-            <div id="serviciosList" class="svc-grid hidden"></div>
+              <section id="planesSection" class="hidden" aria-labelledby="planesTitle">
+                <h3 id="planesTitle" class="text-lg font-semibold text-primary">Planes</h3>
+                <p class="mt-1 text-sm text-secondary">Packs de sesiones con mejor precio.</p>
+                <div id="planesList" class="svc-grid mt-3"></div>
+              </section>
 
-            <section id="planesSection" class="mt-6 hidden" aria-labelledby="planesTitle">
-              <h3 id="planesTitle" class="text-lg font-semibold text-primary">Planes</h3>
-              <p class="mt-1 text-sm text-secondary">Packs de sesiones con mejor precio.</p>
-              <div id="planesList" class="svc-grid mt-3"></div>
-            </section>
-
-            <section id="equipoSection" class="mt-10 hidden" aria-labelledby="equipoTitle">
-              <h3 id="equipoTitle" class="text-lg font-semibold text-primary">Nuestro equipo</h3>
-              <div id="equipoList" class="mt-4 flex flex-wrap gap-6"></div>
-            </section>
+              <section id="equipoSection" class="hidden" aria-labelledby="equipoTitle">
+                <h3 id="equipoTitle" class="text-lg font-semibold text-primary">Nuestro equipo</h3>
+                <div id="equipoList" class="mt-4 flex flex-wrap gap-6"></div>
+              </section>
+            </div>
 
             <!-- Mis turnos / cancelación (collapsed) -->
             <details class="help-drawer" id="helpDrawer">
