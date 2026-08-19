@@ -1,7 +1,7 @@
 /* Canito Skin — carrito de compra (localStorage), compartido entre index.html y cart.html */
 (function () {
   function getSlug() {
-    const reserved = new Set(["admin", "cart", "market", "privacidad", "terminos"]);
+    const reserved = new Set(["admin", "cart", "market", "tratamientos", "privacidad", "terminos"]);
     const parts = window.location.pathname.split("/").filter(Boolean);
     const first = parts[0] || "";
     if (!first || reserved.has(first)) return "canito";

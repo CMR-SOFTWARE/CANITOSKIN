@@ -1,5 +1,5 @@
 function getSlug() {
-  const reserved = new Set(["admin", "cart", "market", "privacidad", "terminos"]);
+  const reserved = new Set(["admin", "cart", "market", "tratamientos", "privacidad", "terminos"]);
   const parts = window.location.pathname.split("/").filter(Boolean);
   const first = parts[0] || "";
   if (!first || reserved.has(first)) return "canito";
@@ -1399,7 +1399,6 @@ async function loadConfig() {
   setAboutFoto();
   renderBusinessMeta();
   renderServiciosDestacados();
-  renderServicios();
   renderPlanes();
   renderEquipo();
   renderUbicacionContacto();
@@ -1418,6 +1417,15 @@ async function init() {
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden && wizardStep === "fecha") pollSlotsSilent();
   });
+
+  const servicioParam = new URLSearchParams(window.location.search).get("servicio");
+  if (servicioParam) {
+    const svc = (config?.services || []).find((s) => String(s.id) === servicioParam && s.activo !== false);
+    if (svc) {
+      startBooking(svc.id);
+      screenWizard?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
 }
 
 init();

@@ -4427,6 +4427,14 @@ app.get("/market", (_req, res) => {
   return res.redirect("/");
 });
 
+app.get("/tratamientos", (_req, res) => {
+  const tratamientosPage = path.join(ROOT_DIR, "public", "tratamientos.html");
+  if (fsSync.existsSync(tratamientosPage)) {
+    return res.sendFile(tratamientosPage);
+  }
+  return res.redirect("/");
+});
+
 app.get("/privacidad", (_req, res) => {
   res.sendFile(path.join(ROOT_DIR, "public", "privacidad.html"));
 });
